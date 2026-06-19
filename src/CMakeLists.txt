@@ -17,6 +17,7 @@ set(LABELMINUS_UI_SOURCES
     ui/LabelEditDelegates.cpp
     ui/LabelTableModel.cpp
     ui/MainWindow.cpp
+    ui/PreferenceDialog.cpp
 )
 
 qt_add_executable(LabelMinus

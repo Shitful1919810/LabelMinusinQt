@@ -52,6 +52,10 @@
         <translation>另存为(&amp;A)...</translation>
     </message>
     <message>
+        <source>&amp;Preferences...</source>
+        <translation>偏好设置(&amp;P)...</translation>
+    </message>
+    <message>
         <source>&amp;Quit</source>
         <translation>退出(&amp;Q)</translation>
     </message>
@@ -152,6 +156,10 @@
         <translation>移动标签</translation>
     </message>
     <message>
+        <source>Reorder labels</source>
+        <translation>调整标签顺序</translation>
+    </message>
+    <message>
         <source>Delete labels</source>
         <translation>删除标签</translation>
     </message>
@@ -178,6 +186,10 @@
     <message>
         <source>Preference warnings</source>
         <translation>偏好设置警告</translation>
+    </message>
+    <message>
+        <source>Preferences applied</source>
+        <translation>偏好设置已应用</translation>
     </message>
     <message>
         <source>Could not read preference.json; using default preferences.</source>
@@ -234,6 +246,133 @@
     <message>
         <source>Unknown preference warning.</source>
         <translation>未知偏好设置警告。</translation>
+    </message>
+</context>
+<context>
+    <name>PreferenceDialog</name>
+    <message>
+        <source>Preferences</source>
+        <translation>偏好设置</translation>
+    </message>
+    <message>
+        <source>Preference file: %1</source>
+        <translation>偏好设置文件：%1</translation>
+    </message>
+    <message>
+        <source>Default marker diameter</source>
+        <translation>默认标记直径</translation>
+    </message>
+    <message>
+        <source>Default marker font size</source>
+        <translation>默认标记字号</translation>
+    </message>
+    <message>
+        <source>Maximum label table text rows</source>
+        <translation>标签列表文本最大行数</translation>
+    </message>
+    <message>
+        <source>Move-label modifier</source>
+        <translation>移动标签修饰键</translation>
+    </message>
+    <message>
+        <source>General</source>
+        <translation>常规</translation>
+    </message>
+    <message>
+        <source>Color</source>
+        <translation>颜色</translation>
+    </message>
+    <message>
+        <source>Marker diameter</source>
+        <translation>标记直径</translation>
+    </message>
+    <message>
+        <source>Font size</source>
+        <translation>字号</translation>
+    </message>
+    <message>
+        <source>Marker style</source>
+        <translation>标记形状</translation>
+    </message>
+    <message>
+        <source>Add group style</source>
+        <translation>新增分组样式</translation>
+    </message>
+    <message>
+        <source>Remove selected styles</source>
+        <translation>删除选中样式</translation>
+    </message>
+    <message>
+        <source>Group styles</source>
+        <translation>分组样式</translation>
+    </message>
+    <message>
+        <source>JSON preview</source>
+        <translation>JSON 预览</translation>
+    </message>
+    <message>
+        <source>Reload</source>
+        <translation>重新加载</translation>
+    </message>
+    <message>
+        <source>Open in Text Editor</source>
+        <translation>用文本编辑器打开</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>应用</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>保存</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Could not read preference file; showing defaults.</source>
+        <translation>无法读取偏好设置文件；将显示默认值。</translation>
+    </message>
+    <message>
+        <source>Preference file is invalid; showing defaults.</source>
+        <translation>偏好设置文件无效；将显示默认值。</translation>
+    </message>
+    <message>
+        <source>Loaded preference file.</source>
+        <translation>已加载偏好设置文件。</translation>
+    </message>
+    <message>
+        <source>Circle</source>
+        <translation>圆形</translation>
+    </message>
+    <message>
+        <source>Square</source>
+        <translation>方形</translation>
+    </message>
+    <message>
+        <source>Choose group color</source>
+        <translation>选择分组颜色</translation>
+    </message>
+    <message>
+        <source>Preferences applied.</source>
+        <translation>偏好设置已应用。</translation>
+    </message>
+    <message>
+        <source>Preferences applied with warnings; see the main window status bar.</source>
+        <translation>偏好设置已应用，但存在警告；请查看主窗口状态栏。</translation>
+    </message>
+    <message>
+        <source>Could not save preference file.</source>
+        <translation>无法保存偏好设置文件。</translation>
+    </message>
+    <message>
+        <source>Preferences saved and applied.</source>
+        <translation>偏好设置已保存并应用。</translation>
+    </message>
+    <message>
+        <source>Could not open preference file in the system text editor.</source>
+        <translation>无法使用系统文本编辑器打开偏好设置文件。</translation>
     </message>
 </context>
 </TS>

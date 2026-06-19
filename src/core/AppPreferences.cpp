@@ -1,5 +1,6 @@
 #include "core/AppPreferences.h"
 
+#include <QByteArray>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -151,31 +152,14 @@ Qt::KeyboardModifiers modifiersFromString(const QString& text, Qt::KeyboardModif
 }
 } // namespace
 
-AppPreferences AppPreferences::load()
-{
-    return loadWithDiagnostics().preferences;
-}
-
-AppPreferencesLoadResult AppPreferences::loadWithDiagnostics()
-{
-    return loadFromFile(preferencePath());
-}
-
-AppPreferencesLoadResult AppPreferences::loadFromFile(const QString& path)
+AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& document,
+                                                          const QJsonParseError* parseError)
 {
     AppPreferences preferences;
     QVector<AppPreferenceWarning> warnings;
 
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        warnings.append(makeWarning(AppPreferenceWarningType::FileNotReadable));
-        return {preferences, warnings};
-    }
-
-    QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
-    if (parseError.error != QJsonParseError::NoError) {
-        warnings.append(makeWarning(AppPreferenceWarningType::InvalidJson, {}, parseError.errorString()));
+    if (parseError != nullptr && parseError->error != QJsonParseError::NoError) {
+        warnings.append(makeWarning(AppPreferenceWarningType::InvalidJson, {}, parseError->errorString()));
         return {preferences, warnings};
     }
 
@@ -295,6 +279,43 @@ AppPreferencesLoadResult AppPreferences::loadFromFile(const QString& path)
     }
 
     return {preferences, warnings};
+}
+
+QString AppPreferences::defaultFilePath()
+{
+    return preferencePath();
+}
+
+AppPreferences AppPreferences::load()
+{
+    return loadWithDiagnostics().preferences;
+}
+
+AppPreferencesLoadResult AppPreferences::loadWithDiagnostics()
+{
+    return loadFromFile(preferencePath());
+}
+
+AppPreferencesLoadResult AppPreferences::loadFromFile(const QString& path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        AppPreferences preferences;
+        QVector<AppPreferenceWarning> warnings;
+        warnings.append(makeWarning(AppPreferenceWarningType::FileNotReadable));
+        return {preferences, warnings};
+    }
+
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+    return loadFromDocument(document, &parseError);
+}
+
+AppPreferencesLoadResult AppPreferences::loadFromJson(const QByteArray& json)
+{
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(json, &parseError);
+    return loadFromDocument(document, &parseError);
 }
 
 double AppPreferences::labelMarkerDiameterPixels() const noexcept

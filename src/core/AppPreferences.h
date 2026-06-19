@@ -5,6 +5,9 @@
 #include <QVector>
 #include <Qt>
 
+class QJsonDocument;
+class QJsonParseError;
+
 namespace labelminus::core {
 
 enum class AppPreferenceWarningType {
@@ -50,9 +53,11 @@ struct LabelGroupStyle {
 
 class AppPreferences {
 public:
+    static QString defaultFilePath();
     static AppPreferences load();
     static AppPreferencesLoadResult loadWithDiagnostics();
     static AppPreferencesLoadResult loadFromFile(const QString& path);
+    static AppPreferencesLoadResult loadFromJson(const QByteArray& json);
 
     double labelMarkerDiameterPixels() const noexcept;
     double labelMarkerFontPointSize() const noexcept;
@@ -61,6 +66,8 @@ public:
     const QVector<LabelGroupStyle>& groupStyles() const noexcept;
 
 private:
+    static AppPreferencesLoadResult loadFromDocument(const QJsonDocument& document, const QJsonParseError* parseError);
+
     double m_labelMarkerDiameterPixels{20.0};
     double m_labelMarkerFontPointSize{10.0};
     int m_labelTableMaxTextRows{3};

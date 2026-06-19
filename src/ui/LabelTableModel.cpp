@@ -1,8 +1,16 @@
 #include "ui/LabelTableModel.h"
 
 #include <QBrush>
+#include <QDataStream>
+#include <QIODevice>
+#include <QMimeData>
 
+#include <algorithm>
 #include <utility>
+
+namespace {
+constexpr auto labelRowsMimeType = "application/x-labelminus-label-rows";
+}
 
 LabelTableModel::LabelTableModel(QObject* parent) : QAbstractTableModel(parent) {}
 
@@ -159,10 +167,104 @@ bool LabelTableModel::setData(const QModelIndex& index, const QVariant& value, i
 Qt::ItemFlags LabelTableModel::flags(const QModelIndex& index) const
 {
     Qt::ItemFlags itemFlags = QAbstractTableModel::flags(index);
+    if (!index.isValid()) {
+        return itemFlags | Qt::ItemIsDropEnabled;
+    }
+
+    itemFlags |= Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
     if (index.isValid() && (index.column() == 1 || index.column() == 2)) {
         itemFlags |= Qt::ItemIsEditable;
     }
     return itemFlags;
+}
+
+Qt::DropActions LabelTableModel::supportedDragActions() const
+{
+    return Qt::MoveAction;
+}
+
+Qt::DropActions LabelTableModel::supportedDropActions() const
+{
+    return Qt::MoveAction;
+}
+
+QStringList LabelTableModel::mimeTypes() const
+{
+    return {QString::fromLatin1(labelRowsMimeType)};
+}
+
+QMimeData* LabelTableModel::mimeData(const QModelIndexList& indexes) const
+{
+    auto* mimeData = new QMimeData;
+    QVector<int> sourceIndexes;
+    QVector<int> rows;
+    rows.reserve(indexes.size());
+
+    for (const QModelIndex& index : indexes) {
+        if (index.isValid()) {
+            rows.append(index.row());
+        }
+    }
+    std::sort(rows.begin(), rows.end());
+    rows.erase(std::unique(rows.begin(), rows.end()), rows.end());
+
+    sourceIndexes.reserve(rows.size());
+    for (int row : rows) {
+        const int sourceIndex = sourceIndexForRow(row);
+        if (sourceIndex >= 0) {
+            sourceIndexes.append(sourceIndex);
+        }
+    }
+
+    QByteArray data;
+    QDataStream stream(&data, QIODevice::WriteOnly);
+    stream << sourceIndexes;
+    mimeData->setData(QString::fromLatin1(labelRowsMimeType), data);
+    return mimeData;
+}
+
+bool LabelTableModel::canDropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column,
+                                      const QModelIndex& parent) const
+{
+    Q_UNUSED(row)
+    Q_UNUSED(parent)
+
+    if (action == Qt::IgnoreAction) {
+        return true;
+    }
+    return action == Qt::MoveAction && column <= 0 && data != nullptr &&
+           data->hasFormat(QString::fromLatin1(labelRowsMimeType));
+}
+
+bool LabelTableModel::dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column,
+                                   const QModelIndex& parent)
+{
+    if (!canDropMimeData(data, action, row, column, parent)) {
+        return false;
+    }
+    if (action == Qt::IgnoreAction) {
+        return true;
+    }
+
+    QByteArray encodedRows = data->data(QString::fromLatin1(labelRowsMimeType));
+    QDataStream stream(&encodedRows, QIODevice::ReadOnly);
+    QVector<int> sourceIndexes;
+    stream >> sourceIndexes;
+    if (sourceIndexes.isEmpty()) {
+        return false;
+    }
+
+    int visibleDropRow = row;
+    if (visibleDropRow < 0 && parent.isValid()) {
+        visibleDropRow = parent.row();
+    }
+    if (visibleDropRow < 0) {
+        visibleDropRow = rowCount();
+    }
+    visibleDropRow = std::clamp(visibleDropRow, 0, rowCount());
+
+    emit labelsReorderRequested(sourceIndexes, visibleDropRow);
+    return true;
 }
 
 void LabelTableModel::rebuildVisibleRows()

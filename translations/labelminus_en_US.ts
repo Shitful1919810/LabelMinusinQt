@@ -53,6 +53,10 @@
         <translation>Save &amp;As...</translation>
     </message>
     <message>
+        <source>&amp;Preferences...</source>
+        <translation>&amp;Preferences...</translation>
+    </message>
+    <message>
         <source>&amp;Quit</source>
         <translation>&amp;Quit</translation>
     </message>
@@ -153,6 +157,10 @@
         <translation>Move label</translation>
     </message>
     <message>
+        <source>Reorder labels</source>
+        <translation>Reorder labels</translation>
+    </message>
+    <message>
         <source>Delete labels</source>
         <translation>Delete labels</translation>
     </message>
@@ -179,6 +187,10 @@
     <message>
         <source>Preference warnings</source>
         <translation>Preference warnings</translation>
+    </message>
+    <message>
+        <source>Preferences applied</source>
+        <translation>Preferences applied</translation>
     </message>
     <message>
         <source>Could not read preference.json; using default preferences.</source>
@@ -235,6 +247,133 @@
     <message>
         <source>Unknown preference warning.</source>
         <translation>Unknown preference warning.</translation>
+    </message>
+</context>
+<context>
+    <name>PreferenceDialog</name>
+    <message>
+        <source>Preferences</source>
+        <translation>Preferences</translation>
+    </message>
+    <message>
+        <source>Preference file: %1</source>
+        <translation>Preference file: %1</translation>
+    </message>
+    <message>
+        <source>Default marker diameter</source>
+        <translation>Default marker diameter</translation>
+    </message>
+    <message>
+        <source>Default marker font size</source>
+        <translation>Default marker font size</translation>
+    </message>
+    <message>
+        <source>Maximum label table text rows</source>
+        <translation>Maximum label table text rows</translation>
+    </message>
+    <message>
+        <source>Move-label modifier</source>
+        <translation>Move-label modifier</translation>
+    </message>
+    <message>
+        <source>General</source>
+        <translation>General</translation>
+    </message>
+    <message>
+        <source>Color</source>
+        <translation>Color</translation>
+    </message>
+    <message>
+        <source>Marker diameter</source>
+        <translation>Marker diameter</translation>
+    </message>
+    <message>
+        <source>Font size</source>
+        <translation>Font size</translation>
+    </message>
+    <message>
+        <source>Marker style</source>
+        <translation>Marker style</translation>
+    </message>
+    <message>
+        <source>Add group style</source>
+        <translation>Add group style</translation>
+    </message>
+    <message>
+        <source>Remove selected styles</source>
+        <translation>Remove selected styles</translation>
+    </message>
+    <message>
+        <source>Group styles</source>
+        <translation>Group styles</translation>
+    </message>
+    <message>
+        <source>JSON preview</source>
+        <translation>JSON preview</translation>
+    </message>
+    <message>
+        <source>Reload</source>
+        <translation>Reload</translation>
+    </message>
+    <message>
+        <source>Open in Text Editor</source>
+        <translation>Open in Text Editor</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>Apply</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>Save</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Close</translation>
+    </message>
+    <message>
+        <source>Could not read preference file; showing defaults.</source>
+        <translation>Could not read preference file; showing defaults.</translation>
+    </message>
+    <message>
+        <source>Preference file is invalid; showing defaults.</source>
+        <translation>Preference file is invalid; showing defaults.</translation>
+    </message>
+    <message>
+        <source>Loaded preference file.</source>
+        <translation>Loaded preference file.</translation>
+    </message>
+    <message>
+        <source>Circle</source>
+        <translation>Circle</translation>
+    </message>
+    <message>
+        <source>Square</source>
+        <translation>Square</translation>
+    </message>
+    <message>
+        <source>Choose group color</source>
+        <translation>Choose group color</translation>
+    </message>
+    <message>
+        <source>Preferences applied.</source>
+        <translation>Preferences applied.</translation>
+    </message>
+    <message>
+        <source>Preferences applied with warnings; see the main window status bar.</source>
+        <translation>Preferences applied with warnings; see the main window status bar.</translation>
+    </message>
+    <message>
+        <source>Could not save preference file.</source>
+        <translation>Could not save preference file.</translation>
+    </message>
+    <message>
+        <source>Preferences saved and applied.</source>
+        <translation>Preferences saved and applied.</translation>
+    </message>
+    <message>
+        <source>Could not open preference file in the system text editor.</source>
+        <translation>Could not open preference file in the system text editor.</translation>
     </message>
 </context>
 </TS>

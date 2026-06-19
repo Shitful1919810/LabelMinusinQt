@@ -4,11 +4,11 @@
 #include <QBrush>
 #include <QGraphicsPixmapItem>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPen>
 #include <QPixmap>
-#include <QToolTip>
 #include <QWheelEvent>
 
 #include <algorithm>
@@ -82,6 +82,19 @@ ImageCanvas::ImageCanvas(QWidget* parent) : QGraphicsView(parent)
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
     viewport()->setMouseTracking(true);
+
+    m_hoverToolTip = new QLabel(this, Qt::ToolTip);
+    m_hoverToolTip->setAttribute(Qt::WA_ShowWithoutActivating);
+    m_hoverToolTip->setAttribute(Qt::WA_TransparentForMouseEvents);
+    m_hoverToolTip->setTextFormat(Qt::RichText);
+    m_hoverToolTip->setMargin(6);
+    m_hoverToolTip->setStyleSheet(QStringLiteral("QLabel {"
+                                                 "background: palette(toolTipBase);"
+                                                 "color: palette(toolTipText);"
+                                                 "border: 1px solid palette(mid);"
+                                                 "border-radius: 3px;"
+                                                 "}"));
+    m_hoverToolTip->hide();
 }
 
 void ImageCanvas::setPreferences(const labelminus::core::AppPreferences& preferences)
@@ -349,12 +362,18 @@ void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, cons
         return;
     }
 
-    QToolTip::showText(globalPosition, lines.join(QStringLiteral("<br/>")), viewport());
+    m_hoverToolTip->setText(lines.join(QStringLiteral("<br/>")));
+    m_hoverToolTip->adjustSize();
+    m_hoverToolTip->move(globalPosition + QPoint(12, 18));
+    m_hoverToolTip->show();
+    m_hoverToolTip->raise();
 }
 
 void ImageCanvas::hideHoveredLabelToolTip()
 {
-    QToolTip::hideText();
+    if (m_hoverToolTip != nullptr) {
+        m_hoverToolTip->hide();
+    }
 }
 
 labelminus::core::LabelGroupStyle ImageCanvas::styleForGroup(const QString& group) const

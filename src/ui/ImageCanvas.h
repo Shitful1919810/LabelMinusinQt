@@ -10,6 +10,7 @@
 #include <QVector>
 
 class QGraphicsItem;
+class QLabel;
 
 class ImageCanvas final : public QGraphicsView {
     Q_OBJECT
@@ -52,6 +53,7 @@ private:
 
     QGraphicsScene m_scene;
     QGraphicsPixmapItem* m_pixmapItem{nullptr};
+    QLabel* m_hoverToolTip{nullptr};
     QVector<labelminus::core::Label> m_labels;
     QVector<QGraphicsItem*> m_labelItems;
     QString m_imagePath;

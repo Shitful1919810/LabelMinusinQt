@@ -2,6 +2,7 @@
 
 #include "core/LabelPlusDocument.h"
 #include "ui/LabelEditDelegates.h"
+#include "ui/PreferenceDialog.h"
 
 #include <QAbstractItemView>
 #include <QAction>
@@ -13,6 +14,7 @@
 #include <QHeaderView>
 #include <QIcon>
 #include <QInputDialog>
+#include <QItemSelection>
 #include <QItemSelectionModel>
 #include <QKeySequence>
 #include <QLabel>
@@ -22,10 +24,13 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSettings>
+#include <QSignalBlocker>
 #include <QSlider>
 #include <QSplitter>
 #include <QStatusBar>
 #include <QStringList>
+#include <QStringView>
 #include <QStyle>
 #include <QTableView>
 #include <QTimer>
@@ -35,6 +40,33 @@
 
 #include <algorithm>
 #include <utility>
+
+namespace {
+constexpr QLatin1StringView layoutGroup{"layout"};
+constexpr QLatin1StringView geometryKey{"geometry"};
+constexpr QLatin1StringView windowStateKey{"windowState"};
+constexpr QLatin1StringView rootSplitterKey{"rootSplitter"};
+constexpr QLatin1StringView rightSplitterKey{"rightSplitter"};
+
+bool labelEquals(const labelminus::core::Label& lhs, const labelminus::core::Label& rhs)
+{
+    return lhs.text() == rhs.text() && lhs.group() == rhs.group() && lhs.position() == rhs.position() &&
+           lhs.isDeleted() == rhs.isDeleted();
+}
+
+bool labelVectorsEqual(const QVector<labelminus::core::Label>& lhs, const QVector<labelminus::core::Label>& rhs)
+{
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+    for (int i = 0; i < lhs.size(); ++i) {
+        if (!labelEquals(lhs.at(i), rhs.at(i))) {
+            return false;
+        }
+    }
+    return true;
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), m_labelModel(new LabelTableModel(this)), m_labelTextDelegate(new LabelTextDelegate(this)),
@@ -60,6 +92,7 @@ MainWindow::MainWindow(QWidget* parent)
     statusBar()->addPermanentWidget(m_warningLabel);
     statusBar()->showMessage(tr("Ready"));
     showPreferenceWarnings();
+    restoreLayoutState();
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -69,6 +102,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
         return;
     }
 
+    saveLayoutState();
     event->accept();
 }
 
@@ -86,6 +120,10 @@ void MainWindow::createActions()
     m_saveProjectAsAction->setShortcut(QKeySequence::SaveAs);
     connect(m_saveProjectAsAction, &QAction::triggered, this, &MainWindow::saveProjectAs);
 
+    m_preferencesAction = new QAction(tr("&Preferences..."), this);
+    m_preferencesAction->setShortcut(QKeySequence::Preferences);
+    connect(m_preferencesAction, &QAction::triggered, this, &MainWindow::openPreferences);
+
     m_quitAction = new QAction(tr("&Quit"), this);
     m_quitAction->setShortcut(QKeySequence::Quit);
     connect(m_quitAction, &QAction::triggered, this, &QWidget::close);
@@ -98,15 +136,17 @@ void MainWindow::createMenus()
     fileMenu->addAction(m_saveProjectAction);
     fileMenu->addAction(m_saveProjectAsAction);
     fileMenu->addSeparator();
+    fileMenu->addAction(m_preferencesAction);
+    fileMenu->addSeparator();
     fileMenu->addAction(m_quitAction);
 }
 
 void MainWindow::createCentralWidget()
 {
-    auto* rootSplitter = new QSplitter(Qt::Horizontal, this);
-    rootSplitter->setChildrenCollapsible(false);
+    m_rootSplitter = new QSplitter(Qt::Horizontal, this);
+    m_rootSplitter->setChildrenCollapsible(false);
 
-    auto* leftPanel = new QWidget(rootSplitter);
+    auto* leftPanel = new QWidget(m_rootSplitter);
     auto* leftLayout = new QVBoxLayout(leftPanel);
     leftLayout->setContentsMargins(8, 8, 8, 8);
     leftLayout->setSpacing(6);
@@ -159,7 +199,7 @@ void MainWindow::createCentralWidget()
     bottomLayout->addWidget(m_nextButton);
     leftLayout->addWidget(bottomBar);
 
-    auto* rightPanel = new QWidget(rootSplitter);
+    auto* rightPanel = new QWidget(m_rootSplitter);
     auto* rightLayout = new QVBoxLayout(rightPanel);
     rightLayout->setContentsMargins(8, 8, 8, 8);
     rightLayout->setSpacing(6);
@@ -173,16 +213,22 @@ void MainWindow::createCentralWidget()
     groupLayout->addWidget(m_groupFilterComboBox, 1);
     rightLayout->addWidget(groupBar);
 
-    auto* rightSplitter = new QSplitter(Qt::Vertical, rightPanel);
-    rightSplitter->setChildrenCollapsible(false);
+    m_rightSplitter = new QSplitter(Qt::Vertical, rightPanel);
+    m_rightSplitter->setChildrenCollapsible(false);
 
-    m_labelView = new QTableView(rightSplitter);
+    m_labelView = new QTableView(m_rightSplitter);
     m_labelView->setModel(m_labelModel);
     m_labelView->setItemDelegateForColumn(1, m_labelTextDelegate);
     m_labelView->setItemDelegateForColumn(2, m_labelGroupDelegate);
     m_labelView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
     m_labelView->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_labelView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    m_labelView->setDragEnabled(true);
+    m_labelView->setAcceptDrops(true);
+    m_labelView->setDropIndicatorShown(true);
+    m_labelView->setDragDropMode(QAbstractItemView::InternalMove);
+    m_labelView->setDragDropOverwriteMode(false);
+    m_labelView->setDefaultDropAction(Qt::MoveAction);
     m_labelView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_labelView->setWordWrap(true);
     m_labelView->verticalHeader()->setVisible(false);
@@ -198,7 +244,7 @@ void MainWindow::createCentralWidget()
     connect(m_labelView->horizontalHeader(), &QHeaderView::sectionResized, labelRowsResizeTimer,
             [labelRowsResizeTimer]() { labelRowsResizeTimer->start(); });
 
-    auto* editorPanel = new QWidget(rightSplitter);
+    auto* editorPanel = new QWidget(m_rightSplitter);
     auto* editorLayout = new QVBoxLayout(editorPanel);
     editorLayout->setContentsMargins(0, 0, 0, 0);
     editorLayout->setSpacing(6);
@@ -215,15 +261,15 @@ void MainWindow::createCentralWidget()
     m_textEdit = new QPlainTextEdit(editorPanel);
     m_textEdit->setPlaceholderText(tr("Selected label text"));
     editorLayout->addWidget(m_textEdit, 1);
-    rightSplitter->setStretchFactor(0, 3);
-    rightSplitter->setStretchFactor(1, 1);
-    rightLayout->addWidget(rightSplitter, 1);
+    m_rightSplitter->setStretchFactor(0, 3);
+    m_rightSplitter->setStretchFactor(1, 1);
+    rightLayout->addWidget(m_rightSplitter, 1);
 
-    rootSplitter->addWidget(leftPanel);
-    rootSplitter->addWidget(rightPanel);
-    rootSplitter->setStretchFactor(0, 3);
-    rootSplitter->setStretchFactor(1, 2);
-    setCentralWidget(rootSplitter);
+    m_rootSplitter->addWidget(leftPanel);
+    m_rootSplitter->addWidget(rightPanel);
+    m_rootSplitter->setStretchFactor(0, 3);
+    m_rootSplitter->setStretchFactor(1, 2);
+    setCentralWidget(m_rootSplitter);
 
     connect(m_canvas, &ImageCanvas::labelCreateRequested, this, &MainWindow::addLabel);
     connect(m_canvas, &ImageCanvas::labelMoveRequested, this, &MainWindow::moveLabel);
@@ -252,6 +298,7 @@ void MainWindow::createCentralWidget()
     connect(m_labelView, &QTableView::customContextMenuRequested, this, &MainWindow::showLabelContextMenu);
     connect(m_textEdit, &QPlainTextEdit::textChanged, this, &MainWindow::updateCurrentLabelText);
     connect(m_labelModel, &LabelTableModel::labelEdited, this, &MainWindow::updateLabelFromTable, Qt::QueuedConnection);
+    connect(m_labelModel, &LabelTableModel::labelsReorderRequested, this, &MainWindow::reorderLabels);
     connect(m_groupFilterComboBox, &GroupFilterComboBox::selectedGroupsChanged, this, &MainWindow::updateGroupFilter);
     connect(m_labelGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateCurrentLabelGroup);
     connect(m_insertGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateInsertGroupTextColor);
@@ -289,6 +336,16 @@ bool MainWindow::openProjectFile(const QString& path)
         QMessageBox::critical(this, tr("Open failed"), QString::fromUtf8(error.what()));
         return false;
     }
+}
+
+void MainWindow::openPreferences()
+{
+    auto* dialog = new PreferenceDialog(labelminus::core::AppPreferences::defaultFilePath(), this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dialog, &PreferenceDialog::preferencesApplied, this, &MainWindow::applyPreferences);
+    dialog->show();
+    dialog->raise();
+    dialog->activateWindow();
 }
 
 bool MainWindow::saveProject()
@@ -602,6 +659,102 @@ void MainWindow::showLabelContextMenu(const QPoint& position)
     menu.exec(m_labelView->viewport()->mapToGlobal(position));
 }
 
+void MainWindow::reorderLabels(QVector<int> sourceIndexes, int visibleDropRow)
+{
+    labelminus::core::ImageEntry* image = currentImage();
+    if (image == nullptr || sourceIndexes.isEmpty()) {
+        return;
+    }
+
+    std::sort(sourceIndexes.begin(), sourceIndexes.end());
+    sourceIndexes.erase(std::unique(sourceIndexes.begin(), sourceIndexes.end()), sourceIndexes.end());
+    sourceIndexes.erase(std::remove_if(sourceIndexes.begin(), sourceIndexes.end(),
+                                       [image](int sourceIndex) {
+                                           return sourceIndex < 0 || sourceIndex >= image->labels.size() ||
+                                                  image->labels.at(sourceIndex).isDeleted();
+                                       }),
+                        sourceIndexes.end());
+    if (sourceIndexes.isEmpty()) {
+        return;
+    }
+
+    const int visibleRowCount = m_labelModel->rowCount();
+    visibleDropRow = std::clamp(visibleDropRow, 0, visibleRowCount);
+    int insertBeforeSourceIndex = static_cast<int>(image->labels.size());
+    if (visibleDropRow < visibleRowCount) {
+        insertBeforeSourceIndex = m_labelModel->sourceIndexForRow(visibleDropRow);
+        if (insertBeforeSourceIndex < 0) {
+            return;
+        }
+    }
+
+    struct IndexedLabel {
+        int oldIndex;
+        labelminus::core::Label label;
+    };
+
+    const QVector<labelminus::core::Label> oldLabels = image->labels;
+    QVector<IndexedLabel> movingLabels;
+    QVector<IndexedLabel> remainingLabels;
+    movingLabels.reserve(sourceIndexes.size());
+    remainingLabels.reserve(oldLabels.size() - sourceIndexes.size());
+
+    for (int i = 0; i < oldLabels.size(); ++i) {
+        IndexedLabel indexedLabel{i, oldLabels.at(i)};
+        if (std::binary_search(sourceIndexes.cbegin(), sourceIndexes.cend(), i)) {
+            movingLabels.append(std::move(indexedLabel));
+        }
+        else {
+            remainingLabels.append(std::move(indexedLabel));
+        }
+    }
+    if (movingLabels.isEmpty()) {
+        return;
+    }
+
+    int remainingInsertIndex = 0;
+    for (int i = 0; i < insertBeforeSourceIndex; ++i) {
+        if (!std::binary_search(sourceIndexes.cbegin(), sourceIndexes.cend(), i)) {
+            ++remainingInsertIndex;
+        }
+    }
+    remainingInsertIndex = std::clamp(remainingInsertIndex, 0, static_cast<int>(remainingLabels.size()));
+
+    QVector<IndexedLabel> reorderedLabels;
+    reorderedLabels.reserve(oldLabels.size());
+    for (int i = 0; i < remainingInsertIndex; ++i) {
+        reorderedLabels.append(std::move(remainingLabels[i]));
+    }
+    for (IndexedLabel& label : movingLabels) {
+        reorderedLabels.append(std::move(label));
+    }
+    for (int i = remainingInsertIndex; i < remainingLabels.size(); ++i) {
+        reorderedLabels.append(std::move(remainingLabels[i]));
+    }
+
+    QVector<labelminus::core::Label> newLabels;
+    QVector<int> newSelectedIndexes;
+    newLabels.reserve(reorderedLabels.size());
+    newSelectedIndexes.reserve(sourceIndexes.size());
+    for (int i = 0; i < reorderedLabels.size(); ++i) {
+        if (std::binary_search(sourceIndexes.cbegin(), sourceIndexes.cend(), reorderedLabels.at(i).oldIndex)) {
+            newSelectedIndexes.append(i);
+        }
+        newLabels.append(reorderedLabels.at(i).label);
+    }
+
+    if (labelVectorsEqual(oldLabels, newLabels)) {
+        return;
+    }
+
+    const int imageIndex = m_currentImageIndex;
+    image->labels = newLabels;
+    pushLabelOrderUndo(imageIndex, oldLabels, sourceIndexes);
+    refreshImageUi();
+    selectLabelIndexes(newSelectedIndexes);
+    markDirty();
+}
+
 void MainWindow::updateCurrentLabelText()
 {
     if (m_isUpdatingUi) {
@@ -780,6 +933,19 @@ void MainWindow::applyLabelDeleted(int imageIndex, int labelIndex, bool deleted)
     markDirty();
 }
 
+void MainWindow::applyLabelOrder(int imageIndex, QVector<labelminus::core::Label> labels, QVector<int> selectedIndexes)
+{
+    if (imageIndex < 0 || imageIndex >= m_project.images().size()) {
+        return;
+    }
+
+    m_project.images()[imageIndex].labels = std::move(labels);
+    m_currentImageIndex = imageIndex;
+    refreshImageUi();
+    selectLabelIndexes(selectedIndexes);
+    markDirty();
+}
+
 void MainWindow::applyBatchLabelGroups(int imageIndex, QVector<int> labelIndexes, QVector<QString> groups)
 {
     if (imageIndex < 0 || imageIndex >= m_project.images().size() || labelIndexes.size() != groups.size()) {
@@ -876,6 +1042,18 @@ void MainWindow::pushLabelPositionUndo(int imageIndex, int labelIndex, QPointF o
     });
 }
 
+void MainWindow::pushLabelOrderUndo(int imageIndex, QVector<labelminus::core::Label> oldLabels,
+                                    QVector<int> oldSelectedIndexes)
+{
+    m_undoStack.push({
+        tr("Reorder labels"),
+        [this, imageIndex, oldLabels = std::move(oldLabels),
+         oldSelectedIndexes = std::move(oldSelectedIndexes)]() mutable {
+            applyLabelOrder(imageIndex, std::move(oldLabels), std::move(oldSelectedIndexes));
+        },
+    });
+}
+
 void MainWindow::pushBatchLabelGroupUndo(int imageIndex, QVector<int> labelIndexes, QVector<QString> oldGroups,
                                          QVector<QString> newGroups)
 {
@@ -926,6 +1104,72 @@ QVector<int> MainWindow::selectedLabelIndexes() const
     std::sort(labelIndexes.begin(), labelIndexes.end());
     labelIndexes.erase(std::unique(labelIndexes.begin(), labelIndexes.end()), labelIndexes.end());
     return labelIndexes;
+}
+
+void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes)
+{
+    labelminus::core::ImageEntry* image = currentImage();
+    if (image == nullptr || m_labelView == nullptr || m_labelView->selectionModel() == nullptr) {
+        return;
+    }
+
+    QVector<int> visibleSourceIndexes;
+    visibleSourceIndexes.reserve(sourceIndexes.size());
+    for (int sourceIndex : sourceIndexes) {
+        if (sourceIndex >= 0 && sourceIndex < image->labels.size() &&
+            m_labelModel->rowForSourceIndex(sourceIndex) >= 0) {
+            visibleSourceIndexes.append(sourceIndex);
+        }
+    }
+    std::sort(visibleSourceIndexes.begin(), visibleSourceIndexes.end());
+    visibleSourceIndexes.erase(std::unique(visibleSourceIndexes.begin(), visibleSourceIndexes.end()),
+                               visibleSourceIndexes.end());
+
+    QSignalBlocker selectionBlocker(m_labelView->selectionModel());
+    m_labelView->clearSelection();
+
+    if (visibleSourceIndexes.isEmpty()) {
+        m_isUpdatingUi = true;
+        m_currentLabelIndex = -1;
+        m_canvas->setSelectedLabel(-1);
+        m_textEdit->clear();
+        setEditorEnabled(false);
+        m_isUpdatingUi = false;
+        return;
+    }
+
+    const int primarySourceIndex = visibleSourceIndexes.last();
+    const labelminus::core::Label& primaryLabel = image->labels.at(primarySourceIndex);
+
+    m_isUpdatingUi = true;
+    m_currentLabelIndex = primarySourceIndex;
+    m_canvas->setSelectedLabel(primarySourceIndex);
+    m_textEdit->setPlainText(primaryLabel.text());
+    m_textEditUndoImageIndex = m_currentImageIndex;
+    m_textEditUndoLabelIndex = primarySourceIndex;
+    m_textEditUndoOriginalText = primaryLabel.text();
+    m_labelGroupComboBox->setCurrentText(primaryLabel.group());
+    setEditorEnabled(true);
+
+    QItemSelection selection;
+    for (int sourceIndex : visibleSourceIndexes) {
+        const int visibleRow = m_labelModel->rowForSourceIndex(sourceIndex);
+        if (visibleRow < 0) {
+            continue;
+        }
+        selection.select(m_labelModel->index(visibleRow, 0),
+                         m_labelModel->index(visibleRow, m_labelModel->columnCount() - 1));
+        m_labelView->resizeRowToContents(visibleRow);
+        capLabelRowHeight(visibleRow);
+    }
+
+    m_labelView->selectionModel()->select(selection, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    const int primaryVisibleRow = m_labelModel->rowForSourceIndex(primarySourceIndex);
+    if (primaryVisibleRow >= 0) {
+        m_labelView->selectionModel()->setCurrentIndex(m_labelModel->index(primaryVisibleRow, 0),
+                                                       QItemSelectionModel::Current | QItemSelectionModel::Rows);
+    }
+    m_isUpdatingUi = false;
 }
 
 void MainWindow::refreshProjectUi()
@@ -1019,9 +1263,56 @@ void MainWindow::capLabelRowHeight(int row)
     }
 }
 
+void MainWindow::restoreLayoutState()
+{
+    QSettings settings;
+    settings.beginGroup(layoutGroup);
+
+    const QByteArray geometry = settings.value(geometryKey).toByteArray();
+    if (!geometry.isEmpty()) {
+        restoreGeometry(geometry);
+    }
+
+    const QByteArray windowState = settings.value(windowStateKey).toByteArray();
+    if (!windowState.isEmpty()) {
+        restoreState(windowState);
+    }
+
+    const QByteArray rootSplitterState = settings.value(rootSplitterKey).toByteArray();
+    if (!rootSplitterState.isEmpty() && m_rootSplitter != nullptr) {
+        m_rootSplitter->restoreState(rootSplitterState);
+    }
+
+    const QByteArray rightSplitterState = settings.value(rightSplitterKey).toByteArray();
+    if (!rightSplitterState.isEmpty() && m_rightSplitter != nullptr) {
+        m_rightSplitter->restoreState(rightSplitterState);
+    }
+}
+
+void MainWindow::saveLayoutState() const
+{
+    QSettings settings;
+    settings.beginGroup(layoutGroup);
+    settings.setValue(geometryKey, saveGeometry());
+    settings.setValue(windowStateKey, saveState());
+    if (m_rootSplitter != nullptr) {
+        settings.setValue(rootSplitterKey, m_rootSplitter->saveState());
+    }
+    if (m_rightSplitter != nullptr) {
+        settings.setValue(rightSplitterKey, m_rightSplitter->saveState());
+    }
+}
+
 void MainWindow::showPreferenceWarnings()
 {
-    if (m_warningLabel == nullptr || m_preferenceWarnings.isEmpty()) {
+    if (m_warningLabel == nullptr) {
+        return;
+    }
+
+    if (m_preferenceWarnings.isEmpty()) {
+        m_warningLabel->clear();
+        m_warningLabel->setToolTip({});
+        m_warningLabel->setVisible(false);
         return;
     }
 
@@ -1034,6 +1325,22 @@ void MainWindow::showPreferenceWarnings()
     m_warningLabel->setText(tr("Preference warnings"));
     m_warningLabel->setToolTip(messages.join(QStringLiteral("\n")));
     m_warningLabel->setVisible(true);
+}
+
+void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult result)
+{
+    m_preferences = result.preferences;
+    m_preferenceWarnings = std::move(result.warnings);
+    m_labelTableMaxTextRows = m_preferences.labelTableMaxTextRows();
+
+    if (m_canvas != nullptr) {
+        m_canvas->setPreferences(m_preferences);
+    }
+
+    refreshGroupUi();
+    refreshImageUi();
+    showPreferenceWarnings();
+    statusBar()->showMessage(tr("Preferences applied"), 4000);
 }
 
 QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceWarning& warning) const
