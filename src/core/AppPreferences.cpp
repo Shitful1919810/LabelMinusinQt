@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QJsonValue>
 
 #include <algorithm>
@@ -36,49 +37,115 @@ QColor colorFromJsonValue(const QJsonValue& value)
 
     return {};
 }
+
+AppPreferenceWarning makeWarning(AppPreferenceWarningType type, QString key = {}, QString detail = {},
+                                 qsizetype index = -1)
+{
+    return AppPreferenceWarning{type, std::move(key), std::move(detail), index};
+}
+
+double positiveNumberFromJsonValue(const QJsonObject& object, const QString& key, double fallback, double minimum,
+                                   double maximum, QVector<AppPreferenceWarning>& warnings)
+{
+    const QJsonValue value = object.value(key);
+    if (value.isUndefined()) {
+        return fallback;
+    }
+
+    if (!value.isDouble()) {
+        warnings.append(
+            makeWarning(AppPreferenceWarningType::MarkerSizeWrongType, QStringLiteral("labelMarker.%1").arg(key)));
+        return fallback;
+    }
+
+    const double size = value.toDouble();
+    if (size <= 0.0) {
+        warnings.append(
+            makeWarning(AppPreferenceWarningType::MarkerSizeOutOfRange, QStringLiteral("labelMarker.%1").arg(key)));
+        return fallback;
+    }
+
+    return std::clamp(size, minimum, maximum);
+}
 } // namespace
 
 AppPreferences AppPreferences::load()
 {
-    AppPreferences preferences;
+    return loadWithDiagnostics().preferences;
+}
 
-    QFile file(preferencePath());
+AppPreferencesLoadResult AppPreferences::loadWithDiagnostics()
+{
+    return loadFromFile(preferencePath());
+}
+
+AppPreferencesLoadResult AppPreferences::loadFromFile(const QString& path)
+{
+    AppPreferences preferences;
+    QVector<AppPreferenceWarning> warnings;
+
+    QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
-        return preferences;
+        warnings.append(makeWarning(AppPreferenceWarningType::FileNotReadable));
+        return {preferences, warnings};
     }
 
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        warnings.append(makeWarning(AppPreferenceWarningType::InvalidJson, {}, parseError.errorString()));
+        return {preferences, warnings};
+    }
+
     if (!document.isObject()) {
-        return preferences;
+        warnings.append(makeWarning(AppPreferenceWarningType::RootNotObject));
+        return {preferences, warnings};
     }
 
     const QJsonObject root = document.object();
-    const QJsonObject labelMarker = root.value(QStringLiteral("labelMarker")).toObject();
-    preferences.m_labelMarkerDiameter =
-        labelMarker.value(QStringLiteral("diameter")).toInt(preferences.m_labelMarkerDiameter);
-    preferences.m_labelMarkerFontPointSize =
-        labelMarker.value(QStringLiteral("fontPointSize")).toInt(preferences.m_labelMarkerFontPointSize);
-
-    preferences.m_labelMarkerDiameter = std::clamp(preferences.m_labelMarkerDiameter, 12, 96);
-    preferences.m_labelMarkerFontPointSize = std::clamp(preferences.m_labelMarkerFontPointSize, 6, 32);
-
-    const QJsonArray groupColors = root.value(QStringLiteral("groupColors")).toArray();
-    for (const QJsonValue& value : groupColors) {
-        const QColor color = colorFromJsonValue(value);
-        if (color.isValid()) {
-            preferences.m_groupColors.append(color);
+    const QJsonValue labelMarkerValue = root.value(QStringLiteral("labelMarker"));
+    if (!labelMarkerValue.isUndefined()) {
+        if (!labelMarkerValue.isObject()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::LabelMarkerNotObject));
+        }
+        else {
+            const QJsonObject labelMarker = labelMarkerValue.toObject();
+            preferences.m_labelMarkerDiameterPixels = positiveNumberFromJsonValue(
+                labelMarker, QStringLiteral("diameter"), preferences.m_labelMarkerDiameterPixels, 1.0, 256.0, warnings);
+            preferences.m_labelMarkerFontPointSize =
+                positiveNumberFromJsonValue(labelMarker, QStringLiteral("fontPointSize"),
+                                            preferences.m_labelMarkerFontPointSize, 0.1, 256.0, warnings);
         }
     }
 
-    return preferences;
+    const QJsonValue groupColorsValue = root.value(QStringLiteral("groupColors"));
+    if (!groupColorsValue.isUndefined()) {
+        if (!groupColorsValue.isArray()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::GroupColorsNotArray));
+        }
+        else {
+            const QJsonArray groupColors = groupColorsValue.toArray();
+            for (qsizetype i = 0; i < groupColors.size(); ++i) {
+                const QColor color = colorFromJsonValue(groupColors.at(i));
+                if (color.isValid()) {
+                    preferences.m_groupColors.append(color);
+                }
+                else {
+                    warnings.append(makeWarning(AppPreferenceWarningType::InvalidGroupColor, {}, {}, i));
+                }
+            }
+        }
+    }
+
+    return {preferences, warnings};
 }
 
-int AppPreferences::labelMarkerDiameter() const noexcept
+double AppPreferences::labelMarkerDiameterPixels() const noexcept
 {
-    return m_labelMarkerDiameter;
+    return m_labelMarkerDiameterPixels;
 }
 
-int AppPreferences::labelMarkerFontPointSize() const noexcept
+double AppPreferences::labelMarkerFontPointSize() const noexcept
 {
     return m_labelMarkerFontPointSize;
 }

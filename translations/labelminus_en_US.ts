@@ -2,6 +2,17 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="en_US">
 <context>
+    <name>main</name>
+    <message>
+        <source>LabelPlus text project editor.</source>
+        <translation>LabelPlus text project editor.</translation>
+    </message>
+    <message>
+        <source>LabelPlus text project to open.</source>
+        <translation>LabelPlus text project to open.</translation>
+    </message>
+</context>
+<context>
     <name>GroupFilterComboBox</name>
     <message>
         <source>Select All</source>
@@ -136,6 +147,46 @@
     <message>
         <source>The current project has unsaved changes. Do you want to save them?</source>
         <translation>The current project has unsaved changes. Do you want to save them?</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>Ready</translation>
+    </message>
+    <message>
+        <source>Preference warning: %1</source>
+        <translation>Preference warning: %1</translation>
+    </message>
+    <message>
+        <source>Could not read preference.json; using default preferences.</source>
+        <translation>Could not read preference.json; using default preferences.</translation>
+    </message>
+    <message>
+        <source>preference.json is not valid JSON: %1; using default preferences.</source>
+        <translation>preference.json is not valid JSON: %1; using default preferences.</translation>
+    </message>
+    <message>
+        <source>preference.json must contain a JSON object; using default preferences.</source>
+        <translation>preference.json must contain a JSON object; using default preferences.</translation>
+    </message>
+    <message>
+        <source>labelMarker must be a JSON object; using default marker preferences.</source>
+        <translation>labelMarker must be a JSON object; using default marker preferences.</translation>
+    </message>
+    <message>
+        <source>%1 must be a positive number; using the default value.</source>
+        <translation>%1 must be a positive number; using the default value.</translation>
+    </message>
+    <message>
+        <source>groupColors must be an array; group colors will use defaults.</source>
+        <translation>groupColors must be an array; group colors will use defaults.</translation>
+    </message>
+    <message>
+        <source>groupColors[%1] is not a valid color; this color was skipped.</source>
+        <translation>groupColors[%1] is not a valid color; this color was skipped.</translation>
+    </message>
+    <message>
+        <source>Unknown preference warning.</source>
+        <translation>Unknown preference warning.</translation>
     </message>
 </context>
 </TS>

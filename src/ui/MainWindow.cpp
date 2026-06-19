@@ -22,16 +22,20 @@
 #include <QSlider>
 #include <QSplitter>
 #include <QStatusBar>
+#include <QStringList>
 #include <QTableView>
 #include <QToolButton>
 #include <QVBoxLayout>
 
 #include <algorithm>
 
-MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent), m_labelModel(new LabelTableModel(this)),
-      m_preferences(labelminus::core::AppPreferences::load())
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), m_labelModel(new LabelTableModel(this))
 {
+    const labelminus::core::AppPreferencesLoadResult preferences =
+        labelminus::core::AppPreferences::loadWithDiagnostics();
+    m_preferences = preferences.preferences;
+    m_preferenceWarnings = preferences.warnings;
+
     setWindowTitle(QStringLiteral("LabelMinus"));
     resize(1200, 800);
 
@@ -39,7 +43,8 @@ MainWindow::MainWindow(QWidget* parent)
     createMenus();
     createCentralWidget();
     setEditorEnabled(false);
-    statusBar()->showMessage(QStringLiteral("Ready"));
+    statusBar()->showMessage(tr("Ready"));
+    showPreferenceWarnings();
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -92,6 +97,7 @@ void MainWindow::createCentralWidget()
     leftLayout->setSpacing(6);
 
     m_canvas = new ImageCanvas(leftPanel);
+    m_canvas->setPreferences(m_preferences);
     leftLayout->addWidget(m_canvas, 1);
 
     auto* bottomBar = new QWidget(leftPanel);
@@ -229,15 +235,22 @@ void MainWindow::openProject()
         return;
     }
 
+    openProjectFile(path);
+}
+
+bool MainWindow::openProjectFile(const QString& path)
+{
     try {
         m_project = labelminus::core::LabelPlusDocument::loadFromFile(path);
         m_undoStack.clear();
         setDirty(false);
         refreshProjectUi();
         statusBar()->showMessage(tr("Loaded %1").arg(path), 4000);
+        return true;
     }
     catch (const std::exception& error) {
         QMessageBox::critical(this, tr("Open failed"), QString::fromUtf8(error.what()));
+        return false;
     }
 }
 
@@ -519,6 +532,47 @@ void MainWindow::refreshGroupUi()
     }
     updateInsertGroupTextColor();
     m_isUpdatingUi = false;
+}
+
+void MainWindow::showPreferenceWarnings()
+{
+    if (m_preferenceWarnings.isEmpty()) {
+        return;
+    }
+
+    QStringList messages;
+    messages.reserve(m_preferenceWarnings.size());
+    for (const labelminus::core::AppPreferenceWarning& warning : m_preferenceWarnings) {
+        messages.append(preferenceWarningText(warning));
+    }
+
+    statusBar()->showMessage(tr("Preference warning: %1").arg(messages.join(QStringLiteral(" "))), 10000);
+}
+
+QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceWarning& warning) const
+{
+    using labelminus::core::AppPreferenceWarningType;
+
+    switch (warning.type) {
+    case AppPreferenceWarningType::FileNotReadable:
+        return tr("Could not read preference.json; using default preferences.");
+    case AppPreferenceWarningType::InvalidJson:
+        return tr("preference.json is not valid JSON: %1; using default preferences.").arg(warning.detail);
+    case AppPreferenceWarningType::RootNotObject:
+        return tr("preference.json must contain a JSON object; using default preferences.");
+    case AppPreferenceWarningType::LabelMarkerNotObject:
+        return tr("labelMarker must be a JSON object; using default marker preferences.");
+    case AppPreferenceWarningType::MarkerSizeWrongType:
+        return tr("%1 must be a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::MarkerSizeOutOfRange:
+        return tr("%1 must be a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::GroupColorsNotArray:
+        return tr("groupColors must be an array; group colors will use defaults.");
+    case AppPreferenceWarningType::InvalidGroupColor:
+        return tr("groupColors[%1] is not a valid color; this color was skipped.").arg(warning.index);
+    }
+
+    return tr("Unknown preference warning.");
 }
 
 void MainWindow::markDirty()

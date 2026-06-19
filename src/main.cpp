@@ -1,7 +1,10 @@
 #include "ui/MainWindow.h"
 
 #include <QApplication>
+#include <QCommandLineParser>
+#include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QLocale>
 #include <QTranslator>
 
@@ -27,10 +30,24 @@ int main(int argc, char* argv[])
     QApplication app(argc, argv);
     QApplication::setApplicationName("LabelMinus");
     QApplication::setOrganizationName("LabelMinus");
+    QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
     installTranslator(app);
+
+    QCommandLineParser parser;
+    parser.setApplicationDescription(QCoreApplication::translate("main", "LabelPlus text project editor."));
+    parser.addHelpOption();
+    parser.addVersionOption();
+    parser.addPositionalArgument(QStringLiteral("project"),
+                                 QCoreApplication::translate("main", "LabelPlus text project to open."));
+    parser.process(app);
 
     MainWindow window;
     window.show();
+
+    const QStringList positionalArguments = parser.positionalArguments();
+    if (!positionalArguments.isEmpty()) {
+        window.openProjectFile(QFileInfo(positionalArguments.first()).absoluteFilePath());
+    }
 
     return QApplication::exec();
 }

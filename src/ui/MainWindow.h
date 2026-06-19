@@ -9,6 +9,7 @@
 
 #include <QColor>
 #include <QMainWindow>
+#include <QVector>
 
 class QCloseEvent;
 class QAction;
@@ -24,6 +25,8 @@ class MainWindow final : public QMainWindow {
 
 public:
     explicit MainWindow(QWidget* parent = nullptr);
+
+    bool openProjectFile(const QString& path);
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -47,6 +50,8 @@ private:
     void refreshProjectUi();
     void refreshImageUi();
     void refreshGroupUi();
+    void showPreferenceWarnings();
+    QString preferenceWarningText(const labelminus::core::AppPreferenceWarning& warning) const;
     void markDirty();
     void setDirty(bool dirty);
     bool promptToSaveIfDirty();
@@ -75,6 +80,7 @@ private:
     QPushButton* m_nextButton{nullptr};
     labelminus::core::Project m_project;
     labelminus::core::AppPreferences m_preferences;
+    QVector<labelminus::core::AppPreferenceWarning> m_preferenceWarnings;
     int m_currentImageIndex{-1};
     int m_currentLabelIndex{-1};
     bool m_isUpdatingUi{false};

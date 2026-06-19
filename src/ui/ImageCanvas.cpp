@@ -1,7 +1,5 @@
 #include "ui/ImageCanvas.h"
 
-#include "core/AppPreferences.h"
-
 #include <QApplication>
 #include <QBrush>
 #include <QGraphicsPixmapItem>
@@ -20,11 +18,12 @@ constexpr int markerType = QGraphicsItem::UserType + 100;
 
 class LabelMarkerItem final : public QGraphicsItem {
 public:
-    LabelMarkerItem(int labelIndex, bool selected, int diameter, int fontPointSize, QColor color,
+    LabelMarkerItem(int labelIndex, bool selected, double diameter, double fontPointSize, QColor color,
                     QGraphicsItem* parent = nullptr)
         : QGraphicsItem(parent), m_labelIndex(labelIndex), m_selected(selected), m_diameter(diameter),
           m_fontPointSize(fontPointSize), m_color(std::move(color))
     {
+        setFlag(QGraphicsItem::ItemIgnoresTransformations);
         setZValue(10.0);
     }
 
@@ -40,8 +39,8 @@ public:
 
     QRectF boundingRect() const override
     {
-        const double radius = static_cast<double>(m_diameter) / 2.0;
-        return QRectF(-radius, -radius, static_cast<double>(m_diameter), static_cast<double>(m_diameter));
+        const double radius = m_diameter / 2.0;
+        return QRectF(-radius, -radius, m_diameter, m_diameter);
     }
 
     void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override
@@ -53,7 +52,7 @@ public:
 
         painter->setPen(Qt::white);
         QFont font = painter->font();
-        font.setPointSize(m_fontPointSize);
+        font.setPointSizeF(m_fontPointSize);
         font.setBold(true);
         painter->setFont(font);
         const QString number = QString::number(m_labelIndex + 1);
@@ -63,25 +62,28 @@ public:
 private:
     int m_labelIndex;
     bool m_selected;
-    int m_diameter;
-    int m_fontPointSize;
+    double m_diameter;
+    double m_fontPointSize;
     QColor m_color;
 };
 } // namespace
 
 ImageCanvas::ImageCanvas(QWidget* parent) : QGraphicsView(parent)
 {
-    const labelminus::core::AppPreferences preferences = labelminus::core::AppPreferences::load();
-    m_markerDiameter = preferences.labelMarkerDiameter();
-    m_markerFontPointSize = preferences.labelMarkerFontPointSize();
-    m_groupColors = preferences.groupColors();
-
     setScene(&m_scene);
     setDragMode(QGraphicsView::ScrollHandDrag);
     setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
     setResizeAnchor(QGraphicsView::AnchorViewCenter);
     setFocusPolicy(Qt::StrongFocus);
+}
+
+void ImageCanvas::setPreferences(const labelminus::core::AppPreferences& preferences)
+{
+    m_markerDiameterPixels = preferences.labelMarkerDiameterPixels();
+    m_markerFontPointSize = preferences.labelMarkerFontPointSize();
+    m_groupColors = preferences.groupColors();
+    rebuildLabelItems();
 }
 
 void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::Label>& labels)
@@ -222,12 +224,14 @@ void ImageCanvas::rebuildLabelItems()
     }
 
     const QRectF rect = m_pixmapItem->boundingRect();
+    const double markerDiameter = markerDiameterForCurrentImage();
+    const double markerFontPointSize = markerFontPointSizeForCurrentImage();
     for (int i = 0; i < m_labels.size(); ++i) {
         if (m_labels.at(i).isDeleted()) {
             continue;
         }
 
-        auto* marker = new LabelMarkerItem(i, i == m_selectedLabel, m_markerDiameter, m_markerFontPointSize,
+        auto* marker = new LabelMarkerItem(i, i == m_selectedLabel, markerDiameter, markerFontPointSize,
                                            colorForGroup(m_labels.at(i).group()));
         const QPointF position = m_labels.at(i).position();
         marker->setPos(rect.left() + position.x() * rect.width(), rect.top() + position.y() * rect.height());
@@ -241,6 +245,16 @@ void ImageCanvas::applyZoom()
     resetTransform();
     const double scaleFactor = static_cast<double>(m_zoomPercent) / 100.0;
     scale(scaleFactor, scaleFactor);
+}
+
+double ImageCanvas::markerDiameterForCurrentImage() const
+{
+    return m_markerDiameterPixels;
+}
+
+double ImageCanvas::markerFontPointSizeForCurrentImage() const
+{
+    return m_markerFontPointSize;
 }
 
 QColor ImageCanvas::colorForGroup(const QString& group) const

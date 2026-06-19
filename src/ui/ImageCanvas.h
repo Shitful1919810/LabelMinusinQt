@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/AppPreferences.h"
 #include "core/Label.h"
 
 #include <QColor>
@@ -15,6 +16,7 @@ class ImageCanvas final : public QGraphicsView {
 public:
     explicit ImageCanvas(QWidget* parent = nullptr);
 
+    void setPreferences(const labelminus::core::AppPreferences& preferences);
     void setImage(const QString& path, const QVector<labelminus::core::Label>& labels);
     void setGroups(QStringList groups);
     void setSelectedLabel(int index);
@@ -37,6 +39,8 @@ protected:
 private:
     void rebuildLabelItems();
     void applyZoom();
+    double markerDiameterForCurrentImage() const;
+    double markerFontPointSizeForCurrentImage() const;
     QColor colorForGroup(const QString& group) const;
     QPointF normalizedPositionFromScene(QPointF scenePosition) const;
 
@@ -47,8 +51,8 @@ private:
     QString m_imagePath;
     int m_selectedLabel{-1};
     int m_zoomPercent{100};
-    int m_markerDiameter{36};
-    int m_markerFontPointSize{10};
+    double m_markerDiameterPixels{4.0};
+    double m_markerFontPointSize{2.5};
     QStringList m_groups;
     QVector<QColor> m_groupColors;
     bool m_hasUserZoom{false};

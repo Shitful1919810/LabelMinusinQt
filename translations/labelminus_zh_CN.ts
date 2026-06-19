@@ -2,6 +2,17 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_CN">
 <context>
+    <name>main</name>
+    <message>
+        <source>LabelPlus text project editor.</source>
+        <translation>LabelPlus 文本工程编辑器。</translation>
+    </message>
+    <message>
+        <source>LabelPlus text project to open.</source>
+        <translation>要打开的 LabelPlus 文本工程。</translation>
+    </message>
+</context>
+<context>
     <name>GroupFilterComboBox</name>
     <message>
         <source>Select All</source>
@@ -135,6 +146,46 @@
     <message>
         <source>The current project has unsaved changes. Do you want to save them?</source>
         <translation>当前工程有未保存的修改。是否保存？</translation>
+    </message>
+    <message>
+        <source>Ready</source>
+        <translation>就绪</translation>
+    </message>
+    <message>
+        <source>Preference warning: %1</source>
+        <translation>偏好设置警告：%1</translation>
+    </message>
+    <message>
+        <source>Could not read preference.json; using default preferences.</source>
+        <translation>无法读取 preference.json；将使用默认偏好设置。</translation>
+    </message>
+    <message>
+        <source>preference.json is not valid JSON: %1; using default preferences.</source>
+        <translation>preference.json 不是有效 JSON：%1；将使用默认偏好设置。</translation>
+    </message>
+    <message>
+        <source>preference.json must contain a JSON object; using default preferences.</source>
+        <translation>preference.json 必须包含一个 JSON 对象；将使用默认偏好设置。</translation>
+    </message>
+    <message>
+        <source>labelMarker must be a JSON object; using default marker preferences.</source>
+        <translation>labelMarker 必须是 JSON 对象；将使用默认标记偏好设置。</translation>
+    </message>
+    <message>
+        <source>%1 must be a positive number; using the default value.</source>
+        <translation>%1 必须是正数；将使用默认值。</translation>
+    </message>
+    <message>
+        <source>groupColors must be an array; group colors will use defaults.</source>
+        <translation>groupColors 必须是数组；分组颜色将使用默认值。</translation>
+    </message>
+    <message>
+        <source>groupColors[%1] is not a valid color; this color was skipped.</source>
+        <translation>groupColors[%1] 不是有效颜色；已跳过该颜色。</translation>
+    </message>
+    <message>
+        <source>Unknown preference warning.</source>
+        <translation>未知偏好设置警告。</translation>
     </message>
 </context>
 </TS>

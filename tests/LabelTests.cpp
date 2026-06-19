@@ -1,3 +1,4 @@
+#include "core/AppPreferences.h"
 #include "core/Label.h"
 #include "core/LabelPlusDocument.h"
 
@@ -48,8 +49,53 @@ private slots:
         auto reloaded = LabelPlusDocument::loadFromFile(filePath);
         QCOMPARE(reloaded.images().first().labels.first().text(), QStringLiteral("题目：憧憬的回忆"));
     }
+
+    void preferencesReadMarkerFloatingPointSizes()
+    {
+        const QString dirPath = QDir::temp().filePath("labelminus_preferences_test");
+        QDir().mkpath(dirPath);
+        const QString filePath = QDir(dirPath).filePath("preference.json");
+
+        QFile file(filePath);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        QTextStream stream(&file);
+        stream.setEncoding(QStringConverter::Utf8);
+        stream << "{\n"
+               << "  \"labelMarker\": {\n"
+               << "    \"diameter\": 4.5,\n"
+               << "    \"fontPointSize\": 2.5\n"
+               << "  },\n"
+               << "  \"groupColors\": [\"#ff3835\", \"#5ba8ec\"]\n"
+               << "}\n";
+        file.close();
+
+        const auto result = labelminus::core::AppPreferences::loadFromFile(filePath);
+
+        QVERIFY(result.warnings.isEmpty());
+        QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 4.5);
+        QCOMPARE(result.preferences.labelMarkerFontPointSize(), 2.5);
+        QCOMPARE(result.preferences.groupColors().size(), 2);
+    }
+
+    void preferencesWarnOnInvalidJson()
+    {
+        const QString dirPath = QDir::temp().filePath("labelminus_preferences_test");
+        QDir().mkpath(dirPath);
+        const QString filePath = QDir(dirPath).filePath("broken-preference.json");
+
+        QFile file(filePath);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("{");
+        file.close();
+
+        const auto result = labelminus::core::AppPreferences::loadFromFile(filePath);
+
+        QVERIFY(!result.warnings.isEmpty());
+        QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 4.0);
+        QCOMPARE(result.preferences.labelMarkerFontPointSize(), 2.5);
+    }
 };
 
-QTEST_MAIN(LabelTests)
+QTEST_GUILESS_MAIN(LabelTests)
 
 #include "LabelTests.moc"

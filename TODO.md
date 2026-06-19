@@ -1,5 +1,10 @@
 # TODO
 
-1.增强文件拖入打开的显示效果
-2.增加对标签的顺序重排功能，比如交换两个的序号，把一个拖到两个中间等等。
-3.增强OCR一键识别的标签排序，使其更符合漫画的阅读顺序和对话顺序。
+1. Add project creation flows for image folders and archives.
+2. Add drag-and-drop opening for LabelPlus text files and image folders.
+3. Expand `UndoStack` coverage for label text edits, group edits, deletion, movement and ordering.
+4. Add label deletion, movement and order management.
+5. Implement archive image loading through libarchive once the project flow needs it.
+6. Reintroduce OCR integration through Python subprocess services.
+7. Improve manga-reading-order sorting for OCR-generated labels.
+

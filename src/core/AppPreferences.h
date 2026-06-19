@@ -6,18 +6,45 @@
 
 namespace labelminus::core {
 
+enum class AppPreferenceWarningType {
+    FileNotReadable,
+    InvalidJson,
+    RootNotObject,
+    LabelMarkerNotObject,
+    MarkerSizeWrongType,
+    MarkerSizeOutOfRange,
+    GroupColorsNotArray,
+    InvalidGroupColor,
+};
+
+struct AppPreferenceWarning {
+    AppPreferenceWarningType type;
+    QString key;
+    QString detail;
+    qsizetype index{-1};
+};
+
+struct AppPreferencesLoadResult;
+
 class AppPreferences {
 public:
     static AppPreferences load();
+    static AppPreferencesLoadResult loadWithDiagnostics();
+    static AppPreferencesLoadResult loadFromFile(const QString& path);
 
-    int labelMarkerDiameter() const noexcept;
-    int labelMarkerFontPointSize() const noexcept;
+    double labelMarkerDiameterPixels() const noexcept;
+    double labelMarkerFontPointSize() const noexcept;
     const QVector<QColor>& groupColors() const noexcept;
 
 private:
-    int m_labelMarkerDiameter{36};
-    int m_labelMarkerFontPointSize{10};
+    double m_labelMarkerDiameterPixels{4.0};
+    double m_labelMarkerFontPointSize{2.5};
     QVector<QColor> m_groupColors;
+};
+
+struct AppPreferencesLoadResult {
+    AppPreferences preferences;
+    QVector<AppPreferenceWarning> warnings;
 };
 
 } // namespace labelminus::core

@@ -40,11 +40,13 @@ Runtime UI tuning lives in `preference.json` and is read through `AppPreferences
 
 Current preferences:
 
-- `labelMarker.diameter`
-- `labelMarker.fontPointSize`
+- `labelMarker.diameter`: marker diameter in screen pixels; floating-point values are accepted.
+- `labelMarker.fontPointSize`: marker number size as a Qt font point size; floating-point values are accepted.
 - `groupColors`
 
 Do not read `preference.json` directly from UI classes except through `AppPreferences`.
+Invalid or unreadable preference values should fall back to defaults and be reported through non-blocking UI, such as
+the status bar.
 
 ## Group Colors
 
@@ -58,6 +60,13 @@ If there is no configured color:
 
 - Image markers use black.
 - Text UI keeps the default text color.
+
+Color consumers:
+
+- `ImageCanvas`: marker fill color.
+- `MainWindow`: insert-group combo box text color.
+- `LabelTableModel`: group column text color.
+- `GroupFilterComboBox`: group filter menu item text color.
 
 ## i18n
 
@@ -73,4 +82,3 @@ Run `scripts/check_translations.sh` after changing UI text.
 ## Undo
 
 Use `UndoStack` for reversible operations. The current first command is "add label"; future operations such as deleting, moving, editing text and changing group should be added as commands instead of separate ad hoc state.
-

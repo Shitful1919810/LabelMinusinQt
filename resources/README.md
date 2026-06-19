@@ -6,5 +6,6 @@ Planned resource groups:
 
 - `ocr/`: Python bridge scripts and model descriptors.
 - `icons/`: application and toolbar icons.
-- `translations/`: Qt Linguist `.ts`/`.qm` files.
+
+Qt translation source files currently live in the top-level `translations/` directory. CMake compiles generated `.qm` files into the application resource system when `Qt6LinguistTools` is available.
 

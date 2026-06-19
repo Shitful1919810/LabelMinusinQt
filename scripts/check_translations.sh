@@ -18,6 +18,7 @@ translation_files = [
 ]
 
 tr_pattern = re.compile(r'\btr\s*\(\s*"((?:\\.|[^"\\])*)"')
+translate_pattern = re.compile(r'\b(?:QCoreApplication::)?translate\s*\(\s*"((?:\\.|[^"\\])*)"\s*,\s*"((?:\\.|[^"\\])*)"')
 
 def unescape_cpp_string(value: str) -> str:
     try:
@@ -32,6 +33,8 @@ for path in src_dir.rglob("*"):
     text = path.read_text(encoding="utf-8")
     for match in tr_pattern.finditer(text):
         sources.add(unescape_cpp_string(match.group(1)))
+    for match in translate_pattern.finditer(text):
+        sources.add(unescape_cpp_string(match.group(2)))
 
 missing = []
 unfinished = []
@@ -64,4 +67,3 @@ if missing or unfinished:
 
 print(f"Translation check passed ({len(sources)} tr() source strings).")
 PY
-

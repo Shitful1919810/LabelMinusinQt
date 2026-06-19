@@ -21,10 +21,13 @@ Recommended for the full application:
 
 Optional later:
 
-- Qt LinguistTools: translations.
 - Qt Svg: SVG icon rendering if the UI uses SVG assets.
 - Qt Concurrent: background scanning/OCR jobs if `QThreadPool` is preferred.
-- Catch2 or Qt Test: broader unit tests. The current skeleton uses Qt Test.
+- Catch2 or expanded Qt Test coverage for broader unit tests. The current project uses Qt Test.
+
+Used when available:
+
+- Qt LinguistTools: builds `.qm` translation files from `translations/*.ts`.
 
 ## Internationalization
 
