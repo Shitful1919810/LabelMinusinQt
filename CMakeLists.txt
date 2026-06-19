@@ -1,0 +1,37 @@
+cmake_minimum_required(VERSION 3.24)
+
+project(LabelMinus
+    VERSION 0.1.0
+    DESCRIPTION "Cross-platform image labeling and translation assistant"
+    LANGUAGES CXX
+)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Generate compile_commands.json for clangd" FORCE)
+
+option(LABELMINUS_ENABLE_TESTS "Build tests" ON)
+option(LABELMINUS_REQUIRE_LIBARCHIVE "Fail configure when libarchive is unavailable" OFF)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+include(Dependencies)
+include(ProjectWarnings)
+
+add_subdirectory(src)
+
+if(LABELMINUS_ENABLE_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    add_custom_target(LabelMinusCompileCommands ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/compile_commands.json"
+            "${CMAKE_SOURCE_DIR}/compile_commands.json"
+        COMMENT "Copying compile_commands.json for clangd"
+        VERBATIM
+    )
+endif()
