@@ -42,6 +42,7 @@ Current preferences:
 
 - `labelMarker.diameter`: marker diameter in screen pixels; floating-point values are accepted.
 - `labelMarker.fontPointSize`: marker number size as a Qt font point size; floating-point values are accepted.
+- `labelTable.maxTextRows`: maximum visible wrapped text lines for each label table row.
 - `groupColors`
 
 Do not read `preference.json` directly from UI classes except through `AppPreferences`.

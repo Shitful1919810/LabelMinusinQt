@@ -65,6 +65,9 @@ private slots:
                << "    \"diameter\": 4.5,\n"
                << "    \"fontPointSize\": 2.5\n"
                << "  },\n"
+               << "  \"labelTable\": {\n"
+               << "    \"maxTextRows\": 4\n"
+               << "  },\n"
                << "  \"groupColors\": [\"#ff3835\", \"#5ba8ec\"]\n"
                << "}\n";
         file.close();
@@ -74,6 +77,7 @@ private slots:
         QVERIFY(result.warnings.isEmpty());
         QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 4.5);
         QCOMPARE(result.preferences.labelMarkerFontPointSize(), 2.5);
+        QCOMPARE(result.preferences.labelTableMaxTextRows(), 4);
         QCOMPARE(result.preferences.groupColors().size(), 2);
     }
 
@@ -93,6 +97,7 @@ private slots:
         QVERIFY(!result.warnings.isEmpty());
         QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 4.0);
         QCOMPARE(result.preferences.labelMarkerFontPointSize(), 2.5);
+        QCOMPARE(result.preferences.labelTableMaxTextRows(), 3);
     }
 };
 

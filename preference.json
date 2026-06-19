@@ -3,6 +3,9 @@
     "diameter": 20.0,
     "fontPointSize": 10.0
   },
+  "labelTable": {
+    "maxTextRows": 4
+  },
   "groupColors": [
     "#ff3835",
     "#2d59d2",

@@ -176,6 +176,14 @@
         <translation>%1 必须是正数；将使用默认值。</translation>
     </message>
     <message>
+        <source>labelTable must be a JSON object; using default label table preferences.</source>
+        <translation>labelTable 必须是 JSON 对象；将使用默认标签表格偏好设置。</translation>
+    </message>
+    <message>
+        <source>%1 must be a positive integer; using the default value.</source>
+        <translation>%1 必须是正整数；将使用默认值。</translation>
+    </message>
+    <message>
         <source>groupColors must be an array; group colors will use defaults.</source>
         <translation>groupColors 必须是数组；分组颜色将使用默认值。</translation>
     </message>

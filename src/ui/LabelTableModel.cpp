@@ -94,7 +94,7 @@ QVariant LabelTableModel::data(const QModelIndex& index, int role) const
 
     const int sourceIndex = m_visibleRows.at(index.row());
     const labelminus::core::Label& label = m_labels->at(sourceIndex);
-    if (role == Qt::DisplayRole) {
+    if (role == Qt::DisplayRole || role == Qt::EditRole) {
         switch (index.column()) {
         case 0:
             return sourceIndex + 1;
@@ -123,6 +123,51 @@ QVariant LabelTableModel::data(const QModelIndex& index, int role) const
     }
 
     return {};
+}
+
+bool LabelTableModel::setData(const QModelIndex& index, const QVariant& value, int role)
+{
+    if (role != Qt::EditRole || !index.isValid() || m_labels == nullptr || index.row() < 0 ||
+        index.row() >= m_visibleRows.size()) {
+        return false;
+    }
+
+    const int sourceIndex = m_visibleRows.at(index.row());
+    labelminus::core::Label& label = (*m_labels)[sourceIndex];
+
+    switch (index.column()) {
+    case 1: {
+        const QString text = value.toString();
+        if (label.text() == text) {
+            return false;
+        }
+        label.setText(text);
+        break;
+    }
+    case 2: {
+        const QString group = value.toString();
+        if (!m_groups.contains(group) || label.group() == group) {
+            return false;
+        }
+        label.setGroup(group);
+        break;
+    }
+    default:
+        return false;
+    }
+
+    emit dataChanged(index, index);
+    emit labelEdited(sourceIndex, index.column());
+    return true;
+}
+
+Qt::ItemFlags LabelTableModel::flags(const QModelIndex& index) const
+{
+    Qt::ItemFlags itemFlags = QAbstractTableModel::flags(index);
+    if (index.isValid() && (index.column() == 1 || index.column() == 2)) {
+        itemFlags |= Qt::ItemIsEditable;
+    }
+    return itemFlags;
 }
 
 void LabelTableModel::rebuildVisibleRows()

@@ -1,14 +1,17 @@
 #include "ui/MainWindow.h"
 
 #include "core/LabelPlusDocument.h"
+#include "ui/LabelEditDelegates.h"
 
 #include <QAbstractItemView>
 #include <QAction>
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QFileDialog>
+#include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QIcon>
 #include <QInputDialog>
 #include <QItemSelectionModel>
 #include <QKeySequence>
@@ -23,18 +26,23 @@
 #include <QSplitter>
 #include <QStatusBar>
 #include <QStringList>
+#include <QStyle>
 #include <QTableView>
+#include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
 
 #include <algorithm>
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), m_labelModel(new LabelTableModel(this))
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent), m_labelModel(new LabelTableModel(this)), m_labelTextDelegate(new LabelTextDelegate(this)),
+      m_labelGroupDelegate(new LabelGroupDelegate(this))
 {
     const labelminus::core::AppPreferencesLoadResult preferences =
         labelminus::core::AppPreferences::loadWithDiagnostics();
     m_preferences = preferences.preferences;
     m_preferenceWarnings = preferences.warnings;
+    m_labelTableMaxTextRows = m_preferences.labelTableMaxTextRows();
 
     setWindowTitle(QStringLiteral("LabelMinus"));
     resize(1200, 800);
@@ -117,8 +125,12 @@ void MainWindow::createCentralWidget()
     m_insertGroupComboBox->setMinimumWidth(120);
     auto* addGroupButton = new QToolButton(bottomBar);
     auto* removeGroupButton = new QToolButton(bottomBar);
-    addGroupButton->setText(tr("+"));
-    removeGroupButton->setText(tr("-"));
+    addGroupButton->setIcon(
+        QIcon::fromTheme(QStringLiteral("document-new"), style()->standardIcon(QStyle::SP_FileIcon)));
+    removeGroupButton->setIcon(
+        QIcon::fromTheme(QStringLiteral("user-trash"), style()->standardIcon(QStyle::SP_TrashIcon)));
+    addGroupButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    removeGroupButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
     addGroupButton->setToolTip(tr("Add group"));
     removeGroupButton->setToolTip(tr("Remove selected group"));
     addGroupButton->setAutoRaise(true);
@@ -159,6 +171,9 @@ void MainWindow::createCentralWidget()
 
     m_labelView = new QTableView(rightSplitter);
     m_labelView->setModel(m_labelModel);
+    m_labelView->setItemDelegateForColumn(1, m_labelTextDelegate);
+    m_labelView->setItemDelegateForColumn(2, m_labelGroupDelegate);
+    m_labelView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
     m_labelView->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_labelView->setSelectionMode(QAbstractItemView::SingleSelection);
     m_labelView->setWordWrap(true);
@@ -168,6 +183,12 @@ void MainWindow::createCentralWidget()
     m_labelView->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     m_labelView->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     m_labelView->setAlternatingRowColors(true);
+    auto* labelRowsResizeTimer = new QTimer(m_labelView);
+    labelRowsResizeTimer->setSingleShot(true);
+    labelRowsResizeTimer->setInterval(0);
+    connect(labelRowsResizeTimer, &QTimer::timeout, this, &MainWindow::resizeLabelRowsToContents);
+    connect(m_labelView->horizontalHeader(), &QHeaderView::sectionResized, labelRowsResizeTimer,
+            [labelRowsResizeTimer]() { labelRowsResizeTimer->start(); });
 
     auto* editorPanel = new QWidget(rightSplitter);
     auto* editorLayout = new QVBoxLayout(editorPanel);
@@ -215,6 +236,7 @@ void MainWindow::createCentralWidget()
                 }
             });
     connect(m_textEdit, &QPlainTextEdit::textChanged, this, &MainWindow::updateCurrentLabelText);
+    connect(m_labelModel, &LabelTableModel::labelEdited, this, &MainWindow::updateLabelFromTable, Qt::QueuedConnection);
     connect(m_groupFilterComboBox, &GroupFilterComboBox::selectedGroupsChanged, this, &MainWindow::updateGroupFilter);
     connect(m_labelGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateCurrentLabelGroup);
     connect(m_insertGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateInsertGroupTextColor);
@@ -343,7 +365,7 @@ void MainWindow::updateGroupFilter(const QStringList& groups)
     }
 
     m_labelModel->setGroupFilter(groups);
-    m_labelView->resizeRowsToContents();
+    resizeLabelRowsToContents();
 
     if (m_currentLabelIndex >= 0 && m_labelModel->rowForSourceIndex(m_currentLabelIndex) < 0) {
         m_currentLabelIndex = -1;
@@ -381,6 +403,8 @@ void MainWindow::selectLabel(int index)
     const int visibleRow = m_labelModel->rowForSourceIndex(index);
     if (visibleRow >= 0) {
         m_labelView->selectRow(visibleRow);
+        m_labelView->resizeRowToContents(visibleRow);
+        capLabelRowHeight(visibleRow);
     }
     else {
         m_labelView->clearSelection();
@@ -446,7 +470,11 @@ void MainWindow::updateCurrentLabelText()
 
     image->labels[m_currentLabelIndex].setText(m_textEdit->toPlainText());
     m_labelModel->labelChanged(m_currentLabelIndex);
-    m_labelView->resizeRowToContents(m_currentLabelIndex);
+    const int visibleRow = m_labelModel->rowForSourceIndex(m_currentLabelIndex);
+    if (visibleRow >= 0) {
+        m_labelView->resizeRowToContents(visibleRow);
+        capLabelRowHeight(visibleRow);
+    }
     markDirty();
 }
 
@@ -465,6 +493,22 @@ void MainWindow::updateCurrentLabelGroup(int index)
     m_labelModel->refresh();
     refreshImageUi();
     selectLabel(m_currentLabelIndex);
+    markDirty();
+}
+
+void MainWindow::updateLabelFromTable(int sourceIndex, int column)
+{
+    labelminus::core::ImageEntry* image = currentImage();
+    if (image == nullptr || sourceIndex < 0 || sourceIndex >= image->labels.size()) {
+        return;
+    }
+
+    if (column == 2) {
+        m_labelModel->refresh();
+        m_canvas->setImage(image->path, image->labels);
+    }
+
+    selectLabel(sourceIndex);
     markDirty();
 }
 
@@ -506,7 +550,7 @@ void MainWindow::refreshImageUi()
     m_nextButton->setEnabled(m_currentImageIndex >= 0 && m_currentImageIndex < m_project.images().size() - 1);
     m_canvas->setImage(image->path, image->labels);
     m_labelModel->setLabels(&m_project.images()[m_currentImageIndex].labels);
-    m_labelView->resizeRowsToContents();
+    resizeLabelRowsToContents();
     m_textEdit->clear();
     setEditorEnabled(false);
     m_isUpdatingUi = false;
@@ -524,6 +568,7 @@ void MainWindow::refreshGroupUi()
     m_groupFilterComboBox->setGroups(m_project.groups(), m_preferences.groupColors());
     m_canvas->setGroups(m_project.groups());
     m_labelModel->setGroups(m_project.groups(), m_preferences.groupColors());
+    m_labelGroupDelegate->setGroups(m_project.groups(), m_preferences.groupColors());
     m_labelGroupComboBox->addItems(m_project.groups());
     m_insertGroupComboBox->addItems(m_project.groups());
     applyGroupColorsToCombo(m_insertGroupComboBox);
@@ -532,6 +577,34 @@ void MainWindow::refreshGroupUi()
     }
     updateInsertGroupTextColor();
     m_isUpdatingUi = false;
+}
+
+void MainWindow::resizeLabelRowsToContents()
+{
+    if (m_labelView == nullptr) {
+        return;
+    }
+
+    m_labelView->resizeRowsToContents();
+    for (int row = 0; row < m_labelModel->rowCount(); ++row) {
+        capLabelRowHeight(row);
+    }
+}
+
+void MainWindow::capLabelRowHeight(int row)
+{
+    if (m_labelView == nullptr || row < 0 || row >= m_labelModel->rowCount()) {
+        return;
+    }
+
+    const QFontMetrics metrics(m_labelView->font());
+    const int contentHeight = metrics.lineSpacing() * std::max(1, m_labelTableMaxTextRows);
+    const int verticalMargin = 10;
+    const int maximumHeight =
+        std::max(m_labelView->verticalHeader()->minimumSectionSize(), contentHeight + verticalMargin);
+    if (m_labelView->rowHeight(row) > maximumHeight) {
+        m_labelView->setRowHeight(row, maximumHeight);
+    }
 }
 
 void MainWindow::showPreferenceWarnings()
@@ -566,6 +639,12 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("%1 must be a positive number; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::MarkerSizeOutOfRange:
         return tr("%1 must be a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::LabelTableNotObject:
+        return tr("labelTable must be a JSON object; using default label table preferences.");
+    case AppPreferenceWarningType::LabelTableMaxTextRowsWrongType:
+        return tr("%1 must be a positive integer; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::LabelTableMaxTextRowsOutOfRange:
+        return tr("%1 must be a positive integer; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::GroupColorsNotArray:
         return tr("groupColors must be an array; group colors will use defaults.");
     case AppPreferenceWarningType::InvalidGroupColor:

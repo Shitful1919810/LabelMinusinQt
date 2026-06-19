@@ -10,6 +10,7 @@
 #include <QJsonValue>
 
 #include <algorithm>
+#include <cmath>
 
 namespace labelminus::core {
 
@@ -67,6 +68,29 @@ double positiveNumberFromJsonValue(const QJsonObject& object, const QString& key
 
     return std::clamp(size, minimum, maximum);
 }
+
+int positiveIntegerFromJsonValue(const QJsonObject& object, const QString& key, const QString& displayKey, int fallback,
+                                 int minimum, int maximum, AppPreferenceWarningType wrongType,
+                                 AppPreferenceWarningType outOfRange, QVector<AppPreferenceWarning>& warnings)
+{
+    const QJsonValue value = object.value(key);
+    if (value.isUndefined()) {
+        return fallback;
+    }
+
+    if (!value.isDouble()) {
+        warnings.append(makeWarning(wrongType, displayKey));
+        return fallback;
+    }
+
+    const double number = value.toDouble();
+    if (number <= 0.0 || std::floor(number) != number) {
+        warnings.append(makeWarning(outOfRange, displayKey));
+        return fallback;
+    }
+
+    return std::clamp(static_cast<int>(number), minimum, maximum);
+}
 } // namespace
 
 AppPreferences AppPreferences::load()
@@ -118,6 +142,20 @@ AppPreferencesLoadResult AppPreferences::loadFromFile(const QString& path)
         }
     }
 
+    const QJsonValue labelTableValue = root.value(QStringLiteral("labelTable"));
+    if (!labelTableValue.isUndefined()) {
+        if (!labelTableValue.isObject()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::LabelTableNotObject));
+        }
+        else {
+            const QJsonObject labelTable = labelTableValue.toObject();
+            preferences.m_labelTableMaxTextRows = positiveIntegerFromJsonValue(
+                labelTable, QStringLiteral("maxTextRows"), QStringLiteral("labelTable.maxTextRows"),
+                preferences.m_labelTableMaxTextRows, 1, 50, AppPreferenceWarningType::LabelTableMaxTextRowsWrongType,
+                AppPreferenceWarningType::LabelTableMaxTextRowsOutOfRange, warnings);
+        }
+    }
+
     const QJsonValue groupColorsValue = root.value(QStringLiteral("groupColors"));
     if (!groupColorsValue.isUndefined()) {
         if (!groupColorsValue.isArray()) {
@@ -148,6 +186,11 @@ double AppPreferences::labelMarkerDiameterPixels() const noexcept
 double AppPreferences::labelMarkerFontPointSize() const noexcept
 {
     return m_labelMarkerFontPointSize;
+}
+
+int AppPreferences::labelTableMaxTextRows() const noexcept
+{
+    return m_labelTableMaxTextRows;
 }
 
 const QVector<QColor>& AppPreferences::groupColors() const noexcept

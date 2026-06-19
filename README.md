@@ -69,6 +69,9 @@ Current options:
     "diameter": 4.0,
     "fontPointSize": 2.5
   },
+  "labelTable": {
+    "maxTextRows": 3
+  },
   "groupColors": [
     "#ff3835",
     "#5ba8ec",
@@ -79,6 +82,7 @@ Current options:
 
 `labelMarker.diameter` is a screen pixel size. `labelMarker.fontPointSize` is a Qt font point size. Both accept
 floating-point values, and markers keep the same on-screen size when the image preview is zoomed.
+`labelTable.maxTextRows` caps automatic label table row heights after text wrapping.
 
 Group colors are assigned by group index. If a group has no configured color, image markers use black and text UI keeps the default text color.
 

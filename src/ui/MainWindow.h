@@ -19,6 +19,8 @@ class QPushButton;
 class QSlider;
 class QTableView;
 class QToolButton;
+class LabelGroupDelegate;
+class LabelTextDelegate;
 
 class MainWindow final : public QMainWindow {
     Q_OBJECT
@@ -46,10 +48,13 @@ private:
     void addLabel(QPointF normalizedPosition);
     void updateCurrentLabelText();
     void updateCurrentLabelGroup(int index);
+    void updateLabelFromTable(int sourceIndex, int column);
     void undoLastOperation();
     void refreshProjectUi();
     void refreshImageUi();
     void refreshGroupUi();
+    void resizeLabelRowsToContents();
+    void capLabelRowHeight(int row);
     void showPreferenceWarnings();
     QString preferenceWarningText(const labelminus::core::AppPreferenceWarning& warning) const;
     void markDirty();
@@ -65,6 +70,8 @@ private:
 
     ImageCanvas* m_canvas{nullptr};
     LabelTableModel* m_labelModel{nullptr};
+    LabelTextDelegate* m_labelTextDelegate{nullptr};
+    LabelGroupDelegate* m_labelGroupDelegate{nullptr};
     QTableView* m_labelView{nullptr};
     QPlainTextEdit* m_textEdit{nullptr};
     QComboBox* m_imageComboBox{nullptr};
@@ -85,5 +92,6 @@ private:
     int m_currentLabelIndex{-1};
     bool m_isUpdatingUi{false};
     bool m_isDirty{false};
+    int m_labelTableMaxTextRows{3};
     labelminus::core::UndoStack m_undoStack;
 };

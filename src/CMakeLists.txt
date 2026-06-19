@@ -14,6 +14,7 @@ set(LABELMINUS_SERVICE_SOURCES
 set(LABELMINUS_UI_SOURCES
     ui/GroupFilterComboBox.cpp
     ui/ImageCanvas.cpp
+    ui/LabelEditDelegates.cpp
     ui/LabelTableModel.cpp
     ui/MainWindow.cpp
 )

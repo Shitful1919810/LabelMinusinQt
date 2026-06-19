@@ -177,6 +177,14 @@
         <translation>%1 must be a positive number; using the default value.</translation>
     </message>
     <message>
+        <source>labelTable must be a JSON object; using default label table preferences.</source>
+        <translation>labelTable must be a JSON object; using default label table preferences.</translation>
+    </message>
+    <message>
+        <source>%1 must be a positive integer; using the default value.</source>
+        <translation>%1 must be a positive integer; using the default value.</translation>
+    </message>
+    <message>
         <source>groupColors must be an array; group colors will use defaults.</source>
         <translation>groupColors must be an array; group colors will use defaults.</translation>
     </message>

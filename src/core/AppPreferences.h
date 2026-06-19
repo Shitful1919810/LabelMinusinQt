@@ -13,6 +13,9 @@ enum class AppPreferenceWarningType {
     LabelMarkerNotObject,
     MarkerSizeWrongType,
     MarkerSizeOutOfRange,
+    LabelTableNotObject,
+    LabelTableMaxTextRowsWrongType,
+    LabelTableMaxTextRowsOutOfRange,
     GroupColorsNotArray,
     InvalidGroupColor,
 };
@@ -34,11 +37,13 @@ public:
 
     double labelMarkerDiameterPixels() const noexcept;
     double labelMarkerFontPointSize() const noexcept;
+    int labelTableMaxTextRows() const noexcept;
     const QVector<QColor>& groupColors() const noexcept;
 
 private:
     double m_labelMarkerDiameterPixels{4.0};
     double m_labelMarkerFontPointSize{2.5};
+    int m_labelTableMaxTextRows{3};
     QVector<QColor> m_groupColors;
 };
 
