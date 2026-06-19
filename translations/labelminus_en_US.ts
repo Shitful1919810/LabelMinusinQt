@@ -141,6 +141,26 @@
         <translation>Add label</translation>
     </message>
     <message>
+        <source>Edit label text</source>
+        <translation>Edit label text</translation>
+    </message>
+    <message>
+        <source>Change label group</source>
+        <translation>Change label group</translation>
+    </message>
+    <message>
+        <source>Move label</source>
+        <translation>Move label</translation>
+    </message>
+    <message>
+        <source>Delete labels</source>
+        <translation>Delete labels</translation>
+    </message>
+    <message>
+        <source>Delete selected labels</source>
+        <translation>Delete selected labels</translation>
+    </message>
+    <message>
         <source>Unsaved changes</source>
         <translation>Unsaved changes</translation>
     </message>
@@ -149,12 +169,16 @@
         <translation>The current project has unsaved changes. Do you want to save them?</translation>
     </message>
     <message>
+        <source>The insert group is hidden by the current filter.</source>
+        <translation>The insert group is hidden by the current filter.</translation>
+    </message>
+    <message>
         <source>Ready</source>
         <translation>Ready</translation>
     </message>
     <message>
-        <source>Preference warning: %1</source>
-        <translation>Preference warning: %1</translation>
+        <source>Preference warnings</source>
+        <translation>Preference warnings</translation>
     </message>
     <message>
         <source>Could not read preference.json; using default preferences.</source>
@@ -185,12 +209,28 @@
         <translation>%1 must be a positive integer; using the default value.</translation>
     </message>
     <message>
-        <source>groupColors must be an array; group colors will use defaults.</source>
-        <translation>groupColors must be an array; group colors will use defaults.</translation>
+        <source>groupStyles must be an array; group styles will use defaults.</source>
+        <translation>groupStyles must be an array; group styles will use defaults.</translation>
     </message>
     <message>
-        <source>groupColors[%1] is not a valid color; this color was skipped.</source>
-        <translation>groupColors[%1] is not a valid color; this color was skipped.</translation>
+        <source>groupStyles[%1] must be a JSON object; this group style will use defaults.</source>
+        <translation>groupStyles[%1] must be a JSON object; this group style will use defaults.</translation>
+    </message>
+    <message>
+        <source>groupStyles[%1].groupColor is not a valid color; this color was skipped.</source>
+        <translation>groupStyles[%1].groupColor is not a valid color; this color was skipped.</translation>
+    </message>
+    <message>
+        <source>groupStyles[%1].markerStyle must be circle or square; using the default value.</source>
+        <translation>groupStyles[%1].markerStyle must be circle or square; using the default value.</translation>
+    </message>
+    <message>
+        <source>input must be a JSON object; using default input preferences.</source>
+        <translation>input must be a JSON object; using default input preferences.</translation>
+    </message>
+    <message>
+        <source>%1 must be a modifier name or modifier combination; using the default value.</source>
+        <translation>%1 must be a modifier name or modifier combination; using the default value.</translation>
     </message>
     <message>
         <source>Unknown preference warning.</source>

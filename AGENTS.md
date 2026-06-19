@@ -39,4 +39,4 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - When adding or changing `tr()` strings, update both `translations/labelminus_zh_CN.ts` and `translations/labelminus_en_US.ts`.
 - Run `scripts/check_translations.sh` after UI text changes.
 - Configurable UI behavior should go through `AppPreferences` and `preference.json`.
-- Reversible editing operations should use `UndoStack`.
+- Reversible project edits must use `UndoStack`; add the undo command in the same change that introduces the edit.

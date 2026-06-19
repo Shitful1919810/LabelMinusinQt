@@ -140,6 +140,26 @@
         <translation>新增标签</translation>
     </message>
     <message>
+        <source>Edit label text</source>
+        <translation>编辑标签文本</translation>
+    </message>
+    <message>
+        <source>Change label group</source>
+        <translation>修改标签分组</translation>
+    </message>
+    <message>
+        <source>Move label</source>
+        <translation>移动标签</translation>
+    </message>
+    <message>
+        <source>Delete labels</source>
+        <translation>删除标签</translation>
+    </message>
+    <message>
+        <source>Delete selected labels</source>
+        <translation>删除选中的标签</translation>
+    </message>
+    <message>
         <source>Unsaved changes</source>
         <translation>有未保存的修改</translation>
     </message>
@@ -148,12 +168,16 @@
         <translation>当前工程有未保存的修改。是否保存？</translation>
     </message>
     <message>
+        <source>The insert group is hidden by the current filter.</source>
+        <translation>当前插入分组已被筛选隐藏。</translation>
+    </message>
+    <message>
         <source>Ready</source>
         <translation>就绪</translation>
     </message>
     <message>
-        <source>Preference warning: %1</source>
-        <translation>偏好设置警告：%1</translation>
+        <source>Preference warnings</source>
+        <translation>偏好设置警告</translation>
     </message>
     <message>
         <source>Could not read preference.json; using default preferences.</source>
@@ -184,12 +208,28 @@
         <translation>%1 必须是正整数；将使用默认值。</translation>
     </message>
     <message>
-        <source>groupColors must be an array; group colors will use defaults.</source>
-        <translation>groupColors 必须是数组；分组颜色将使用默认值。</translation>
+        <source>groupStyles must be an array; group styles will use defaults.</source>
+        <translation>groupStyles 必须是数组；分组样式将使用默认值。</translation>
     </message>
     <message>
-        <source>groupColors[%1] is not a valid color; this color was skipped.</source>
-        <translation>groupColors[%1] 不是有效颜色；已跳过该颜色。</translation>
+        <source>groupStyles[%1] must be a JSON object; this group style will use defaults.</source>
+        <translation>groupStyles[%1] 必须是 JSON 对象；该分组样式将使用默认值。</translation>
+    </message>
+    <message>
+        <source>groupStyles[%1].groupColor is not a valid color; this color was skipped.</source>
+        <translation>groupStyles[%1].groupColor 不是有效颜色；已跳过该颜色。</translation>
+    </message>
+    <message>
+        <source>groupStyles[%1].markerStyle must be circle or square; using the default value.</source>
+        <translation>groupStyles[%1].markerStyle 必须是 circle 或 square；将使用默认值。</translation>
+    </message>
+    <message>
+        <source>input must be a JSON object; using default input preferences.</source>
+        <translation>input 必须是 JSON 对象；将使用默认输入偏好设置。</translation>
+    </message>
+    <message>
+        <source>%1 must be a modifier name or modifier combination; using the default value.</source>
+        <translation>%1 必须是修饰键名称或修饰键组合；将使用默认值。</translation>
     </message>
     <message>
         <source>Unknown preference warning.</source>

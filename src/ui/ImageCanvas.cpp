@@ -8,6 +8,7 @@
 #include <QPainter>
 #include <QPen>
 #include <QPixmap>
+#include <QToolTip>
 #include <QWheelEvent>
 
 #include <algorithm>
@@ -18,10 +19,9 @@ constexpr int markerType = QGraphicsItem::UserType + 100;
 
 class LabelMarkerItem final : public QGraphicsItem {
 public:
-    LabelMarkerItem(int labelIndex, bool selected, double diameter, double fontPointSize, QColor color,
+    LabelMarkerItem(int labelIndex, bool selected, labelminus::core::LabelGroupStyle style,
                     QGraphicsItem* parent = nullptr)
-        : QGraphicsItem(parent), m_labelIndex(labelIndex), m_selected(selected), m_diameter(diameter),
-          m_fontPointSize(fontPointSize), m_color(std::move(color))
+        : QGraphicsItem(parent), m_labelIndex(labelIndex), m_selected(selected), m_style(std::move(style))
     {
         setFlag(QGraphicsItem::ItemIgnoresTransformations);
         setZValue(10.0);
@@ -39,20 +39,26 @@ public:
 
     QRectF boundingRect() const override
     {
-        const double radius = m_diameter / 2.0;
-        return QRectF(-radius, -radius, m_diameter, m_diameter);
+        const double radius = m_style.markerDiameter / 2.0;
+        return QRectF(-radius, -radius, m_style.markerDiameter, m_style.markerDiameter);
     }
 
     void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override
     {
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->setPen(QPen(m_selected ? QColor(46, 103, 230) : Qt::white, m_selected ? 3.0 : 1.5));
-        painter->setBrush(m_color.isValid() ? m_color : Qt::black);
-        painter->drawEllipse(boundingRect().adjusted(1.0, 1.0, -1.0, -1.0));
+        painter->setBrush(m_style.groupColor.isValid() ? m_style.groupColor : Qt::black);
+        const QRectF shapeRect = boundingRect().adjusted(1.0, 1.0, -1.0, -1.0);
+        if (m_style.markerShape == labelminus::core::MarkerShape::Square) {
+            painter->drawRect(shapeRect);
+        }
+        else {
+            painter->drawEllipse(shapeRect);
+        }
 
         painter->setPen(Qt::white);
         QFont font = painter->font();
-        font.setPointSizeF(m_fontPointSize);
+        font.setPointSizeF(m_style.fontPointSize);
         font.setBold(true);
         painter->setFont(font);
         const QString number = QString::number(m_labelIndex + 1);
@@ -62,9 +68,7 @@ public:
 private:
     int m_labelIndex;
     bool m_selected;
-    double m_diameter;
-    double m_fontPointSize;
-    QColor m_color;
+    labelminus::core::LabelGroupStyle m_style;
 };
 } // namespace
 
@@ -76,13 +80,16 @@ ImageCanvas::ImageCanvas(QWidget* parent) : QGraphicsView(parent)
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
     setResizeAnchor(QGraphicsView::AnchorViewCenter);
     setFocusPolicy(Qt::StrongFocus);
+    setMouseTracking(true);
+    viewport()->setMouseTracking(true);
 }
 
 void ImageCanvas::setPreferences(const labelminus::core::AppPreferences& preferences)
 {
     m_markerDiameterPixels = preferences.labelMarkerDiameterPixels();
     m_markerFontPointSize = preferences.labelMarkerFontPointSize();
-    m_groupColors = preferences.groupColors();
+    m_moveLabelModifiers = preferences.moveLabelModifiers();
+    m_groupStyles = preferences.groupStyles();
     rebuildLabelItems();
 }
 
@@ -110,6 +117,13 @@ void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::
 void ImageCanvas::setGroups(QStringList groups)
 {
     m_groups = std::move(groups);
+    rebuildLabelItems();
+}
+
+void ImageCanvas::setVisibleGroups(QStringList groups)
+{
+    m_visibleGroups = QSet<QString>(groups.cbegin(), groups.cend());
+    hideHoveredLabelToolTip();
     rebuildLabelItems();
 }
 
@@ -151,6 +165,15 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
         while (item != nullptr) {
             if (item->type() == markerType) {
                 auto* marker = static_cast<LabelMarkerItem*>(item);
+                if (hasMoveLabelModifiers(event->modifiers())) {
+                    m_isMovingLabel = true;
+                    m_movingLabelIndex = marker->labelIndex();
+                    m_pendingLabelCreate = false;
+                    emit labelSelected(m_movingLabelIndex);
+                    hideHoveredLabelToolTip();
+                    event->accept();
+                    return;
+                }
                 emit labelSelected(marker->labelIndex());
                 event->accept();
                 return;
@@ -172,16 +195,44 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
 
 void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
 {
+    if (m_isMovingLabel && m_pixmapItem != nullptr && m_movingLabelIndex >= 0 && m_movingLabelIndex < m_labels.size()) {
+        m_labels[m_movingLabelIndex].setPosition(normalizedPositionFromScene(mapToScene(event->pos())));
+        rebuildLabelItems();
+        emit labelSelected(m_movingLabelIndex);
+        event->accept();
+        return;
+    }
+
     if (m_pendingLabelCreate &&
         (event->pos() - m_labelCreatePressPosition).manhattanLength() >= QApplication::startDragDistance()) {
         m_pendingLabelCreate = false;
     }
 
     QGraphicsView::mouseMoveEvent(event);
+    if (event->buttons() == Qt::NoButton) {
+        updateHoveredLabelToolTip(event->pos(), event->globalPosition().toPoint());
+    }
+    else {
+        hideHoveredLabelToolTip();
+    }
 }
 
 void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
 {
+    if (event->button() == Qt::LeftButton && m_isMovingLabel) {
+        const int labelIndex = m_movingLabelIndex;
+        m_isMovingLabel = false;
+        m_movingLabelIndex = -1;
+        if (m_pixmapItem != nullptr && labelIndex >= 0 && labelIndex < m_labels.size()) {
+            const QPointF normalizedPosition = normalizedPositionFromScene(mapToScene(event->pos()));
+            m_labels[labelIndex].setPosition(normalizedPosition);
+            rebuildLabelItems();
+            emit labelMoveRequested(labelIndex, m_labels.at(labelIndex).position());
+        }
+        event->accept();
+        return;
+    }
+
     const bool shouldCreateLabel =
         event->button() == Qt::LeftButton && m_pendingLabelCreate &&
         (event->pos() - m_labelCreatePressPosition).manhattanLength() < QApplication::startDragDistance() &&
@@ -211,6 +262,12 @@ void ImageCanvas::resizeEvent(QResizeEvent* event)
     }
 }
 
+void ImageCanvas::leaveEvent(QEvent* event)
+{
+    hideHoveredLabelToolTip();
+    QGraphicsView::leaveEvent(event);
+}
+
 void ImageCanvas::rebuildLabelItems()
 {
     for (QGraphicsItem* item : m_labelItems) {
@@ -224,15 +281,12 @@ void ImageCanvas::rebuildLabelItems()
     }
 
     const QRectF rect = m_pixmapItem->boundingRect();
-    const double markerDiameter = markerDiameterForCurrentImage();
-    const double markerFontPointSize = markerFontPointSizeForCurrentImage();
     for (int i = 0; i < m_labels.size(); ++i) {
-        if (m_labels.at(i).isDeleted()) {
+        if (!isLabelVisible(m_labels.at(i))) {
             continue;
         }
 
-        auto* marker = new LabelMarkerItem(i, i == m_selectedLabel, markerDiameter, markerFontPointSize,
-                                           colorForGroup(m_labels.at(i).group()));
+        auto* marker = new LabelMarkerItem(i, i == m_selectedLabel, styleForGroup(m_labels.at(i).group()));
         const QPointF position = m_labels.at(i).position();
         marker->setPos(rect.left() + position.x() * rect.width(), rect.top() + position.y() * rect.height());
         m_scene.addItem(marker);
@@ -247,23 +301,69 @@ void ImageCanvas::applyZoom()
     scale(scaleFactor, scaleFactor);
 }
 
-double ImageCanvas::markerDiameterForCurrentImage() const
+bool ImageCanvas::isLabelVisible(const labelminus::core::Label& label) const
 {
-    return m_markerDiameterPixels;
+    return !label.isDeleted() && m_visibleGroups.contains(label.group());
 }
 
-double ImageCanvas::markerFontPointSizeForCurrentImage() const
+bool ImageCanvas::hasMoveLabelModifiers(Qt::KeyboardModifiers modifiers) const
 {
-    return m_markerFontPointSize;
+    constexpr Qt::KeyboardModifiers relevantModifiers =
+        Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier;
+    return (modifiers & relevantModifiers) == m_moveLabelModifiers;
 }
 
-QColor ImageCanvas::colorForGroup(const QString& group) const
+void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, const QPoint& globalPosition)
+{
+    QStringList lines;
+    QSet<int> seenLabels;
+    const QList<QGraphicsItem*> hoveredItems = items(viewportPosition);
+    for (QGraphicsItem* item : hoveredItems) {
+        while (item != nullptr && item->type() != markerType) {
+            item = item->parentItem();
+        }
+        if (item == nullptr) {
+            continue;
+        }
+
+        const auto* marker = static_cast<LabelMarkerItem*>(item);
+        const int labelIndex = marker->labelIndex();
+        if (seenLabels.contains(labelIndex) || labelIndex < 0 || labelIndex >= m_labels.size()) {
+            continue;
+        }
+
+        seenLabels.insert(labelIndex);
+        const labelminus::core::Label& label = m_labels.at(labelIndex);
+        if (!isLabelVisible(label)) {
+            continue;
+        }
+
+        const QColor color = styleForGroup(label.group()).groupColor.isValid() ? styleForGroup(label.group()).groupColor
+                                                                               : QColor(Qt::black);
+        lines.append(QStringLiteral("<span style=\"color:%1; font-weight:600;\">#%2</span> : %3")
+                         .arg(color.name(), QString::number(labelIndex + 1), label.text().toHtmlEscaped()));
+    }
+
+    if (lines.isEmpty()) {
+        hideHoveredLabelToolTip();
+        return;
+    }
+
+    QToolTip::showText(globalPosition, lines.join(QStringLiteral("<br/>")), viewport());
+}
+
+void ImageCanvas::hideHoveredLabelToolTip()
+{
+    QToolTip::hideText();
+}
+
+labelminus::core::LabelGroupStyle ImageCanvas::styleForGroup(const QString& group) const
 {
     const int index = static_cast<int>(m_groups.indexOf(group));
-    if (index < 0 || index >= static_cast<int>(m_groupColors.size())) {
-        return {};
+    if (index < 0 || index >= static_cast<int>(m_groupStyles.size())) {
+        return {QColor(), m_markerDiameterPixels, m_markerFontPointSize, labelminus::core::MarkerShape::Circle};
     }
-    return m_groupColors.at(index);
+    return m_groupStyles.at(index);
 }
 
 QPointF ImageCanvas::normalizedPositionFromScene(QPointF scenePosition) const

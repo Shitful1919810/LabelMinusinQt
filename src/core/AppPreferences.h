@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QString>
 #include <QVector>
+#include <Qt>
 
 namespace labelminus::core {
 
@@ -16,8 +17,14 @@ enum class AppPreferenceWarningType {
     LabelTableNotObject,
     LabelTableMaxTextRowsWrongType,
     LabelTableMaxTextRowsOutOfRange,
-    GroupColorsNotArray,
-    InvalidGroupColor,
+    GroupStylesNotArray,
+    GroupStyleNotObject,
+    InvalidGroupStyleColor,
+    GroupStyleMarkerSizeWrongType,
+    GroupStyleMarkerSizeOutOfRange,
+    GroupStyleMarkerStyleInvalid,
+    InputNotObject,
+    MoveLabelModifierInvalid,
 };
 
 struct AppPreferenceWarning {
@@ -29,6 +36,18 @@ struct AppPreferenceWarning {
 
 struct AppPreferencesLoadResult;
 
+enum class MarkerShape {
+    Circle,
+    Square,
+};
+
+struct LabelGroupStyle {
+    QColor groupColor;
+    double markerDiameter{20.0};
+    double fontPointSize{10.0};
+    MarkerShape markerShape{MarkerShape::Circle};
+};
+
 class AppPreferences {
 public:
     static AppPreferences load();
@@ -38,13 +57,15 @@ public:
     double labelMarkerDiameterPixels() const noexcept;
     double labelMarkerFontPointSize() const noexcept;
     int labelTableMaxTextRows() const noexcept;
-    const QVector<QColor>& groupColors() const noexcept;
+    Qt::KeyboardModifiers moveLabelModifiers() const noexcept;
+    const QVector<LabelGroupStyle>& groupStyles() const noexcept;
 
 private:
-    double m_labelMarkerDiameterPixels{4.0};
-    double m_labelMarkerFontPointSize{2.5};
+    double m_labelMarkerDiameterPixels{20.0};
+    double m_labelMarkerFontPointSize{10.0};
     int m_labelTableMaxTextRows{3};
-    QVector<QColor> m_groupColors;
+    Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
+    QVector<LabelGroupStyle> m_groupStyles;
 };
 
 struct AppPreferencesLoadResult {

@@ -43,23 +43,31 @@ Current preferences:
 - `labelMarker.diameter`: marker diameter in screen pixels; floating-point values are accepted.
 - `labelMarker.fontPointSize`: marker number size as a Qt font point size; floating-point values are accepted.
 - `labelTable.maxTextRows`: maximum visible wrapped text lines for each label table row.
-- `groupColors`
+- `input.moveLabelModifier`: modifier key or key combination used to drag label markers.
+- `groupStyles`: per-group marker and text color styles assigned by group index.
 
 Do not read `preference.json` directly from UI classes except through `AppPreferences`.
 Invalid or unreadable preference values should fall back to defaults and be reported through non-blocking UI, such as
 the status bar.
 
-## Group Colors
+## Group Styles
 
-Group color assignment is index-based:
+Group style assignment is index-based:
 
-- Group 1 uses `groupColors[0]`.
-- Group 2 uses `groupColors[1]`.
-- Group 3 uses `groupColors[2]`.
+- Group 1 uses `groupStyles[0]`.
+- Group 2 uses `groupStyles[1]`.
+- Group 3 uses `groupStyles[2]`.
 
-If there is no configured color:
+Each style can define:
 
-- Image markers use black.
+- `groupColor`: color for marker fill and group text UI.
+- `markerDiameter`: marker size in screen pixels.
+- `fontPointSize`: marker number size as a Qt font point size.
+- `markerStyle`: `circle` or `square`.
+
+If there is no configured style:
+
+- Image markers use a black circular marker with the default marker size.
 - Text UI keeps the default text color.
 
 Color consumers:
@@ -82,4 +90,6 @@ Run `scripts/check_translations.sh` after changing UI text.
 
 ## Undo
 
-Use `UndoStack` for reversible operations. The current first command is "add label"; future operations such as deleting, moving, editing text and changing group should be added as commands instead of separate ad hoc state.
+Use `UndoStack` for every reversible project edit. Current covered commands include adding labels, moving labels,
+editing label text and changing label groups. Future operations such as deleting labels, bulk edits or OCR writes
+should be added as commands instead of separate ad hoc state.

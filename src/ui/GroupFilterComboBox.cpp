@@ -14,10 +14,10 @@ GroupFilterComboBox::GroupFilterComboBox(QWidget* parent) : QToolButton(parent),
     updateButtonText();
 }
 
-void GroupFilterComboBox::setGroups(const QStringList& groups, QVector<QColor> groupColors)
+void GroupFilterComboBox::setGroups(const QStringList& groups, QVector<labelminus::core::LabelGroupStyle> groupStyles)
 {
     m_groups = groups;
-    m_groupColors = std::move(groupColors);
+    m_groupStyles = std::move(groupStyles);
     m_selectedGroups.clear();
     for (const QString& group : m_groups) {
         m_selectedGroups.insert(group);
@@ -81,10 +81,10 @@ void GroupFilterComboBox::rebuildMenu()
 QColor GroupFilterComboBox::colorForGroup(const QString& group) const
 {
     const int index = static_cast<int>(m_groups.indexOf(group));
-    if (index < 0 || index >= static_cast<int>(m_groupColors.size())) {
+    if (index < 0 || index >= static_cast<int>(m_groupStyles.size())) {
         return {};
     }
-    return m_groupColors.at(index);
+    return m_groupStyles.at(index).groupColor;
 }
 
 void GroupFilterComboBox::selectAll()

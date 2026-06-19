@@ -68,7 +68,23 @@ private slots:
                << "  \"labelTable\": {\n"
                << "    \"maxTextRows\": 4\n"
                << "  },\n"
-               << "  \"groupColors\": [\"#ff3835\", \"#5ba8ec\"]\n"
+               << "  \"input\": {\n"
+               << "    \"moveLabelModifier\": \"ctrl+shift\"\n"
+               << "  },\n"
+               << "  \"groupStyles\": [\n"
+               << "    {\n"
+               << "      \"groupColor\": \"#ff3835\",\n"
+               << "      \"markerDiameter\": 4.5,\n"
+               << "      \"fontPointSize\": 2.5,\n"
+               << "      \"markerStyle\": \"circle\"\n"
+               << "    },\n"
+               << "    {\n"
+               << "      \"groupColor\": \"#5ba8ec\",\n"
+               << "      \"markerDiameter\": 5.5,\n"
+               << "      \"fontPointSize\": 3.5,\n"
+               << "      \"markerStyle\": \"square\"\n"
+               << "    }\n"
+               << "  ]\n"
                << "}\n";
         file.close();
 
@@ -78,7 +94,12 @@ private slots:
         QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 4.5);
         QCOMPARE(result.preferences.labelMarkerFontPointSize(), 2.5);
         QCOMPARE(result.preferences.labelTableMaxTextRows(), 4);
-        QCOMPARE(result.preferences.groupColors().size(), 2);
+        QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier | Qt::ShiftModifier);
+        QCOMPARE(result.preferences.groupStyles().size(), 2);
+        QCOMPARE(result.preferences.groupStyles().at(0).groupColor, QColor(QStringLiteral("#ff3835")));
+        QCOMPARE(result.preferences.groupStyles().at(1).markerDiameter, 5.5);
+        QCOMPARE(result.preferences.groupStyles().at(1).fontPointSize, 3.5);
+        QVERIFY(result.preferences.groupStyles().at(1).markerShape == labelminus::core::MarkerShape::Square);
     }
 
     void preferencesWarnOnInvalidJson()
@@ -95,9 +116,10 @@ private slots:
         const auto result = labelminus::core::AppPreferences::loadFromFile(filePath);
 
         QVERIFY(!result.warnings.isEmpty());
-        QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 4.0);
-        QCOMPARE(result.preferences.labelMarkerFontPointSize(), 2.5);
+        QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 20.0);
+        QCOMPARE(result.preferences.labelMarkerFontPointSize(), 10.0);
         QCOMPARE(result.preferences.labelTableMaxTextRows(), 3);
+        QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier);
     }
 };
 

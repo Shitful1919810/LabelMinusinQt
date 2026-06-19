@@ -43,7 +43,8 @@ cmake --build --preset linux-debug --target release_translations
 
 ## Undo
 
-- New reversible editing operations should use `UndoStack`.
+- New reversible project edits must use `UndoStack`.
+- When adding a feature that changes labels, groups, pages or project data, add the undo command in the same change.
 - Avoid adding one-off undo state in UI code.
 
 ## Verification
@@ -64,4 +65,3 @@ cmake -E env CCACHE_DISABLE=1 cmake --preset linux-debug
 cmake -E env CCACHE_DISABLE=1 cmake --build --preset linux-debug
 cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 ```
-

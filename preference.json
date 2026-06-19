@@ -6,9 +6,27 @@
   "labelTable": {
     "maxTextRows": 4
   },
-  "groupColors": [
-    "#ff3835",
-    "#2d59d2",
-    "#5f8000"
+  "input": {
+    "moveLabelModifier": "ctrl"
+  },
+  "groupStyles": [
+    {
+      "groupColor": "#ff3835",
+      "markerDiameter": 20.0,
+      "fontPointSize": 10.0,
+      "markerStyle": "circle"
+    },
+    {
+      "groupColor": "#2d59d2",
+      "markerDiameter": 20.0,
+      "fontPointSize": 10.0,
+      "markerStyle": "square"
+    },
+    {
+      "groupColor": "#5f8000",
+      "markerDiameter": 20.0,
+      "fontPointSize": 10.0,
+      "markerStyle": "circle"
+    }
   ]
 }

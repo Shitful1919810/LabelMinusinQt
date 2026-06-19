@@ -9,11 +9,15 @@
 
 #include <QColor>
 #include <QMainWindow>
+#include <QPointF>
+#include <QVariant>
 #include <QVector>
 
 class QCloseEvent;
 class QAction;
 class QComboBox;
+class QLabel;
+class QMenu;
 class QPlainTextEdit;
 class QPushButton;
 class QSlider;
@@ -46,10 +50,28 @@ private:
     void selectImage(int index);
     void selectLabel(int index);
     void addLabel(QPointF normalizedPosition);
+    void deleteSelectedLabels();
+    void changeSelectedLabelsGroup(const QString& group);
+    void showLabelContextMenu(const QPoint& position);
     void updateCurrentLabelText();
     void updateCurrentLabelGroup(int index);
-    void updateLabelFromTable(int sourceIndex, int column);
+    void updateLabelFromTable(int sourceIndex, int column, QVariant oldValue, QVariant newValue);
+    void moveLabel(int index, QPointF normalizedPosition);
     void undoLastOperation();
+    void applyLabelText(int imageIndex, int labelIndex, const QString& text);
+    void applyLabelGroup(int imageIndex, int labelIndex, const QString& group);
+    void applyLabelPosition(int imageIndex, int labelIndex, QPointF normalizedPosition);
+    void applyLabelDeleted(int imageIndex, int labelIndex, bool deleted);
+    void applyBatchLabelGroups(int imageIndex, QVector<int> labelIndexes, QVector<QString> groups);
+    void applyBatchLabelDeleted(int imageIndex, QVector<int> labelIndexes, QVector<bool> deleted);
+    void pushLabelTextUndo(int imageIndex, int labelIndex, const QString& oldText, const QString& newText);
+    void pushLabelGroupUndo(int imageIndex, int labelIndex, const QString& oldGroup, const QString& newGroup);
+    void pushLabelPositionUndo(int imageIndex, int labelIndex, QPointF oldPosition, QPointF newPosition);
+    void pushBatchLabelGroupUndo(int imageIndex, QVector<int> labelIndexes, QVector<QString> oldGroups,
+                                 QVector<QString> newGroups);
+    void pushBatchLabelDeletedUndo(int imageIndex, QVector<int> labelIndexes, QVector<bool> oldDeleted,
+                                   QVector<bool> newDeleted);
+    QVector<int> selectedLabelIndexes() const;
     void refreshProjectUi();
     void refreshImageUi();
     void refreshGroupUi();
@@ -61,7 +83,7 @@ private:
     void setDirty(bool dirty);
     bool promptToSaveIfDirty();
     void updateWindowTitle();
-    void applyGroupColorsToCombo(QComboBox* comboBox);
+    void applyGroupStylesToCombo(QComboBox* comboBox);
     void updateInsertGroupTextColor();
     QColor colorForGroup(const QString& group) const;
     void setEditorEnabled(bool enabled);
@@ -78,6 +100,7 @@ private:
     QComboBox* m_insertGroupComboBox{nullptr};
     GroupFilterComboBox* m_groupFilterComboBox{nullptr};
     QComboBox* m_labelGroupComboBox{nullptr};
+    QLabel* m_warningLabel{nullptr};
     QSlider* m_zoomSlider{nullptr};
     QAction* m_openProjectAction{nullptr};
     QAction* m_saveProjectAction{nullptr};
@@ -92,6 +115,9 @@ private:
     int m_currentLabelIndex{-1};
     bool m_isUpdatingUi{false};
     bool m_isDirty{false};
+    int m_textEditUndoImageIndex{-1};
+    int m_textEditUndoLabelIndex{-1};
+    QString m_textEditUndoOriginalText;
     int m_labelTableMaxTextRows{3};
     labelminus::core::UndoStack m_undoStack;
 };

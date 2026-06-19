@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QJsonValue>
+#include <QStringList>
 
 #include <algorithm>
 #include <cmath>
@@ -46,7 +47,9 @@ AppPreferenceWarning makeWarning(AppPreferenceWarningType type, QString key = {}
 }
 
 double positiveNumberFromJsonValue(const QJsonObject& object, const QString& key, double fallback, double minimum,
-                                   double maximum, QVector<AppPreferenceWarning>& warnings)
+                                   double maximum, AppPreferenceWarningType wrongType,
+                                   AppPreferenceWarningType outOfRange, const QString& displayPrefix,
+                                   QVector<AppPreferenceWarning>& warnings)
 {
     const QJsonValue value = object.value(key);
     if (value.isUndefined()) {
@@ -54,15 +57,13 @@ double positiveNumberFromJsonValue(const QJsonObject& object, const QString& key
     }
 
     if (!value.isDouble()) {
-        warnings.append(
-            makeWarning(AppPreferenceWarningType::MarkerSizeWrongType, QStringLiteral("labelMarker.%1").arg(key)));
+        warnings.append(makeWarning(wrongType, QStringLiteral("%1.%2").arg(displayPrefix, key)));
         return fallback;
     }
 
     const double size = value.toDouble();
     if (size <= 0.0) {
-        warnings.append(
-            makeWarning(AppPreferenceWarningType::MarkerSizeOutOfRange, QStringLiteral("labelMarker.%1").arg(key)));
+        warnings.append(makeWarning(outOfRange, QStringLiteral("%1.%2").arg(displayPrefix, key)));
         return fallback;
     }
 
@@ -90,6 +91,63 @@ int positiveIntegerFromJsonValue(const QJsonObject& object, const QString& key, 
     }
 
     return std::clamp(static_cast<int>(number), minimum, maximum);
+}
+
+MarkerShape markerShapeFromString(const QString& markerStyle, MarkerShape fallback, qsizetype index,
+                                  QVector<AppPreferenceWarning>& warnings)
+{
+    if (markerStyle == QStringLiteral("circle")) {
+        return MarkerShape::Circle;
+    }
+    if (markerStyle == QStringLiteral("square")) {
+        return MarkerShape::Square;
+    }
+
+    warnings.append(makeWarning(AppPreferenceWarningType::GroupStyleMarkerStyleInvalid, {}, {}, index));
+    return fallback;
+}
+
+Qt::KeyboardModifiers modifiersFromString(const QString& text, Qt::KeyboardModifiers fallback,
+                                          QVector<AppPreferenceWarning>& warnings)
+{
+    Qt::KeyboardModifiers modifiers;
+    const QStringList parts = text.toLower().split(QLatin1Char('+'), Qt::SkipEmptyParts);
+    if (parts.isEmpty()) {
+        warnings.append(
+            makeWarning(AppPreferenceWarningType::MoveLabelModifierInvalid, QStringLiteral("input.moveLabelModifier")));
+        return fallback;
+    }
+
+    for (const QString& rawPart : parts) {
+        const QString part = rawPart.trimmed();
+        if (part == QStringLiteral("none")) {
+            if (parts.size() == 1) {
+                return Qt::NoModifier;
+            }
+            warnings.append(makeWarning(AppPreferenceWarningType::MoveLabelModifierInvalid,
+                                        QStringLiteral("input.moveLabelModifier")));
+            return fallback;
+        }
+        if (part == QStringLiteral("ctrl") || part == QStringLiteral("control")) {
+            modifiers |= Qt::ControlModifier;
+        }
+        else if (part == QStringLiteral("shift")) {
+            modifiers |= Qt::ShiftModifier;
+        }
+        else if (part == QStringLiteral("alt")) {
+            modifiers |= Qt::AltModifier;
+        }
+        else if (part == QStringLiteral("meta") || part == QStringLiteral("super") || part == QStringLiteral("cmd")) {
+            modifiers |= Qt::MetaModifier;
+        }
+        else {
+            warnings.append(makeWarning(AppPreferenceWarningType::MoveLabelModifierInvalid,
+                                        QStringLiteral("input.moveLabelModifier")));
+            return fallback;
+        }
+    }
+
+    return modifiers;
 }
 } // namespace
 
@@ -135,10 +193,13 @@ AppPreferencesLoadResult AppPreferences::loadFromFile(const QString& path)
         else {
             const QJsonObject labelMarker = labelMarkerValue.toObject();
             preferences.m_labelMarkerDiameterPixels = positiveNumberFromJsonValue(
-                labelMarker, QStringLiteral("diameter"), preferences.m_labelMarkerDiameterPixels, 1.0, 256.0, warnings);
-            preferences.m_labelMarkerFontPointSize =
-                positiveNumberFromJsonValue(labelMarker, QStringLiteral("fontPointSize"),
-                                            preferences.m_labelMarkerFontPointSize, 0.1, 256.0, warnings);
+                labelMarker, QStringLiteral("diameter"), preferences.m_labelMarkerDiameterPixels, 1.0, 256.0,
+                AppPreferenceWarningType::MarkerSizeWrongType, AppPreferenceWarningType::MarkerSizeOutOfRange,
+                QStringLiteral("labelMarker"), warnings);
+            preferences.m_labelMarkerFontPointSize = positiveNumberFromJsonValue(
+                labelMarker, QStringLiteral("fontPointSize"), preferences.m_labelMarkerFontPointSize, 0.1, 256.0,
+                AppPreferenceWarningType::MarkerSizeWrongType, AppPreferenceWarningType::MarkerSizeOutOfRange,
+                QStringLiteral("labelMarker"), warnings);
         }
     }
 
@@ -156,21 +217,79 @@ AppPreferencesLoadResult AppPreferences::loadFromFile(const QString& path)
         }
     }
 
-    const QJsonValue groupColorsValue = root.value(QStringLiteral("groupColors"));
-    if (!groupColorsValue.isUndefined()) {
-        if (!groupColorsValue.isArray()) {
-            warnings.append(makeWarning(AppPreferenceWarningType::GroupColorsNotArray));
+    const QJsonValue inputValue = root.value(QStringLiteral("input"));
+    if (!inputValue.isUndefined()) {
+        if (!inputValue.isObject()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::InputNotObject));
         }
         else {
-            const QJsonArray groupColors = groupColorsValue.toArray();
-            for (qsizetype i = 0; i < groupColors.size(); ++i) {
-                const QColor color = colorFromJsonValue(groupColors.at(i));
-                if (color.isValid()) {
-                    preferences.m_groupColors.append(color);
+            const QJsonValue moveLabelModifierValue = inputValue.toObject().value(QStringLiteral("moveLabelModifier"));
+            if (!moveLabelModifierValue.isUndefined()) {
+                if (moveLabelModifierValue.isString()) {
+                    preferences.m_moveLabelModifiers = modifiersFromString(moveLabelModifierValue.toString(),
+                                                                           preferences.m_moveLabelModifiers, warnings);
                 }
                 else {
-                    warnings.append(makeWarning(AppPreferenceWarningType::InvalidGroupColor, {}, {}, i));
+                    warnings.append(makeWarning(AppPreferenceWarningType::MoveLabelModifierInvalid,
+                                                QStringLiteral("input.moveLabelModifier")));
                 }
+            }
+        }
+    }
+
+    const QJsonValue groupStylesValue = root.value(QStringLiteral("groupStyles"));
+    if (!groupStylesValue.isUndefined()) {
+        if (!groupStylesValue.isArray()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::GroupStylesNotArray));
+        }
+        else {
+            const QJsonArray groupStyles = groupStylesValue.toArray();
+            for (qsizetype i = 0; i < groupStyles.size(); ++i) {
+                if (!groupStyles.at(i).isObject()) {
+                    warnings.append(makeWarning(AppPreferenceWarningType::GroupStyleNotObject, {}, {}, i));
+                    preferences.m_groupStyles.append(LabelGroupStyle{});
+                    continue;
+                }
+
+                const QJsonObject groupStyleObject = groupStyles.at(i).toObject();
+                LabelGroupStyle groupStyle;
+                groupStyle.markerDiameter = preferences.m_labelMarkerDiameterPixels;
+                groupStyle.fontPointSize = preferences.m_labelMarkerFontPointSize;
+
+                const QJsonValue colorValue = groupStyleObject.value(QStringLiteral("groupColor"));
+                if (!colorValue.isUndefined()) {
+                    const QColor color = colorFromJsonValue(colorValue);
+                    if (color.isValid()) {
+                        groupStyle.groupColor = color;
+                    }
+                    else {
+                        warnings.append(makeWarning(AppPreferenceWarningType::InvalidGroupStyleColor, {}, {}, i));
+                    }
+                }
+
+                groupStyle.markerDiameter = positiveNumberFromJsonValue(
+                    groupStyleObject, QStringLiteral("markerDiameter"), groupStyle.markerDiameter, 1.0, 256.0,
+                    AppPreferenceWarningType::GroupStyleMarkerSizeWrongType,
+                    AppPreferenceWarningType::GroupStyleMarkerSizeOutOfRange, QStringLiteral("groupStyles[%1]").arg(i),
+                    warnings);
+                groupStyle.fontPointSize = positiveNumberFromJsonValue(
+                    groupStyleObject, QStringLiteral("fontPointSize"), groupStyle.fontPointSize, 0.1, 256.0,
+                    AppPreferenceWarningType::GroupStyleMarkerSizeWrongType,
+                    AppPreferenceWarningType::GroupStyleMarkerSizeOutOfRange, QStringLiteral("groupStyles[%1]").arg(i),
+                    warnings);
+
+                const QJsonValue markerStyleValue = groupStyleObject.value(QStringLiteral("markerStyle"));
+                if (!markerStyleValue.isUndefined()) {
+                    if (markerStyleValue.isString()) {
+                        groupStyle.markerShape =
+                            markerShapeFromString(markerStyleValue.toString(), groupStyle.markerShape, i, warnings);
+                    }
+                    else {
+                        warnings.append(makeWarning(AppPreferenceWarningType::GroupStyleMarkerStyleInvalid, {}, {}, i));
+                    }
+                }
+
+                preferences.m_groupStyles.append(groupStyle);
             }
         }
     }
@@ -193,9 +312,14 @@ int AppPreferences::labelTableMaxTextRows() const noexcept
     return m_labelTableMaxTextRows;
 }
 
-const QVector<QColor>& AppPreferences::groupColors() const noexcept
+Qt::KeyboardModifiers AppPreferences::moveLabelModifiers() const noexcept
 {
-    return m_groupColors;
+    return m_moveLabelModifiers;
+}
+
+const QVector<LabelGroupStyle>& AppPreferences::groupStyles() const noexcept
+{
+    return m_groupStyles;
 }
 
 } // namespace labelminus::core

@@ -96,10 +96,10 @@ bool LabelTextDelegate::eventFilter(QObject* object, QEvent* event)
 
 LabelGroupDelegate::LabelGroupDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
 
-void LabelGroupDelegate::setGroups(QStringList groups, QVector<QColor> groupColors)
+void LabelGroupDelegate::setGroups(QStringList groups, QVector<labelminus::core::LabelGroupStyle> groupStyles)
 {
     m_groups = std::move(groups);
-    m_groupColors = std::move(groupColors);
+    m_groupStyles = std::move(groupStyles);
 }
 
 QWidget* LabelGroupDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem&, const QModelIndex&) const
@@ -164,8 +164,8 @@ void LabelGroupDelegate::paint(QPainter* painter, const QStyleOptionViewItem& op
 QColor LabelGroupDelegate::colorForGroup(const QString& group) const
 {
     const int index = static_cast<int>(m_groups.indexOf(group));
-    if (index < 0 || index >= static_cast<int>(m_groupColors.size())) {
+    if (index < 0 || index >= static_cast<int>(m_groupStyles.size())) {
         return {};
     }
-    return m_groupColors.at(index);
+    return m_groupStyles.at(index).groupColor;
 }

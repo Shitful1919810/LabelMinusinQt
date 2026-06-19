@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/AppPreferences.h"
 #include "core/Label.h"
 
 #include <QAbstractTableModel>
@@ -16,7 +17,7 @@ public:
 
     void setLabels(QVector<labelminus::core::Label>* labels);
     void setGroupFilter(QStringList groupFilter);
-    void setGroups(QStringList groups, QVector<QColor> groupColors);
+    void setGroups(QStringList groups, QVector<labelminus::core::LabelGroupStyle> groupStyles);
     void refresh();
     void labelChanged(int row);
     int sourceIndexForRow(int row) const;
@@ -30,7 +31,7 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
 signals:
-    void labelEdited(int sourceIndex, int column);
+    void labelEdited(int sourceIndex, int column, QVariant oldValue, QVariant newValue);
 
 private:
     void rebuildVisibleRows();
@@ -40,5 +41,5 @@ private:
     QVector<int> m_visibleRows;
     QSet<QString> m_groupFilter;
     QStringList m_groups;
-    QVector<QColor> m_groupColors;
+    QVector<labelminus::core::LabelGroupStyle> m_groupStyles;
 };

@@ -31,8 +31,10 @@
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWidgetAction>
 
 #include <algorithm>
+#include <utility>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), m_labelModel(new LabelTableModel(this)), m_labelTextDelegate(new LabelTextDelegate(this)),
@@ -51,6 +53,11 @@ MainWindow::MainWindow(QWidget* parent)
     createMenus();
     createCentralWidget();
     setEditorEnabled(false);
+    m_warningLabel = new QLabel(this);
+    m_warningLabel->setTextFormat(Qt::PlainText);
+    m_warningLabel->setStyleSheet(QStringLiteral("QLabel { color: #b26a00; font-weight: 600; }"));
+    m_warningLabel->setVisible(false);
+    statusBar()->addPermanentWidget(m_warningLabel);
     statusBar()->showMessage(tr("Ready"));
     showPreferenceWarnings();
 }
@@ -175,7 +182,8 @@ void MainWindow::createCentralWidget()
     m_labelView->setItemDelegateForColumn(2, m_labelGroupDelegate);
     m_labelView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
     m_labelView->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_labelView->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_labelView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    m_labelView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_labelView->setWordWrap(true);
     m_labelView->verticalHeader()->setVisible(false);
     m_labelView->horizontalHeader()->setStretchLastSection(false);
@@ -218,6 +226,7 @@ void MainWindow::createCentralWidget()
     setCentralWidget(rootSplitter);
 
     connect(m_canvas, &ImageCanvas::labelCreateRequested, this, &MainWindow::addLabel);
+    connect(m_canvas, &ImageCanvas::labelMoveRequested, this, &MainWindow::moveLabel);
     connect(m_canvas, &ImageCanvas::labelSelected, this, &MainWindow::selectLabel);
     connect(m_canvas, &ImageCanvas::undoRequested, this, &MainWindow::undoLastOperation);
     connect(m_canvas, &ImageCanvas::zoomPercentChanged, m_zoomSlider, &QSlider::setValue);
@@ -235,6 +244,12 @@ void MainWindow::createCentralWidget()
                     selectLabel(m_labelModel->sourceIndexForRow(current.row()));
                 }
             });
+    auto* deleteLabelShortcut = new QAction(m_labelView);
+    deleteLabelShortcut->setShortcut(QKeySequence::Delete);
+    deleteLabelShortcut->setShortcutContext(Qt::WidgetShortcut);
+    m_labelView->addAction(deleteLabelShortcut);
+    connect(deleteLabelShortcut, &QAction::triggered, this, &MainWindow::deleteSelectedLabels);
+    connect(m_labelView, &QTableView::customContextMenuRequested, this, &MainWindow::showLabelContextMenu);
     connect(m_textEdit, &QPlainTextEdit::textChanged, this, &MainWindow::updateCurrentLabelText);
     connect(m_labelModel, &LabelTableModel::labelEdited, this, &MainWindow::updateLabelFromTable, Qt::QueuedConnection);
     connect(m_groupFilterComboBox, &GroupFilterComboBox::selectedGroupsChanged, this, &MainWindow::updateGroupFilter);
@@ -365,6 +380,7 @@ void MainWindow::updateGroupFilter(const QStringList& groups)
     }
 
     m_labelModel->setGroupFilter(groups);
+    m_canvas->setVisibleGroups(groups);
     resizeLabelRowsToContents();
 
     if (m_currentLabelIndex >= 0 && m_labelModel->rowForSourceIndex(m_currentLabelIndex) < 0) {
@@ -399,6 +415,9 @@ void MainWindow::selectLabel(int index)
     m_currentLabelIndex = index;
     m_canvas->setSelectedLabel(index);
     m_textEdit->setPlainText(image->labels.at(index).text());
+    m_textEditUndoImageIndex = m_currentImageIndex;
+    m_textEditUndoLabelIndex = index;
+    m_textEditUndoOriginalText = image->labels.at(index).text();
     m_labelGroupComboBox->setCurrentText(image->labels.at(index).group());
     const int visibleRow = m_labelModel->rowForSourceIndex(index);
     if (visibleRow >= 0) {
@@ -422,6 +441,11 @@ void MainWindow::addLabel(QPointF normalizedPosition)
 
     const QString group =
         m_insertGroupComboBox->currentText().isEmpty() ? QStringLiteral("框内") : m_insertGroupComboBox->currentText();
+    if (!m_groupFilterComboBox->selectedGroups().contains(group)) {
+        statusBar()->showMessage(tr("The insert group is hidden by the current filter."), 4000);
+        return;
+    }
+
     image->labels.append(labelminus::core::Label(QString(), group, normalizedPosition));
     const int imageIndex = m_currentImageIndex;
     const int labelIndex = static_cast<int>(image->labels.size()) - 1;
@@ -457,6 +481,127 @@ void MainWindow::addLabel(QPointF normalizedPosition)
     markDirty();
 }
 
+void MainWindow::deleteSelectedLabels()
+{
+    labelminus::core::ImageEntry* image = currentImage();
+    const QVector<int> labelIndexes = selectedLabelIndexes();
+    if (image == nullptr || labelIndexes.isEmpty()) {
+        return;
+    }
+
+    QVector<bool> oldDeleted;
+    QVector<bool> newDeleted;
+    QVector<int> changedIndexes;
+    for (int labelIndex : labelIndexes) {
+        if (labelIndex < 0 || labelIndex >= image->labels.size() || image->labels.at(labelIndex).isDeleted()) {
+            continue;
+        }
+        changedIndexes.append(labelIndex);
+        oldDeleted.append(false);
+        newDeleted.append(true);
+        image->labels[labelIndex].setDeleted(true);
+    }
+
+    if (changedIndexes.isEmpty()) {
+        return;
+    }
+
+    pushBatchLabelDeletedUndo(m_currentImageIndex, changedIndexes, oldDeleted, newDeleted);
+    m_currentLabelIndex = -1;
+    m_canvas->setImage(image->path, image->labels);
+    m_labelModel->refresh();
+    m_labelView->clearSelection();
+    m_textEdit->clear();
+    setEditorEnabled(false);
+    markDirty();
+}
+
+void MainWindow::changeSelectedLabelsGroup(const QString& group)
+{
+    labelminus::core::ImageEntry* image = currentImage();
+    const QVector<int> labelIndexes = selectedLabelIndexes();
+    if (image == nullptr || labelIndexes.isEmpty() || !m_project.groups().contains(group)) {
+        return;
+    }
+
+    QVector<int> changedIndexes;
+    QVector<QString> oldGroups;
+    QVector<QString> newGroups;
+    for (int labelIndex : labelIndexes) {
+        if (labelIndex < 0 || labelIndex >= image->labels.size() || image->labels.at(labelIndex).isDeleted() ||
+            image->labels.at(labelIndex).group() == group) {
+            continue;
+        }
+
+        changedIndexes.append(labelIndex);
+        oldGroups.append(image->labels.at(labelIndex).group());
+        newGroups.append(group);
+        image->labels[labelIndex].setGroup(group);
+    }
+
+    if (changedIndexes.isEmpty()) {
+        return;
+    }
+
+    pushBatchLabelGroupUndo(m_currentImageIndex, changedIndexes, oldGroups, newGroups);
+    m_labelModel->refresh();
+    m_canvas->setImage(image->path, image->labels);
+    if (m_labelModel->rowForSourceIndex(changedIndexes.last()) >= 0) {
+        selectLabel(changedIndexes.last());
+    }
+    else {
+        m_currentLabelIndex = -1;
+        m_canvas->setSelectedLabel(-1);
+        m_labelView->clearSelection();
+        m_textEdit->clear();
+        setEditorEnabled(false);
+    }
+    markDirty();
+}
+
+void MainWindow::showLabelContextMenu(const QPoint& position)
+{
+    const QModelIndex clickedIndex = m_labelView->indexAt(position);
+    if (clickedIndex.isValid() && !m_labelView->selectionModel()->isSelected(clickedIndex)) {
+        m_labelView->selectRow(clickedIndex.row());
+    }
+
+    const QVector<int> labelIndexes = selectedLabelIndexes();
+    if (labelIndexes.isEmpty()) {
+        return;
+    }
+
+    QMenu menu(this);
+    QAction* deleteAction = menu.addAction(tr("Delete selected labels"));
+    connect(deleteAction, &QAction::triggered, this, &MainWindow::deleteSelectedLabels);
+    menu.addSeparator();
+
+    for (const QString& group : m_project.groups()) {
+        auto* groupAction = new QWidgetAction(&menu);
+        auto* groupButton = new QPushButton(group, &menu);
+        groupButton->setFlat(true);
+        groupButton->setCursor(Qt::PointingHandCursor);
+        groupButton->setMinimumWidth(180);
+        groupButton->setStyleSheet(QStringLiteral("QPushButton { text-align: left; padding: 4px 18px; border: none; }"
+                                                  "QPushButton:hover { background: palette(highlight); }"));
+        const QColor color = colorForGroup(group);
+        if (color.isValid()) {
+            groupButton->setStyleSheet(QStringLiteral("QPushButton { color: %1; text-align: left; padding: 4px 18px; "
+                                                      "border: none; }"
+                                                      "QPushButton:hover { background: palette(highlight); }")
+                                           .arg(color.name()));
+        }
+        groupAction->setDefaultWidget(groupButton);
+        menu.addAction(groupAction);
+        connect(groupButton, &QPushButton::clicked, &menu, [this, &menu, group]() {
+            menu.close();
+            changeSelectedLabelsGroup(group);
+        });
+    }
+
+    menu.exec(m_labelView->viewport()->mapToGlobal(position));
+}
+
 void MainWindow::updateCurrentLabelText()
 {
     if (m_isUpdatingUi) {
@@ -468,7 +613,18 @@ void MainWindow::updateCurrentLabelText()
         return;
     }
 
-    image->labels[m_currentLabelIndex].setText(m_textEdit->toPlainText());
+    const QString newText = m_textEdit->toPlainText();
+    if (image->labels.at(m_currentLabelIndex).text() == newText) {
+        return;
+    }
+
+    if (m_textEditUndoImageIndex == m_currentImageIndex && m_textEditUndoLabelIndex == m_currentLabelIndex) {
+        pushLabelTextUndo(m_currentImageIndex, m_currentLabelIndex, m_textEditUndoOriginalText, newText);
+        m_textEditUndoImageIndex = -1;
+        m_textEditUndoLabelIndex = -1;
+    }
+
+    image->labels[m_currentLabelIndex].setText(newText);
     m_labelModel->labelChanged(m_currentLabelIndex);
     const int visibleRow = m_labelModel->rowForSourceIndex(m_currentLabelIndex);
     if (visibleRow >= 0) {
@@ -489,21 +645,32 @@ void MainWindow::updateCurrentLabelGroup(int index)
         return;
     }
 
-    image->labels[m_currentLabelIndex].setGroup(m_labelGroupComboBox->itemText(index));
+    const QString oldGroup = image->labels.at(m_currentLabelIndex).group();
+    const QString newGroup = m_labelGroupComboBox->itemText(index);
+    if (oldGroup == newGroup) {
+        return;
+    }
+
+    image->labels[m_currentLabelIndex].setGroup(newGroup);
+    pushLabelGroupUndo(m_currentImageIndex, m_currentLabelIndex, oldGroup, newGroup);
     m_labelModel->refresh();
-    refreshImageUi();
+    m_canvas->setImage(image->path, image->labels);
     selectLabel(m_currentLabelIndex);
     markDirty();
 }
 
-void MainWindow::updateLabelFromTable(int sourceIndex, int column)
+void MainWindow::updateLabelFromTable(int sourceIndex, int column, QVariant oldValue, QVariant newValue)
 {
     labelminus::core::ImageEntry* image = currentImage();
     if (image == nullptr || sourceIndex < 0 || sourceIndex >= image->labels.size()) {
         return;
     }
 
+    if (column == 1) {
+        pushLabelTextUndo(m_currentImageIndex, sourceIndex, oldValue.toString(), newValue.toString());
+    }
     if (column == 2) {
+        pushLabelGroupUndo(m_currentImageIndex, sourceIndex, oldValue.toString(), newValue.toString());
         m_labelModel->refresh();
         m_canvas->setImage(image->path, image->labels);
     }
@@ -512,9 +679,253 @@ void MainWindow::updateLabelFromTable(int sourceIndex, int column)
     markDirty();
 }
 
+void MainWindow::moveLabel(int index, QPointF normalizedPosition)
+{
+    labelminus::core::ImageEntry* image = currentImage();
+    if (image == nullptr || index < 0 || index >= image->labels.size()) {
+        return;
+    }
+
+    const QPointF oldPosition = image->labels.at(index).position();
+    image->labels[index].setPosition(normalizedPosition);
+    const QPointF newPosition = image->labels.at(index).position();
+    if (oldPosition == newPosition) {
+        m_canvas->setImage(image->path, image->labels);
+        selectLabel(index);
+        return;
+    }
+
+    pushLabelPositionUndo(m_currentImageIndex, index, oldPosition, newPosition);
+    m_canvas->setImage(image->path, image->labels);
+    selectLabel(index);
+    markDirty();
+}
+
 void MainWindow::undoLastOperation()
 {
     m_undoStack.undo();
+}
+
+void MainWindow::applyLabelText(int imageIndex, int labelIndex, const QString& text)
+{
+    if (imageIndex < 0 || imageIndex >= m_project.images().size()) {
+        return;
+    }
+    labelminus::core::ImageEntry& image = m_project.images()[imageIndex];
+    if (labelIndex < 0 || labelIndex >= image.labels.size()) {
+        return;
+    }
+
+    image.labels[labelIndex].setText(text);
+    m_currentImageIndex = imageIndex;
+    refreshImageUi();
+    selectLabel(labelIndex);
+    markDirty();
+}
+
+void MainWindow::applyLabelGroup(int imageIndex, int labelIndex, const QString& group)
+{
+    if (imageIndex < 0 || imageIndex >= m_project.images().size()) {
+        return;
+    }
+    labelminus::core::ImageEntry& image = m_project.images()[imageIndex];
+    if (labelIndex < 0 || labelIndex >= image.labels.size() || !m_project.groups().contains(group)) {
+        return;
+    }
+
+    image.labels[labelIndex].setGroup(group);
+    m_currentImageIndex = imageIndex;
+    refreshImageUi();
+    selectLabel(labelIndex);
+    markDirty();
+}
+
+void MainWindow::applyLabelPosition(int imageIndex, int labelIndex, QPointF normalizedPosition)
+{
+    if (imageIndex < 0 || imageIndex >= m_project.images().size()) {
+        return;
+    }
+    labelminus::core::ImageEntry& image = m_project.images()[imageIndex];
+    if (labelIndex < 0 || labelIndex >= image.labels.size()) {
+        return;
+    }
+
+    image.labels[labelIndex].setPosition(normalizedPosition);
+    m_currentImageIndex = imageIndex;
+    refreshImageUi();
+    selectLabel(labelIndex);
+    markDirty();
+}
+
+void MainWindow::applyLabelDeleted(int imageIndex, int labelIndex, bool deleted)
+{
+    if (imageIndex < 0 || imageIndex >= m_project.images().size()) {
+        return;
+    }
+    labelminus::core::ImageEntry& image = m_project.images()[imageIndex];
+    if (labelIndex < 0 || labelIndex >= image.labels.size()) {
+        return;
+    }
+
+    image.labels[labelIndex].setDeleted(deleted);
+    m_currentImageIndex = imageIndex;
+    refreshImageUi();
+    if (!deleted) {
+        selectLabel(labelIndex);
+    }
+    else {
+        m_currentLabelIndex = -1;
+        setEditorEnabled(false);
+    }
+    markDirty();
+}
+
+void MainWindow::applyBatchLabelGroups(int imageIndex, QVector<int> labelIndexes, QVector<QString> groups)
+{
+    if (imageIndex < 0 || imageIndex >= m_project.images().size() || labelIndexes.size() != groups.size()) {
+        return;
+    }
+
+    labelminus::core::ImageEntry& image = m_project.images()[imageIndex];
+    int lastValidIndex = -1;
+    for (int i = 0; i < labelIndexes.size(); ++i) {
+        const int labelIndex = labelIndexes.at(i);
+        if (labelIndex < 0 || labelIndex >= image.labels.size() || !m_project.groups().contains(groups.at(i))) {
+            continue;
+        }
+        image.labels[labelIndex].setGroup(groups.at(i));
+        lastValidIndex = labelIndex;
+    }
+
+    m_currentImageIndex = imageIndex;
+    refreshImageUi();
+    if (lastValidIndex >= 0 && m_labelModel->rowForSourceIndex(lastValidIndex) >= 0) {
+        selectLabel(lastValidIndex);
+    }
+    else {
+        m_currentLabelIndex = -1;
+        setEditorEnabled(false);
+    }
+    markDirty();
+}
+
+void MainWindow::applyBatchLabelDeleted(int imageIndex, QVector<int> labelIndexes, QVector<bool> deleted)
+{
+    if (imageIndex < 0 || imageIndex >= m_project.images().size() || labelIndexes.size() != deleted.size()) {
+        return;
+    }
+
+    labelminus::core::ImageEntry& image = m_project.images()[imageIndex];
+    int lastRestoredIndex = -1;
+    for (int i = 0; i < labelIndexes.size(); ++i) {
+        const int labelIndex = labelIndexes.at(i);
+        if (labelIndex < 0 || labelIndex >= image.labels.size()) {
+            continue;
+        }
+        image.labels[labelIndex].setDeleted(deleted.at(i));
+        if (!deleted.at(i)) {
+            lastRestoredIndex = labelIndex;
+        }
+    }
+
+    m_currentImageIndex = imageIndex;
+    refreshImageUi();
+    if (lastRestoredIndex >= 0 && m_labelModel->rowForSourceIndex(lastRestoredIndex) >= 0) {
+        selectLabel(lastRestoredIndex);
+    }
+    else {
+        m_currentLabelIndex = -1;
+        setEditorEnabled(false);
+    }
+    markDirty();
+}
+
+void MainWindow::pushLabelTextUndo(int imageIndex, int labelIndex, const QString& oldText, const QString& newText)
+{
+    if (oldText == newText) {
+        return;
+    }
+
+    m_undoStack.push({
+        tr("Edit label text"),
+        [this, imageIndex, labelIndex, oldText]() { applyLabelText(imageIndex, labelIndex, oldText); },
+    });
+}
+
+void MainWindow::pushLabelGroupUndo(int imageIndex, int labelIndex, const QString& oldGroup, const QString& newGroup)
+{
+    if (oldGroup == newGroup) {
+        return;
+    }
+
+    m_undoStack.push({
+        tr("Change label group"),
+        [this, imageIndex, labelIndex, oldGroup]() { applyLabelGroup(imageIndex, labelIndex, oldGroup); },
+    });
+}
+
+void MainWindow::pushLabelPositionUndo(int imageIndex, int labelIndex, QPointF oldPosition, QPointF newPosition)
+{
+    if (oldPosition == newPosition) {
+        return;
+    }
+
+    m_undoStack.push({
+        tr("Move label"),
+        [this, imageIndex, labelIndex, oldPosition]() { applyLabelPosition(imageIndex, labelIndex, oldPosition); },
+    });
+}
+
+void MainWindow::pushBatchLabelGroupUndo(int imageIndex, QVector<int> labelIndexes, QVector<QString> oldGroups,
+                                         QVector<QString> newGroups)
+{
+    if (labelIndexes.isEmpty() || labelIndexes.size() != oldGroups.size() || labelIndexes.size() != newGroups.size()) {
+        return;
+    }
+
+    m_undoStack.push({
+        tr("Change label group"),
+        [this, imageIndex, labelIndexes = std::move(labelIndexes), oldGroups = std::move(oldGroups)]() mutable {
+            applyBatchLabelGroups(imageIndex, std::move(labelIndexes), std::move(oldGroups));
+        },
+    });
+}
+
+void MainWindow::pushBatchLabelDeletedUndo(int imageIndex, QVector<int> labelIndexes, QVector<bool> oldDeleted,
+                                           QVector<bool> newDeleted)
+{
+    if (labelIndexes.isEmpty() || labelIndexes.size() != oldDeleted.size() ||
+        labelIndexes.size() != newDeleted.size()) {
+        return;
+    }
+
+    m_undoStack.push({
+        tr("Delete labels"),
+        [this, imageIndex, labelIndexes = std::move(labelIndexes), oldDeleted = std::move(oldDeleted)]() mutable {
+            applyBatchLabelDeleted(imageIndex, std::move(labelIndexes), std::move(oldDeleted));
+        },
+    });
+}
+
+QVector<int> MainWindow::selectedLabelIndexes() const
+{
+    QVector<int> labelIndexes;
+    if (m_labelView == nullptr || m_labelModel == nullptr || m_labelView->selectionModel() == nullptr) {
+        return labelIndexes;
+    }
+
+    const QModelIndexList rows = m_labelView->selectionModel()->selectedRows();
+    labelIndexes.reserve(rows.size());
+    for (const QModelIndex& row : rows) {
+        const int sourceIndex = m_labelModel->sourceIndexForRow(row.row());
+        if (sourceIndex >= 0) {
+            labelIndexes.append(sourceIndex);
+        }
+    }
+
+    std::sort(labelIndexes.begin(), labelIndexes.end());
+    labelIndexes.erase(std::unique(labelIndexes.begin(), labelIndexes.end()), labelIndexes.end());
+    return labelIndexes;
 }
 
 void MainWindow::refreshProjectUi()
@@ -565,13 +976,14 @@ void MainWindow::refreshGroupUi()
     if (m_project.groups().isEmpty()) {
         m_project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
     }
-    m_groupFilterComboBox->setGroups(m_project.groups(), m_preferences.groupColors());
+    m_groupFilterComboBox->setGroups(m_project.groups(), m_preferences.groupStyles());
     m_canvas->setGroups(m_project.groups());
-    m_labelModel->setGroups(m_project.groups(), m_preferences.groupColors());
-    m_labelGroupDelegate->setGroups(m_project.groups(), m_preferences.groupColors());
+    m_canvas->setVisibleGroups(m_groupFilterComboBox->selectedGroups());
+    m_labelModel->setGroups(m_project.groups(), m_preferences.groupStyles());
+    m_labelGroupDelegate->setGroups(m_project.groups(), m_preferences.groupStyles());
     m_labelGroupComboBox->addItems(m_project.groups());
     m_insertGroupComboBox->addItems(m_project.groups());
-    applyGroupColorsToCombo(m_insertGroupComboBox);
+    applyGroupStylesToCombo(m_insertGroupComboBox);
     if (!previousInsertGroup.isEmpty()) {
         m_insertGroupComboBox->setCurrentText(previousInsertGroup);
     }
@@ -609,7 +1021,7 @@ void MainWindow::capLabelRowHeight(int row)
 
 void MainWindow::showPreferenceWarnings()
 {
-    if (m_preferenceWarnings.isEmpty()) {
+    if (m_warningLabel == nullptr || m_preferenceWarnings.isEmpty()) {
         return;
     }
 
@@ -619,7 +1031,9 @@ void MainWindow::showPreferenceWarnings()
         messages.append(preferenceWarningText(warning));
     }
 
-    statusBar()->showMessage(tr("Preference warning: %1").arg(messages.join(QStringLiteral(" "))), 10000);
+    m_warningLabel->setText(tr("Preference warnings"));
+    m_warningLabel->setToolTip(messages.join(QStringLiteral("\n")));
+    m_warningLabel->setVisible(true);
 }
 
 QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceWarning& warning) const
@@ -645,10 +1059,22 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("%1 must be a positive integer; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::LabelTableMaxTextRowsOutOfRange:
         return tr("%1 must be a positive integer; using the default value.").arg(warning.key);
-    case AppPreferenceWarningType::GroupColorsNotArray:
-        return tr("groupColors must be an array; group colors will use defaults.");
-    case AppPreferenceWarningType::InvalidGroupColor:
-        return tr("groupColors[%1] is not a valid color; this color was skipped.").arg(warning.index);
+    case AppPreferenceWarningType::GroupStylesNotArray:
+        return tr("groupStyles must be an array; group styles will use defaults.");
+    case AppPreferenceWarningType::GroupStyleNotObject:
+        return tr("groupStyles[%1] must be a JSON object; this group style will use defaults.").arg(warning.index);
+    case AppPreferenceWarningType::InvalidGroupStyleColor:
+        return tr("groupStyles[%1].groupColor is not a valid color; this color was skipped.").arg(warning.index);
+    case AppPreferenceWarningType::GroupStyleMarkerSizeWrongType:
+        return tr("%1 must be a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::GroupStyleMarkerSizeOutOfRange:
+        return tr("%1 must be a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::GroupStyleMarkerStyleInvalid:
+        return tr("groupStyles[%1].markerStyle must be circle or square; using the default value.").arg(warning.index);
+    case AppPreferenceWarningType::InputNotObject:
+        return tr("input must be a JSON object; using default input preferences.");
+    case AppPreferenceWarningType::MoveLabelModifierInvalid:
+        return tr("%1 must be a modifier name or modifier combination; using the default value.").arg(warning.key);
     }
 
     return tr("Unknown preference warning.");
@@ -704,7 +1130,7 @@ void MainWindow::updateWindowTitle()
     setWindowTitle(title);
 }
 
-void MainWindow::applyGroupColorsToCombo(QComboBox* comboBox)
+void MainWindow::applyGroupStylesToCombo(QComboBox* comboBox)
 {
     for (int i = 0; i < comboBox->count(); ++i) {
         const QColor color = colorForGroup(comboBox->itemText(i));
@@ -724,10 +1150,10 @@ void MainWindow::updateInsertGroupTextColor()
 QColor MainWindow::colorForGroup(const QString& group) const
 {
     const int index = static_cast<int>(m_project.groups().indexOf(group));
-    if (index < 0 || index >= static_cast<int>(m_preferences.groupColors().size())) {
+    if (index < 0 || index >= static_cast<int>(m_preferences.groupStyles().size())) {
         return {};
     }
-    return m_preferences.groupColors().at(index);
+    return m_preferences.groupStyles().at(index).groupColor;
 }
 
 void MainWindow::setEditorEnabled(bool enabled)
