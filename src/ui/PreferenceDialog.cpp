@@ -6,12 +6,14 @@
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QFile>
+#include <QFontDialog>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSpinBox>
@@ -51,6 +53,22 @@ QDoubleSpinBox* makePositiveDoubleSpinBox(double value, double minimum, double m
     spinBox->setValue(value);
     return spinBox;
 }
+
+QWidget* makeFontSelectorWidget(QWidget* parent, QLabel*& label, QPushButton*& chooseButton, QPushButton*& resetButton)
+{
+    auto* widget = new QWidget(parent);
+    auto* layout = new QHBoxLayout(widget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(6);
+    label = new QLabel(widget);
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    chooseButton = new QPushButton(PreferenceDialog::tr("Choose Font..."), widget);
+    resetButton = new QPushButton(PreferenceDialog::tr("Use Default"), widget);
+    layout->addWidget(label, 1);
+    layout->addWidget(chooseButton);
+    layout->addWidget(resetButton);
+    return widget;
+}
 } // namespace
 
 PreferenceDialog::PreferenceDialog(QString preferencePath, QWidget* parent)
@@ -81,6 +99,15 @@ void PreferenceDialog::createUi()
     m_tableMaxRowsSpinBox = new QSpinBox(generalPage);
     m_tableMaxRowsSpinBox->setRange(1, 50);
     m_tableMaxRowsSpinBox->setValue(4);
+    auto* labelTableFontWidget = makeFontSelectorWidget(generalPage, m_labelTableFontLabel,
+                                                        m_chooseLabelTableFontButton, m_resetLabelTableFontButton);
+    auto* textEditorFontWidget = makeFontSelectorWidget(generalPage, m_textEditorFontLabel,
+                                                        m_chooseTextEditorFontButton, m_resetTextEditorFontButton);
+    m_backupPathEdit = new QLineEdit(generalPage);
+    m_backupPathEdit->setText(QStringLiteral("bak"));
+    m_backupIntervalSpinBox = new QSpinBox(generalPage);
+    m_backupIntervalSpinBox->setRange(1, 86400);
+    m_backupIntervalSpinBox->setValue(60);
 
     m_moveModifierComboBox = new QComboBox(generalPage);
     m_moveModifierComboBox->setEditable(true);
@@ -90,7 +117,11 @@ void PreferenceDialog::createUi()
     generalLayout->addRow(tr("Default marker diameter"), m_markerDiameterSpinBox);
     generalLayout->addRow(tr("Default marker font size"), m_markerFontSpinBox);
     generalLayout->addRow(tr("Maximum label table text rows"), m_tableMaxRowsSpinBox);
+    generalLayout->addRow(tr("Label table font"), labelTableFontWidget);
+    generalLayout->addRow(tr("Text editor font"), textEditorFontWidget);
     generalLayout->addRow(tr("Move-label modifier"), m_moveModifierComboBox);
+    generalLayout->addRow(tr("Backup path"), m_backupPathEdit);
+    generalLayout->addRow(tr("Backup interval seconds"), m_backupIntervalSpinBox);
     tabWidget->addTab(generalPage, tr("General"));
 
     auto* groupPage = new QWidget(tabWidget);
@@ -154,7 +185,13 @@ void PreferenceDialog::createUi()
     connect(m_markerDiameterSpinBox, &QDoubleSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_markerFontSpinBox, &QDoubleSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_tableMaxRowsSpinBox, &QSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_chooseLabelTableFontButton, &QPushButton::clicked, this, &PreferenceDialog::chooseLabelTableFont);
+    connect(m_resetLabelTableFontButton, &QPushButton::clicked, this, &PreferenceDialog::resetLabelTableFont);
+    connect(m_chooseTextEditorFontButton, &QPushButton::clicked, this, &PreferenceDialog::chooseTextEditorFont);
+    connect(m_resetTextEditorFontButton, &QPushButton::clicked, this, &PreferenceDialog::resetTextEditorFont);
     connect(m_moveModifierComboBox, &QComboBox::currentTextChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_backupPathEdit, &QLineEdit::textChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_backupIntervalSpinBox, &QSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
 }
 
 void PreferenceDialog::loadFromDisk()
@@ -183,13 +220,39 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     const QJsonObject root = document.object();
     const QJsonObject labelMarker = root.value(QStringLiteral("labelMarker")).toObject();
     const QJsonObject labelTable = root.value(QStringLiteral("labelTable")).toObject();
+    const QJsonObject labelTextEditor = root.value(QStringLiteral("labelTextEditor")).toObject();
     const QJsonObject input = root.value(QStringLiteral("input")).toObject();
 
     m_markerDiameterSpinBox->setValue(labelMarker.value(QStringLiteral("diameter")).toDouble(20.0));
     m_markerFontSpinBox->setValue(labelMarker.value(QStringLiteral("fontPointSize")).toDouble(10.0));
     m_tableMaxRowsSpinBox->setValue(labelTable.value(QStringLiteral("maxTextRows")).toInt(4));
+    const QString labelTableFontFamily = labelTable.value(QStringLiteral("fontFamily")).toString().trimmed();
+    const double labelTableFontPointSize = labelTable.value(QStringLiteral("fontPointSize")).toDouble(0.0);
+    m_usesDefaultLabelTableFont = labelTableFontFamily.isEmpty() && labelTableFontPointSize <= 0.0;
+    m_labelTableFont = font();
+    if (!labelTableFontFamily.isEmpty()) {
+        m_labelTableFont.setFamily(labelTableFontFamily);
+    }
+    if (labelTableFontPointSize > 0.0) {
+        m_labelTableFont.setPointSizeF(labelTableFontPointSize);
+    }
+    updateLabelTableFontSummary();
+
+    const QString textEditorFontFamily = labelTextEditor.value(QStringLiteral("fontFamily")).toString().trimmed();
+    const double textEditorFontPointSize = labelTextEditor.value(QStringLiteral("fontPointSize")).toDouble(0.0);
+    m_usesDefaultTextEditorFont = textEditorFontFamily.isEmpty() && textEditorFontPointSize <= 0.0;
+    m_textEditorFont = font();
+    if (!textEditorFontFamily.isEmpty()) {
+        m_textEditorFont.setFamily(textEditorFontFamily);
+    }
+    if (textEditorFontPointSize > 0.0) {
+        m_textEditorFont.setPointSizeF(textEditorFontPointSize);
+    }
+    updateTextEditorFontSummary();
     m_moveModifierComboBox->setCurrentText(
         input.value(QStringLiteral("moveLabelModifier")).toString(QStringLiteral("ctrl")));
+    m_backupPathEdit->setText(root.value(QStringLiteral("backupPath")).toString(QStringLiteral("bak")));
+    m_backupIntervalSpinBox->setValue(root.value(QStringLiteral("backupIntervalSeconds")).toInt(60));
 
     m_groupStyleTable->setRowCount(0);
     const QJsonArray groupStyles = root.value(QStringLiteral("groupStyles")).toArray();
@@ -208,6 +271,16 @@ QJsonDocument PreferenceDialog::documentFromUi() const
 
     QJsonObject labelTable;
     labelTable.insert(QStringLiteral("maxTextRows"), m_tableMaxRowsSpinBox->value());
+    labelTable.insert(QStringLiteral("fontFamily"),
+                      m_usesDefaultLabelTableFont ? QString() : m_labelTableFont.family());
+    labelTable.insert(QStringLiteral("fontPointSize"),
+                      m_usesDefaultLabelTableFont ? 0.0 : m_labelTableFont.pointSizeF());
+
+    QJsonObject labelTextEditor;
+    labelTextEditor.insert(QStringLiteral("fontFamily"),
+                           m_usesDefaultTextEditorFont ? QString() : m_textEditorFont.family());
+    labelTextEditor.insert(QStringLiteral("fontPointSize"),
+                           m_usesDefaultTextEditorFont ? 0.0 : m_textEditorFont.pointSizeF());
 
     QJsonObject input;
     input.insert(QStringLiteral("moveLabelModifier"), m_moveModifierComboBox->currentText().trimmed());
@@ -234,7 +307,10 @@ QJsonDocument PreferenceDialog::documentFromUi() const
     QJsonObject root;
     root.insert(QStringLiteral("labelMarker"), labelMarker);
     root.insert(QStringLiteral("labelTable"), labelTable);
+    root.insert(QStringLiteral("labelTextEditor"), labelTextEditor);
     root.insert(QStringLiteral("input"), input);
+    root.insert(QStringLiteral("backupPath"), m_backupPathEdit->text().trimmed());
+    root.insert(QStringLiteral("backupIntervalSeconds"), m_backupIntervalSpinBox->value());
     root.insert(QStringLiteral("groupStyles"), groupStyles);
     return QJsonDocument(root);
 }
@@ -320,6 +396,92 @@ void PreferenceDialog::chooseGroupColor(int row)
     colorButton->setText(color.name());
     colorButton->setStyleSheet(QStringLiteral("QPushButton { color: %1; }").arg(color.name()));
     updateJsonPreview();
+}
+
+void PreferenceDialog::chooseLabelTableFont()
+{
+    bool ok = false;
+    QFont font = QFontDialog::getFont(&ok, m_usesDefaultLabelTableFont ? this->font() : m_labelTableFont, this,
+                                      tr("Choose label table font"));
+    if (!ok) {
+        return;
+    }
+
+    if (font.pointSizeF() <= 0.0) {
+        font.setPointSizeF(this->font().pointSizeF());
+    }
+    m_labelTableFont = font;
+    m_usesDefaultLabelTableFont = false;
+    updateLabelTableFontSummary();
+    updateJsonPreview();
+}
+
+void PreferenceDialog::resetLabelTableFont()
+{
+    m_labelTableFont = font();
+    m_usesDefaultLabelTableFont = true;
+    updateLabelTableFontSummary();
+    updateJsonPreview();
+}
+
+void PreferenceDialog::updateLabelTableFontSummary()
+{
+    if (m_labelTableFontLabel == nullptr) {
+        return;
+    }
+
+    if (m_usesDefaultLabelTableFont) {
+        m_labelTableFontLabel->setText(tr("Default font and size"));
+        m_labelTableFontLabel->setFont(font());
+        return;
+    }
+
+    m_labelTableFontLabel->setText(
+        tr("%1, %2 pt").arg(m_labelTableFont.family()).arg(m_labelTableFont.pointSizeF(), 0, 'f', 1));
+    m_labelTableFontLabel->setFont(m_labelTableFont);
+}
+
+void PreferenceDialog::chooseTextEditorFont()
+{
+    bool ok = false;
+    QFont font = QFontDialog::getFont(&ok, m_usesDefaultTextEditorFont ? this->font() : m_textEditorFont, this,
+                                      tr("Choose text editor font"));
+    if (!ok) {
+        return;
+    }
+
+    if (font.pointSizeF() <= 0.0) {
+        font.setPointSizeF(this->font().pointSizeF());
+    }
+    m_textEditorFont = font;
+    m_usesDefaultTextEditorFont = false;
+    updateTextEditorFontSummary();
+    updateJsonPreview();
+}
+
+void PreferenceDialog::resetTextEditorFont()
+{
+    m_textEditorFont = font();
+    m_usesDefaultTextEditorFont = true;
+    updateTextEditorFontSummary();
+    updateJsonPreview();
+}
+
+void PreferenceDialog::updateTextEditorFontSummary()
+{
+    if (m_textEditorFontLabel == nullptr) {
+        return;
+    }
+
+    if (m_usesDefaultTextEditorFont) {
+        m_textEditorFontLabel->setText(tr("Default font and size"));
+        m_textEditorFontLabel->setFont(font());
+        return;
+    }
+
+    m_textEditorFontLabel->setText(
+        tr("%1, %2 pt").arg(m_textEditorFont.family()).arg(m_textEditorFont.pointSizeF(), 0, 'f', 1));
+    m_textEditorFontLabel->setFont(m_textEditorFont);
 }
 
 void PreferenceDialog::applyPreferences()

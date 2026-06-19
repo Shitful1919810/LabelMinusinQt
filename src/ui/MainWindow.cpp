@@ -8,11 +8,14 @@
 #include <QAction>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QDateTime>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QIcon>
+#include <QImageReader>
 #include <QInputDialog>
 #include <QItemSelection>
 #include <QItemSelectionModel>
@@ -39,6 +42,7 @@
 #include <QWidgetAction>
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 namespace {
@@ -66,6 +70,37 @@ bool labelVectorsEqual(const QVector<labelminus::core::Label>& lhs, const QVecto
     }
     return true;
 }
+
+QStringList supportedImageNameFilters()
+{
+    QStringList filters;
+    const QList<QByteArray> formats = QImageReader::supportedImageFormats();
+    filters.reserve(formats.size());
+    for (const QByteArray& format : formats) {
+        const QString suffix = QString::fromLatin1(format);
+        filters.append(QStringLiteral("*.%1").arg(suffix.toLower()));
+        filters.append(QStringLiteral("*.%1").arg(suffix.toUpper()));
+    }
+    filters.removeDuplicates();
+    filters.sort(Qt::CaseInsensitive);
+    return filters;
+}
+
+QString availableProjectPath(const QDir& directory, const QString& baseName)
+{
+    const QString sanitizedBaseName = baseName.trimmed().isEmpty() ? QStringLiteral("project") : baseName.trimmed();
+    QString candidate = directory.filePath(QStringLiteral("%1.txt").arg(sanitizedBaseName));
+    if (!QFileInfo::exists(candidate)) {
+        return candidate;
+    }
+
+    for (int i = 1;; ++i) {
+        candidate = directory.filePath(QStringLiteral("%1_%2.txt").arg(sanitizedBaseName).arg(i));
+        if (!QFileInfo::exists(candidate)) {
+            return candidate;
+        }
+    }
+}
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -84,6 +119,8 @@ MainWindow::MainWindow(QWidget* parent)
     createActions();
     createMenus();
     createCentralWidget();
+    applyLabelTableFont();
+    applyTextEditorFont();
     setEditorEnabled(false);
     m_warningLabel = new QLabel(this);
     m_warningLabel->setTextFormat(Qt::PlainText);
@@ -93,6 +130,9 @@ MainWindow::MainWindow(QWidget* parent)
     statusBar()->showMessage(tr("Ready"));
     showPreferenceWarnings();
     restoreLayoutState();
+    m_backupTimer = new QTimer(this);
+    connect(m_backupTimer, &QTimer::timeout, this, &MainWindow::performAutoBackup);
+    configureBackupTimer();
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -108,6 +148,10 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 void MainWindow::createActions()
 {
+    m_newProjectAction = new QAction(tr("&New Project..."), this);
+    m_newProjectAction->setShortcut(QKeySequence::New);
+    connect(m_newProjectAction, &QAction::triggered, this, &MainWindow::newProject);
+
     m_openProjectAction = new QAction(tr("&Open LabelPlus Text..."), this);
     m_openProjectAction->setShortcut(QKeySequence::Open);
     connect(m_openProjectAction, &QAction::triggered, this, &MainWindow::openProject);
@@ -132,7 +176,9 @@ void MainWindow::createActions()
 void MainWindow::createMenus()
 {
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
+    fileMenu->addAction(m_newProjectAction);
     fileMenu->addAction(m_openProjectAction);
+    fileMenu->addSeparator();
     fileMenu->addAction(m_saveProjectAction);
     fileMenu->addAction(m_saveProjectAsAction);
     fileMenu->addSeparator();
@@ -217,6 +263,7 @@ void MainWindow::createCentralWidget()
     m_rightSplitter->setChildrenCollapsible(false);
 
     m_labelView = new QTableView(m_rightSplitter);
+    m_defaultLabelTableFont = m_labelView->font();
     m_labelView->setModel(m_labelModel);
     m_labelView->setItemDelegateForColumn(1, m_labelTextDelegate);
     m_labelView->setItemDelegateForColumn(2, m_labelGroupDelegate);
@@ -259,6 +306,7 @@ void MainWindow::createCentralWidget()
     editorLayout->addWidget(labelGroupBar);
 
     m_textEdit = new QPlainTextEdit(editorPanel);
+    m_defaultTextEditFont = m_textEdit->font();
     m_textEdit->setPlaceholderText(tr("Selected label text"));
     editorLayout->addWidget(m_textEdit, 1);
     m_rightSplitter->setStretchFactor(0, 3);
@@ -304,6 +352,68 @@ void MainWindow::createCentralWidget()
     connect(m_insertGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateInsertGroupTextColor);
     connect(addGroupButton, &QToolButton::clicked, this, &MainWindow::addGroup);
     connect(removeGroupButton, &QToolButton::clicked, this, &MainWindow::removeGroup);
+}
+
+void MainWindow::newProject()
+{
+    if (!promptToSaveIfDirty()) {
+        return;
+    }
+
+    const QString directoryPath =
+        QFileDialog::getExistingDirectory(this, tr("Select image folder"), QString(), QFileDialog::ShowDirsOnly);
+    if (directoryPath.isEmpty()) {
+        return;
+    }
+
+    QDir directory(directoryPath);
+    const QFileInfoList imageFiles =
+        directory.entryInfoList(supportedImageNameFilters(), QDir::Files | QDir::Readable, QDir::Name);
+    if (imageFiles.isEmpty()) {
+        QMessageBox::warning(this, tr("New project failed"), tr("No supported image files were found in this folder."));
+        return;
+    }
+
+    labelminus::core::Project project;
+    project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+    project.setSourceName(directory.dirName());
+    for (const QFileInfo& imageFile : imageFiles) {
+        labelminus::core::ImageEntry image;
+        image.name = imageFile.fileName();
+        image.path = imageFile.absoluteFilePath();
+        project.images().append(std::move(image));
+    }
+
+    const QString projectBaseName = tr("New Translation");
+    const QString defaultProjectPath = directory.filePath(QStringLiteral("%1.txt").arg(projectBaseName));
+    QString projectPath = defaultProjectPath;
+    if (QFileInfo::exists(defaultProjectPath)) {
+        QMessageBox messageBox(QMessageBox::Question, tr("Project file already exists"),
+                               tr("%1 already exists. Create the project with the next available name instead?")
+                                   .arg(QFileInfo(defaultProjectPath).fileName()),
+                               QMessageBox::NoButton, this);
+        QPushButton* tryAnotherNameButton = messageBox.addButton(tr("Try another name"), QMessageBox::AcceptRole);
+        messageBox.addButton(tr("Cancel"), QMessageBox::RejectRole);
+        messageBox.exec();
+        if (messageBox.clickedButton() != tryAnotherNameButton) {
+            return;
+        }
+
+        projectPath = availableProjectPath(directory, projectBaseName);
+    }
+    project.setFilePath(projectPath);
+
+    try {
+        labelminus::core::LabelPlusDocument::saveToFile(project, projectPath);
+    }
+    catch (const std::exception& error) {
+        QMessageBox::critical(this, tr("New project failed"), QString::fromUtf8(error.what()));
+        return;
+    }
+
+    if (openProjectFile(projectPath)) {
+        statusBar()->showMessage(tr("Created %1").arg(projectPath), 4000);
+    }
 }
 
 void MainWindow::openProject()
@@ -1303,6 +1413,90 @@ void MainWindow::saveLayoutState() const
     }
 }
 
+void MainWindow::configureBackupTimer()
+{
+    if (m_backupTimer == nullptr) {
+        return;
+    }
+
+    m_backupTimer->start(m_preferences.backupIntervalSeconds() * 1000);
+}
+
+void MainWindow::performAutoBackup()
+{
+    if (!m_hasPendingBackup || !m_isDirty || m_project.isEmpty() || m_project.filePath().isEmpty()) {
+        return;
+    }
+
+    const QFileInfo projectInfo(m_project.filePath());
+    const QString configuredBackupPath =
+        m_preferences.backupPath().trimmed().isEmpty() ? QStringLiteral("bak") : m_preferences.backupPath().trimmed();
+    const QFileInfo configuredBackupInfo(configuredBackupPath);
+    const QString backupDirectoryPath = configuredBackupInfo.isAbsolute()
+                                            ? configuredBackupInfo.absoluteFilePath()
+                                            : projectInfo.absoluteDir().filePath(configuredBackupPath);
+    QDir backupDirectory(backupDirectoryPath);
+    if (!backupDirectory.exists() && !QDir().mkpath(backupDirectory.absolutePath())) {
+        statusBar()->showMessage(tr("Auto backup failed: could not create %1").arg(backupDirectory.absolutePath()),
+                                 4000);
+        return;
+    }
+
+    const QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+    const QString baseName =
+        projectInfo.completeBaseName().isEmpty() ? QStringLiteral("project") : projectInfo.completeBaseName();
+    const QString suffix = projectInfo.suffix().isEmpty() ? QStringLiteral("txt") : projectInfo.suffix();
+    QString backupPath = backupDirectory.filePath(QStringLiteral("%1_%2.%3").arg(baseName, timestamp, suffix));
+    for (int i = 1; QFileInfo::exists(backupPath); ++i) {
+        backupPath =
+            backupDirectory.filePath(QStringLiteral("%1_%2_%3.%4").arg(baseName, timestamp).arg(i).arg(suffix));
+    }
+
+    try {
+        labelminus::core::LabelPlusDocument::saveToFile(m_project, backupPath);
+        m_hasPendingBackup = false;
+        statusBar()->showMessage(tr("Auto backed up %1").arg(backupPath), 4000);
+    }
+    catch (const std::exception& error) {
+        statusBar()->showMessage(tr("Auto backup failed: %1").arg(QString::fromUtf8(error.what())), 4000);
+    }
+}
+
+void MainWindow::applyLabelTableFont()
+{
+    if (m_labelView == nullptr) {
+        return;
+    }
+
+    QFont font = m_defaultLabelTableFont;
+    if (!m_preferences.labelTableFontFamily().isEmpty()) {
+        font.setFamily(m_preferences.labelTableFontFamily());
+    }
+    if (m_preferences.labelTableFontPointSize() > 0.0) {
+        font.setPointSizeF(m_preferences.labelTableFontPointSize());
+    }
+
+    m_labelView->setFont(font);
+    m_labelView->viewport()->setFont(font);
+    resizeLabelRowsToContents();
+}
+
+void MainWindow::applyTextEditorFont()
+{
+    if (m_textEdit == nullptr) {
+        return;
+    }
+
+    QFont font = m_defaultTextEditFont;
+    if (!m_preferences.labelTextEditorFontFamily().isEmpty()) {
+        font.setFamily(m_preferences.labelTextEditorFontFamily());
+    }
+    if (m_preferences.labelTextEditorFontPointSize() > 0.0) {
+        font.setPointSizeF(m_preferences.labelTextEditorFontPointSize());
+    }
+    m_textEdit->setFont(font);
+}
+
 void MainWindow::showPreferenceWarnings()
 {
     if (m_warningLabel == nullptr) {
@@ -1339,6 +1533,9 @@ void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult res
 
     refreshGroupUi();
     refreshImageUi();
+    applyLabelTableFont();
+    applyTextEditorFont();
+    configureBackupTimer();
     showPreferenceWarnings();
     statusBar()->showMessage(tr("Preferences applied"), 4000);
 }
@@ -1366,6 +1563,20 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("%1 must be a positive integer; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::LabelTableMaxTextRowsOutOfRange:
         return tr("%1 must be a positive integer; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::LabelTableFontFamilyWrongType:
+        return tr("%1 must be a string; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::LabelTableFontPointSizeWrongType:
+        return tr("%1 must be zero or a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::LabelTableFontPointSizeOutOfRange:
+        return tr("%1 must be zero or a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::LabelTextEditorNotObject:
+        return tr("labelTextEditor must be a JSON object; using default text editor preferences.");
+    case AppPreferenceWarningType::LabelTextEditorFontFamilyWrongType:
+        return tr("%1 must be a string; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::LabelTextEditorFontPointSizeWrongType:
+        return tr("%1 must be zero or a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::LabelTextEditorFontPointSizeOutOfRange:
+        return tr("%1 must be zero or a positive number; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::GroupStylesNotArray:
         return tr("groupStyles must be an array; group styles will use defaults.");
     case AppPreferenceWarningType::GroupStyleNotObject:
@@ -1382,6 +1593,12 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("input must be a JSON object; using default input preferences.");
     case AppPreferenceWarningType::MoveLabelModifierInvalid:
         return tr("%1 must be a modifier name or modifier combination; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::BackupPathWrongType:
+        return tr("%1 must be a non-empty string; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::BackupIntervalWrongType:
+        return tr("%1 must be a positive integer; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::BackupIntervalOutOfRange:
+        return tr("%1 must be a positive integer; using the default value.").arg(warning.key);
     }
 
     return tr("Unknown preference warning.");
@@ -1390,6 +1607,7 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
 void MainWindow::markDirty()
 {
     if (!m_isUpdatingUi) {
+        m_hasPendingBackup = true;
         setDirty(true);
     }
 }
@@ -1401,6 +1619,9 @@ void MainWindow::setDirty(bool dirty)
     }
 
     m_isDirty = dirty;
+    if (!m_isDirty) {
+        m_hasPendingBackup = false;
+    }
     updateWindowTitle();
 }
 

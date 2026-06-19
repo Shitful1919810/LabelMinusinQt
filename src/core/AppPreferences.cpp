@@ -94,6 +94,29 @@ int positiveIntegerFromJsonValue(const QJsonObject& object, const QString& key, 
     return std::clamp(static_cast<int>(number), minimum, maximum);
 }
 
+double nonNegativeNumberFromJsonValue(const QJsonObject& object, const QString& key, const QString& displayKey,
+                                      double fallback, double maximum, AppPreferenceWarningType wrongType,
+                                      AppPreferenceWarningType outOfRange, QVector<AppPreferenceWarning>& warnings)
+{
+    const QJsonValue value = object.value(key);
+    if (value.isUndefined()) {
+        return fallback;
+    }
+
+    if (!value.isDouble()) {
+        warnings.append(makeWarning(wrongType, displayKey));
+        return fallback;
+    }
+
+    const double number = value.toDouble();
+    if (number < 0.0) {
+        warnings.append(makeWarning(outOfRange, displayKey));
+        return fallback;
+    }
+
+    return std::clamp(number, 0.0, maximum);
+}
+
 MarkerShape markerShapeFromString(const QString& markerStyle, MarkerShape fallback, qsizetype index,
                                   QVector<AppPreferenceWarning>& warnings)
 {
@@ -198,6 +221,49 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
                 labelTable, QStringLiteral("maxTextRows"), QStringLiteral("labelTable.maxTextRows"),
                 preferences.m_labelTableMaxTextRows, 1, 50, AppPreferenceWarningType::LabelTableMaxTextRowsWrongType,
                 AppPreferenceWarningType::LabelTableMaxTextRowsOutOfRange, warnings);
+
+            const QJsonValue fontFamilyValue = labelTable.value(QStringLiteral("fontFamily"));
+            if (!fontFamilyValue.isUndefined()) {
+                if (fontFamilyValue.isString()) {
+                    preferences.m_labelTableFontFamily = fontFamilyValue.toString().trimmed();
+                }
+                else {
+                    warnings.append(makeWarning(AppPreferenceWarningType::LabelTableFontFamilyWrongType,
+                                                QStringLiteral("labelTable.fontFamily")));
+                }
+            }
+
+            preferences.m_labelTableFontPointSize = nonNegativeNumberFromJsonValue(
+                labelTable, QStringLiteral("fontPointSize"), QStringLiteral("labelTable.fontPointSize"),
+                preferences.m_labelTableFontPointSize, 256.0,
+                AppPreferenceWarningType::LabelTableFontPointSizeWrongType,
+                AppPreferenceWarningType::LabelTableFontPointSizeOutOfRange, warnings);
+        }
+    }
+
+    const QJsonValue labelTextEditorValue = root.value(QStringLiteral("labelTextEditor"));
+    if (!labelTextEditorValue.isUndefined()) {
+        if (!labelTextEditorValue.isObject()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::LabelTextEditorNotObject));
+        }
+        else {
+            const QJsonObject labelTextEditor = labelTextEditorValue.toObject();
+            const QJsonValue fontFamilyValue = labelTextEditor.value(QStringLiteral("fontFamily"));
+            if (!fontFamilyValue.isUndefined()) {
+                if (fontFamilyValue.isString()) {
+                    preferences.m_labelTextEditorFontFamily = fontFamilyValue.toString().trimmed();
+                }
+                else {
+                    warnings.append(makeWarning(AppPreferenceWarningType::LabelTextEditorFontFamilyWrongType,
+                                                QStringLiteral("labelTextEditor.fontFamily")));
+                }
+            }
+
+            preferences.m_labelTextEditorFontPointSize = nonNegativeNumberFromJsonValue(
+                labelTextEditor, QStringLiteral("fontPointSize"), QStringLiteral("labelTextEditor.fontPointSize"),
+                preferences.m_labelTextEditorFontPointSize, 256.0,
+                AppPreferenceWarningType::LabelTextEditorFontPointSizeWrongType,
+                AppPreferenceWarningType::LabelTextEditorFontPointSizeOutOfRange, warnings);
         }
     }
 
@@ -220,6 +286,28 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
             }
         }
     }
+
+    const QJsonValue backupPathValue = root.value(QStringLiteral("backupPath"));
+    if (!backupPathValue.isUndefined()) {
+        if (backupPathValue.isString()) {
+            const QString backupPath = backupPathValue.toString().trimmed();
+            if (!backupPath.isEmpty()) {
+                preferences.m_backupPath = backupPath;
+            }
+            else {
+                warnings.append(
+                    makeWarning(AppPreferenceWarningType::BackupPathWrongType, QStringLiteral("backupPath")));
+            }
+        }
+        else {
+            warnings.append(makeWarning(AppPreferenceWarningType::BackupPathWrongType, QStringLiteral("backupPath")));
+        }
+    }
+
+    preferences.m_backupIntervalSeconds = positiveIntegerFromJsonValue(
+        root, QStringLiteral("backupIntervalSeconds"), QStringLiteral("backupIntervalSeconds"),
+        preferences.m_backupIntervalSeconds, 1, 86400, AppPreferenceWarningType::BackupIntervalWrongType,
+        AppPreferenceWarningType::BackupIntervalOutOfRange, warnings);
 
     const QJsonValue groupStylesValue = root.value(QStringLiteral("groupStyles"));
     if (!groupStylesValue.isUndefined()) {
@@ -333,9 +421,39 @@ int AppPreferences::labelTableMaxTextRows() const noexcept
     return m_labelTableMaxTextRows;
 }
 
+QString AppPreferences::labelTableFontFamily() const
+{
+    return m_labelTableFontFamily;
+}
+
+double AppPreferences::labelTableFontPointSize() const noexcept
+{
+    return m_labelTableFontPointSize;
+}
+
+QString AppPreferences::labelTextEditorFontFamily() const
+{
+    return m_labelTextEditorFontFamily;
+}
+
+double AppPreferences::labelTextEditorFontPointSize() const noexcept
+{
+    return m_labelTextEditorFontPointSize;
+}
+
 Qt::KeyboardModifiers AppPreferences::moveLabelModifiers() const noexcept
 {
     return m_moveLabelModifiers;
+}
+
+QString AppPreferences::backupPath() const
+{
+    return m_backupPath;
+}
+
+int AppPreferences::backupIntervalSeconds() const noexcept
+{
+    return m_backupIntervalSeconds;
 }
 
 const QVector<LabelGroupStyle>& AppPreferences::groupStyles() const noexcept

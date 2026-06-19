@@ -43,12 +43,21 @@ Current preferences:
 - `labelMarker.diameter`: marker diameter in screen pixels; floating-point values are accepted.
 - `labelMarker.fontPointSize`: marker number size as a Qt font point size; floating-point values are accepted.
 - `labelTable.maxTextRows`: maximum visible wrapped text lines for each label table row.
+- `labelTable.fontFamily`: optional label table font family; an empty value keeps the Qt/system default.
+- `labelTable.fontPointSize`: optional label table font point size; `0` keeps the Qt/system default.
+- `labelTextEditor.fontFamily`: optional bottom text editor font family; an empty value keeps the Qt/system default.
+- `labelTextEditor.fontPointSize`: optional bottom text editor font point size; `0` keeps the Qt/system default.
 - `input.moveLabelModifier`: modifier key or key combination used to drag label markers.
+- `backupPath`: auto-backup directory; relative paths are resolved from the open project file directory.
+- `backupIntervalSeconds`: auto-backup check interval.
 - `groupStyles`: per-group marker and text color styles assigned by group index.
 
 Do not read `preference.json` directly from UI classes except through `AppPreferences`.
 Invalid or unreadable preference values should fall back to defaults and be reported through non-blocking UI, such as
 the status bar.
+
+The preference dialog should update the same JSON shape that `AppPreferences` reads. User-facing preference text must
+still go through `tr()` and both translation files.
 
 ## Group Styles
 
@@ -91,5 +100,5 @@ Run `scripts/check_translations.sh` after changing UI text.
 ## Undo
 
 Use `UndoStack` for every reversible project edit. Current covered commands include adding labels, moving labels,
-editing label text and changing label groups. Future operations such as deleting labels, bulk edits or OCR writes
-should be added as commands instead of separate ad hoc state.
+editing label text, changing label groups, deleting labels, reordering labels and bulk group changes. Future operations
+such as OCR writes should be added as commands instead of separate ad hoc state.

@@ -1,4 +1,6 @@
 {
+    "backupIntervalSeconds": 60,
+    "backupPath": "bak",
     "groupStyles": [
         {
             "fontPointSize": 10,
@@ -27,7 +29,12 @@
         "fontPointSize": 10
     },
     "labelTable": {
+        "fontFamily": "",
+        "fontPointSize": 0,
         "maxTextRows": 4
+    },
+    "labelTextEditor": {
+        "fontFamily": "思源宋体 CN",
+        "fontPointSize": 12
     }
 }
-

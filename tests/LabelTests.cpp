@@ -66,11 +66,19 @@ private slots:
                << "    \"fontPointSize\": 2.5\n"
                << "  },\n"
                << "  \"labelTable\": {\n"
+               << "    \"fontFamily\": \"Noto Serif CJK SC\",\n"
+               << "    \"fontPointSize\": 11.5,\n"
                << "    \"maxTextRows\": 4\n"
+               << "  },\n"
+               << "  \"labelTextEditor\": {\n"
+               << "    \"fontFamily\": \"Noto Sans Mono\",\n"
+               << "    \"fontPointSize\": 12.5\n"
                << "  },\n"
                << "  \"input\": {\n"
                << "    \"moveLabelModifier\": \"ctrl+shift\"\n"
                << "  },\n"
+               << "  \"backupPath\": \"custom-bak\",\n"
+               << "  \"backupIntervalSeconds\": 30,\n"
                << "  \"groupStyles\": [\n"
                << "    {\n"
                << "      \"groupColor\": \"#ff3835\",\n"
@@ -94,7 +102,13 @@ private slots:
         QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 4.5);
         QCOMPARE(result.preferences.labelMarkerFontPointSize(), 2.5);
         QCOMPARE(result.preferences.labelTableMaxTextRows(), 4);
+        QCOMPARE(result.preferences.labelTableFontFamily(), QStringLiteral("Noto Serif CJK SC"));
+        QCOMPARE(result.preferences.labelTableFontPointSize(), 11.5);
+        QCOMPARE(result.preferences.labelTextEditorFontFamily(), QStringLiteral("Noto Sans Mono"));
+        QCOMPARE(result.preferences.labelTextEditorFontPointSize(), 12.5);
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier | Qt::ShiftModifier);
+        QCOMPARE(result.preferences.backupPath(), QStringLiteral("custom-bak"));
+        QCOMPARE(result.preferences.backupIntervalSeconds(), 30);
         QCOMPARE(result.preferences.groupStyles().size(), 2);
         QCOMPARE(result.preferences.groupStyles().at(0).groupColor, QColor(QStringLiteral("#ff3835")));
         QCOMPARE(result.preferences.groupStyles().at(1).markerDiameter, 5.5);
@@ -119,7 +133,13 @@ private slots:
         QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 20.0);
         QCOMPARE(result.preferences.labelMarkerFontPointSize(), 10.0);
         QCOMPARE(result.preferences.labelTableMaxTextRows(), 3);
+        QCOMPARE(result.preferences.labelTableFontFamily(), QString());
+        QCOMPARE(result.preferences.labelTableFontPointSize(), 0.0);
+        QCOMPARE(result.preferences.labelTextEditorFontFamily(), QString());
+        QCOMPARE(result.preferences.labelTextEditorFontPointSize(), 0.0);
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier);
+        QCOMPARE(result.preferences.backupPath(), QStringLiteral("bak"));
+        QCOMPARE(result.preferences.backupIntervalSeconds(), 60);
     }
 };
 

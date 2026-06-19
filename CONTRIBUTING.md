@@ -39,6 +39,7 @@ cmake --build --preset linux-debug --target release_translations
 
 - Configurable UI behavior should go through `AppPreferences`.
 - Defaults should live in `preference.json`.
+- Preference dialog controls should preserve the same JSON shape that `AppPreferences` reads.
 - Group colors are assigned by group index. If a group has no configured color, text UI uses the default color and image markers use black.
 
 ## Undo

@@ -8,6 +8,7 @@
 #include "ui/LabelTableModel.h"
 
 #include <QColor>
+#include <QFont>
 #include <QMainWindow>
 #include <QPointF>
 #include <QVariant>
@@ -23,6 +24,7 @@ class QPushButton;
 class QSlider;
 class QSplitter;
 class QTableView;
+class QTimer;
 class QToolButton;
 class LabelGroupDelegate;
 class LabelTextDelegate;
@@ -42,6 +44,7 @@ private:
     void createActions();
     void createMenus();
     void createCentralWidget();
+    void newProject();
     void openProject();
     void openPreferences();
     bool saveProject();
@@ -86,6 +89,10 @@ private:
     void capLabelRowHeight(int row);
     void restoreLayoutState();
     void saveLayoutState() const;
+    void configureBackupTimer();
+    void performAutoBackup();
+    void applyLabelTableFont();
+    void applyTextEditorFont();
     void showPreferenceWarnings();
     void applyPreferences(labelminus::core::AppPreferencesLoadResult result);
     QString preferenceWarningText(const labelminus::core::AppPreferenceWarning& warning) const;
@@ -114,7 +121,9 @@ private:
     QSlider* m_zoomSlider{nullptr};
     QSplitter* m_rootSplitter{nullptr};
     QSplitter* m_rightSplitter{nullptr};
+    QTimer* m_backupTimer{nullptr};
     QAction* m_openProjectAction{nullptr};
+    QAction* m_newProjectAction{nullptr};
     QAction* m_saveProjectAction{nullptr};
     QAction* m_saveProjectAsAction{nullptr};
     QAction* m_preferencesAction{nullptr};
@@ -128,9 +137,12 @@ private:
     int m_currentLabelIndex{-1};
     bool m_isUpdatingUi{false};
     bool m_isDirty{false};
+    bool m_hasPendingBackup{false};
     int m_textEditUndoImageIndex{-1};
     int m_textEditUndoLabelIndex{-1};
     QString m_textEditUndoOriginalText;
     int m_labelTableMaxTextRows{3};
+    QFont m_defaultLabelTableFont;
+    QFont m_defaultTextEditFont;
     labelminus::core::UndoStack m_undoStack;
 };

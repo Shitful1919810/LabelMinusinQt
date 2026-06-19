@@ -20,6 +20,13 @@ enum class AppPreferenceWarningType {
     LabelTableNotObject,
     LabelTableMaxTextRowsWrongType,
     LabelTableMaxTextRowsOutOfRange,
+    LabelTableFontFamilyWrongType,
+    LabelTableFontPointSizeWrongType,
+    LabelTableFontPointSizeOutOfRange,
+    LabelTextEditorNotObject,
+    LabelTextEditorFontFamilyWrongType,
+    LabelTextEditorFontPointSizeWrongType,
+    LabelTextEditorFontPointSizeOutOfRange,
     GroupStylesNotArray,
     GroupStyleNotObject,
     InvalidGroupStyleColor,
@@ -28,6 +35,9 @@ enum class AppPreferenceWarningType {
     GroupStyleMarkerStyleInvalid,
     InputNotObject,
     MoveLabelModifierInvalid,
+    BackupPathWrongType,
+    BackupIntervalWrongType,
+    BackupIntervalOutOfRange,
 };
 
 struct AppPreferenceWarning {
@@ -62,7 +72,13 @@ public:
     double labelMarkerDiameterPixels() const noexcept;
     double labelMarkerFontPointSize() const noexcept;
     int labelTableMaxTextRows() const noexcept;
+    QString labelTableFontFamily() const;
+    double labelTableFontPointSize() const noexcept;
+    QString labelTextEditorFontFamily() const;
+    double labelTextEditorFontPointSize() const noexcept;
     Qt::KeyboardModifiers moveLabelModifiers() const noexcept;
+    QString backupPath() const;
+    int backupIntervalSeconds() const noexcept;
     const QVector<LabelGroupStyle>& groupStyles() const noexcept;
 
 private:
@@ -71,7 +87,13 @@ private:
     double m_labelMarkerDiameterPixels{20.0};
     double m_labelMarkerFontPointSize{10.0};
     int m_labelTableMaxTextRows{3};
+    QString m_labelTableFontFamily;
+    double m_labelTableFontPointSize{0.0};
+    QString m_labelTextEditorFontFamily;
+    double m_labelTextEditorFontPointSize{0.0};
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
+    QString m_backupPath{QStringLiteral("bak")};
+    int m_backupIntervalSeconds{60};
     QVector<LabelGroupStyle> m_groupStyles;
 };
 

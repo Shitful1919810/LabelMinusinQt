@@ -40,6 +40,10 @@
 <context>
     <name>MainWindow</name>
     <message>
+        <source>&amp;New Project...</source>
+        <translation>新建工程(&amp;N)...</translation>
+    </message>
+    <message>
         <source>&amp;Open LabelPlus Text...</source>
         <translation>打开 LabelPlus 文本(&amp;O)...</translation>
     </message>
@@ -116,6 +120,42 @@
         <translation>LabelPlus 文本 (*.txt);;所有文件 (*)</translation>
     </message>
     <message>
+        <source>Select image folder</source>
+        <translation>选择图片文件夹</translation>
+    </message>
+    <message>
+        <source>New project failed</source>
+        <translation>新建工程失败</translation>
+    </message>
+    <message>
+        <source>No supported image files were found in this folder.</source>
+        <translation>该文件夹中没有找到支持的图片文件。</translation>
+    </message>
+    <message>
+        <source>New Translation</source>
+        <translation>新建翻译</translation>
+    </message>
+    <message>
+        <source>Project file already exists</source>
+        <translation>工程文件已存在</translation>
+    </message>
+    <message>
+        <source>%1 already exists. Create the project with the next available name instead?</source>
+        <translation>%1 已存在。是否改用下一个可用名称创建工程？</translation>
+    </message>
+    <message>
+        <source>Try another name</source>
+        <translation>尝试其他名称</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>取消</translation>
+    </message>
+    <message>
+        <source>Created %1</source>
+        <translation>已创建 %1</translation>
+    </message>
+    <message>
         <source>Loaded %1</source>
         <translation>已加载 %1</translation>
     </message>
@@ -188,6 +228,18 @@
         <translation>偏好设置警告</translation>
     </message>
     <message>
+        <source>Auto backup failed: could not create %1</source>
+        <translation>自动备份失败：无法创建 %1</translation>
+    </message>
+    <message>
+        <source>Auto backed up %1</source>
+        <translation>已自动备份 %1</translation>
+    </message>
+    <message>
+        <source>Auto backup failed: %1</source>
+        <translation>自动备份失败：%1</translation>
+    </message>
+    <message>
         <source>Preferences applied</source>
         <translation>偏好设置已应用</translation>
     </message>
@@ -220,6 +272,18 @@
         <translation>%1 必须是正整数；将使用默认值。</translation>
     </message>
     <message>
+        <source>labelTextEditor must be a JSON object; using default text editor preferences.</source>
+        <translation>labelTextEditor 必须是 JSON 对象；将使用默认文本编辑器偏好设置。</translation>
+    </message>
+    <message>
+        <source>%1 must be a string; using the default value.</source>
+        <translation>%1 必须是字符串；将使用默认值。</translation>
+    </message>
+    <message>
+        <source>%1 must be zero or a positive number; using the default value.</source>
+        <translation>%1 必须是零或正数；将使用默认值。</translation>
+    </message>
+    <message>
         <source>groupStyles must be an array; group styles will use defaults.</source>
         <translation>groupStyles 必须是数组；分组样式将使用默认值。</translation>
     </message>
@@ -242,6 +306,10 @@
     <message>
         <source>%1 must be a modifier name or modifier combination; using the default value.</source>
         <translation>%1 必须是修饰键名称或修饰键组合；将使用默认值。</translation>
+    </message>
+    <message>
+        <source>%1 must be a non-empty string; using the default value.</source>
+        <translation>%1 必须是非空字符串；将使用默认值。</translation>
     </message>
     <message>
         <source>Unknown preference warning.</source>
@@ -271,8 +339,48 @@
         <translation>标签列表文本最大行数</translation>
     </message>
     <message>
+        <source>Choose Font...</source>
+        <translation>选择字体...</translation>
+    </message>
+    <message>
+        <source>Use Default</source>
+        <translation>使用默认</translation>
+    </message>
+    <message>
+        <source>Default font</source>
+        <translation>默认字体</translation>
+    </message>
+    <message>
+        <source>Default size</source>
+        <translation>默认字号</translation>
+    </message>
+    <message>
+        <source>Text editor font family</source>
+        <translation>文本编辑器字体</translation>
+    </message>
+    <message>
+        <source>Text editor font size</source>
+        <translation>文本编辑器字号</translation>
+    </message>
+    <message>
+        <source>Text editor font</source>
+        <translation>文本编辑器字体</translation>
+    </message>
+    <message>
+        <source>Label table font</source>
+        <translation>标签列表字体</translation>
+    </message>
+    <message>
         <source>Move-label modifier</source>
         <translation>移动标签修饰键</translation>
+    </message>
+    <message>
+        <source>Backup path</source>
+        <translation>备份路径</translation>
+    </message>
+    <message>
+        <source>Backup interval seconds</source>
+        <translation>备份间隔秒数</translation>
     </message>
     <message>
         <source>General</source>
@@ -353,6 +461,22 @@
     <message>
         <source>Choose group color</source>
         <translation>选择分组颜色</translation>
+    </message>
+    <message>
+        <source>Choose text editor font</source>
+        <translation>选择文本编辑器字体</translation>
+    </message>
+    <message>
+        <source>Choose label table font</source>
+        <translation>选择标签列表字体</translation>
+    </message>
+    <message>
+        <source>Default font and size</source>
+        <translation>默认字体和字号</translation>
+    </message>
+    <message>
+        <source>%1, %2 pt</source>
+        <translation>%1，%2 磅</translation>
     </message>
     <message>
         <source>Preferences applied.</source>

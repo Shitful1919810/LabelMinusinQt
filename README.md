@@ -8,7 +8,7 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 
 ## 功能概览
 
-- 打开和保存经典 LabelPlus `.txt` 工程文件。
+- 从图片文件夹新建工程，或打开和保存经典 LabelPlus `.txt` 工程文件。
 - 支持从命令行直接打开工程文件。
 - 左侧图像预览区支持缩放、翻页、点击添加标签。
 - 支持按偏好设置中的修饰键拖动标签坐标，默认使用 `Ctrl`。
@@ -18,6 +18,8 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 - 分组筛选同时作用于右侧标签列表和左侧图像预览区。
 - 鼠标悬停在图像 marker 上时显示标签文本提示。
 - 提供简单的命令式撤销栈，覆盖新增、删除、移动、文本编辑和类别修改等标签编辑操作。
+- 支持按间隔自动备份已修改的 LabelPlus 文本工程。
+- 偏好设置窗口支持通过系统字体选择器分别调整标签列表和大文本编辑框字体。
 - 提供简体中文和英文界面文本，并使用 Qt Linguist 工作流生成翻译资源。
 - `preference.json` 支持对界面交互和 marker 样式做运行时调优。
 
@@ -121,12 +123,20 @@ Windows 构建会生成 GUI 可执行文件，macOS 构建会生成应用包。
 
 ```json
 {
+  "backupPath": "bak",
+  "backupIntervalSeconds": 60,
   "labelMarker": {
     "diameter": 20.0,
     "fontPointSize": 10.0
   },
   "labelTable": {
+    "fontFamily": "",
+    "fontPointSize": 0.0,
     "maxTextRows": 4
+  },
+  "labelTextEditor": {
+    "fontFamily": "",
+    "fontPointSize": 0.0
   },
   "input": {
     "moveLabelModifier": "ctrl"
@@ -159,8 +169,16 @@ Windows 构建会生成 GUI 可执行文件，macOS 构建会生成应用包。
 - `labelMarker.diameter`：默认 marker 直径，单位为屏幕像素，支持浮点数。
 - `labelMarker.fontPointSize`：默认 marker 内部序号字号，使用 Qt 字号单位，支持浮点数。
 - `labelTable.maxTextRows`：右侧标签列表文本列自动换行后的最大显示行数。
+- `labelTable.fontFamily`：右侧标签列表字体。为空时使用系统默认字体。
+- `labelTable.fontPointSize`：右侧标签列表字号。为 `0` 时使用系统默认字号。
+- `labelTextEditor.fontFamily`：右下角大文本编辑框字体。为空时使用系统默认字体。
+- `labelTextEditor.fontPointSize`：右下角大文本编辑框字号。为 `0` 时使用系统默认字号。
 - `input.moveLabelModifier`：拖动图像 marker 时需要按住的修饰键，默认 `ctrl`。
+- `backupPath`：自动备份目录，默认 `bak`。相对路径会解析到当前工程文件所在目录下，绝对路径会直接使用。
+- `backupIntervalSeconds`：自动备份检查间隔，单位为秒，默认 60。
 - `groupStyles`：按分组顺序应用的分组样式数组。
+
+当有工程打开且存在未保存修改时，程序会按 `backupIntervalSeconds` 检查是否需要备份。每次备份会在 `backupPath` 中生成一份 LabelPlus 文本工程副本，文件名由当前工程文件名和时间戳组成。
 
 `groupStyles` 中每一项可包含：
 

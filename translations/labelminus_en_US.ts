@@ -41,6 +41,10 @@
 <context>
     <name>MainWindow</name>
     <message>
+        <source>&amp;New Project...</source>
+        <translation>&amp;New Project...</translation>
+    </message>
+    <message>
         <source>&amp;Open LabelPlus Text...</source>
         <translation>&amp;Open LabelPlus Text...</translation>
     </message>
@@ -117,6 +121,42 @@
         <translation>LabelPlus text (*.txt);;All files (*)</translation>
     </message>
     <message>
+        <source>Select image folder</source>
+        <translation>Select image folder</translation>
+    </message>
+    <message>
+        <source>New project failed</source>
+        <translation>New project failed</translation>
+    </message>
+    <message>
+        <source>No supported image files were found in this folder.</source>
+        <translation>No supported image files were found in this folder.</translation>
+    </message>
+    <message>
+        <source>New Translation</source>
+        <translation>New Translation</translation>
+    </message>
+    <message>
+        <source>Project file already exists</source>
+        <translation>Project file already exists</translation>
+    </message>
+    <message>
+        <source>%1 already exists. Create the project with the next available name instead?</source>
+        <translation>%1 already exists. Create the project with the next available name instead?</translation>
+    </message>
+    <message>
+        <source>Try another name</source>
+        <translation>Try another name</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Cancel</translation>
+    </message>
+    <message>
+        <source>Created %1</source>
+        <translation>Created %1</translation>
+    </message>
+    <message>
         <source>Loaded %1</source>
         <translation>Loaded %1</translation>
     </message>
@@ -189,6 +229,18 @@
         <translation>Preference warnings</translation>
     </message>
     <message>
+        <source>Auto backup failed: could not create %1</source>
+        <translation>Auto backup failed: could not create %1</translation>
+    </message>
+    <message>
+        <source>Auto backed up %1</source>
+        <translation>Auto backed up %1</translation>
+    </message>
+    <message>
+        <source>Auto backup failed: %1</source>
+        <translation>Auto backup failed: %1</translation>
+    </message>
+    <message>
         <source>Preferences applied</source>
         <translation>Preferences applied</translation>
     </message>
@@ -221,6 +273,18 @@
         <translation>%1 must be a positive integer; using the default value.</translation>
     </message>
     <message>
+        <source>labelTextEditor must be a JSON object; using default text editor preferences.</source>
+        <translation>labelTextEditor must be a JSON object; using default text editor preferences.</translation>
+    </message>
+    <message>
+        <source>%1 must be a string; using the default value.</source>
+        <translation>%1 must be a string; using the default value.</translation>
+    </message>
+    <message>
+        <source>%1 must be zero or a positive number; using the default value.</source>
+        <translation>%1 must be zero or a positive number; using the default value.</translation>
+    </message>
+    <message>
         <source>groupStyles must be an array; group styles will use defaults.</source>
         <translation>groupStyles must be an array; group styles will use defaults.</translation>
     </message>
@@ -243,6 +307,10 @@
     <message>
         <source>%1 must be a modifier name or modifier combination; using the default value.</source>
         <translation>%1 must be a modifier name or modifier combination; using the default value.</translation>
+    </message>
+    <message>
+        <source>%1 must be a non-empty string; using the default value.</source>
+        <translation>%1 must be a non-empty string; using the default value.</translation>
     </message>
     <message>
         <source>Unknown preference warning.</source>
@@ -272,8 +340,48 @@
         <translation>Maximum label table text rows</translation>
     </message>
     <message>
+        <source>Choose Font...</source>
+        <translation>Choose Font...</translation>
+    </message>
+    <message>
+        <source>Use Default</source>
+        <translation>Use Default</translation>
+    </message>
+    <message>
+        <source>Default font</source>
+        <translation>Default font</translation>
+    </message>
+    <message>
+        <source>Default size</source>
+        <translation>Default size</translation>
+    </message>
+    <message>
+        <source>Text editor font family</source>
+        <translation>Text editor font family</translation>
+    </message>
+    <message>
+        <source>Text editor font size</source>
+        <translation>Text editor font size</translation>
+    </message>
+    <message>
+        <source>Text editor font</source>
+        <translation>Text editor font</translation>
+    </message>
+    <message>
+        <source>Label table font</source>
+        <translation>Label table font</translation>
+    </message>
+    <message>
         <source>Move-label modifier</source>
         <translation>Move-label modifier</translation>
+    </message>
+    <message>
+        <source>Backup path</source>
+        <translation>Backup path</translation>
+    </message>
+    <message>
+        <source>Backup interval seconds</source>
+        <translation>Backup interval seconds</translation>
     </message>
     <message>
         <source>General</source>
@@ -354,6 +462,22 @@
     <message>
         <source>Choose group color</source>
         <translation>Choose group color</translation>
+    </message>
+    <message>
+        <source>Choose text editor font</source>
+        <translation>Choose text editor font</translation>
+    </message>
+    <message>
+        <source>Choose label table font</source>
+        <translation>Choose label table font</translation>
+    </message>
+    <message>
+        <source>Default font and size</source>
+        <translation>Default font and size</translation>
+    </message>
+    <message>
+        <source>%1, %2 pt</source>
+        <translation>%1, %2 pt</translation>
     </message>
     <message>
         <source>Preferences applied.</source>
