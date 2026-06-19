@@ -4,10 +4,7 @@
 
 namespace labelminus::services {
 
-OcrProcess::OcrProcess(QObject *parent)
-    : QObject(parent)
-{
-}
+OcrProcess::OcrProcess(QObject* parent) : QObject(parent) {}
 
 QString OcrProcess::pythonExecutable() const
 {

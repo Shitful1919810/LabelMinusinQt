@@ -26,6 +26,18 @@ Optional later:
 - Qt Concurrent: background scanning/OCR jobs if `QThreadPool` is preferred.
 - Catch2 or Qt Test: broader unit tests. The current skeleton uses Qt Test.
 
+## Internationalization
+
+Qt 6's recommended Widgets/C++ workflow is:
+
+- Wrap user-visible strings with `tr()`.
+- Use `lupdate` to extract strings into `.ts` files.
+- Translate `.ts` files with Qt Linguist.
+- Use `lrelease` to compile `.qm` files.
+- Load `.qm` files at startup with `QTranslator`.
+
+The project already installs a `QTranslator` before creating the main window and reserves `translations/` for `.ts` files. Keep new UI text inside `tr()` calls so future translation extraction stays mechanical.
+
 ## Dependency Choices
 
 Use Qt itself wherever it is good enough:

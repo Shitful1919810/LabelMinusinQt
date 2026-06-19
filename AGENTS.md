@@ -32,3 +32,11 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - Keep Qt UI classes under `src/ui`.
 - Avoid reintroducing WPF, .NET or Windows-only dependencies on this branch.
 
+## Required Conventions
+
+- Follow `CONTRIBUTING.md` and `docs/architecture.md`.
+- New user-visible UI text must use `tr()`.
+- When adding or changing `tr()` strings, update both `translations/labelminus_zh_CN.ts` and `translations/labelminus_en_US.ts`.
+- Run `scripts/check_translations.sh` after UI text changes.
+- Configurable UI behavior should go through `AppPreferences` and `preference.json`.
+- Reversible editing operations should use `UndoStack`.

@@ -2,7 +2,9 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
 
 qt_add_executable(LabelMinusTests
     LabelTests.cpp
+    ../src/core/LabelPlusDocument.cpp
     ../src/core/Label.cpp
+    ../src/core/Project.cpp
 )
 
 target_include_directories(LabelMinusTests

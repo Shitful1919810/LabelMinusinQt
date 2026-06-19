@@ -34,6 +34,19 @@ If CMake fails while detecting `Threads` because the compiler is routed through 
 
 The application target is `LabelMinus`. Linux builds produce a `labelminus` binary, Windows builds produce a GUI executable, and macOS builds produce an app bundle.
 
+## Preferences
+
+Runtime UI tuning lives in `preference.json`. The current options configure image label markers:
+
+```json
+{
+  "labelMarker": {
+    "diameter": 36,
+    "fontPointSize": 10
+  }
+}
+```
+
 ## Current Scope
 
 The current code is a clean Qt Widgets skeleton. It opens a single image in a `QGraphicsView`-based canvas and provides the project structure for the larger port:

@@ -1,4 +1,5 @@
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 6.5 QUIET OPTIONAL_COMPONENTS LinguistTools)
 
 qt_standard_project_setup()
 
@@ -12,4 +13,3 @@ if(LibArchive_FOUND)
 else()
     message(STATUS "libarchive not found; archive support will be stubbed until the dependency is installed.")
 endif()
-

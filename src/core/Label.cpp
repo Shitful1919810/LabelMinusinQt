@@ -13,13 +13,12 @@ double clampUnit(double value)
 } // namespace
 
 Label::Label(QString text, QString group, QPointF normalizedPosition)
-    : m_text(std::move(text))
-    , m_group(std::move(group))
+    : m_text(std::move(text)), m_group(std::move(group))
 {
     setPosition(normalizedPosition);
 }
 
-const QString &Label::text() const noexcept
+const QString& Label::text() const noexcept
 {
     return m_text;
 }
@@ -29,7 +28,7 @@ void Label::setText(QString text)
     m_text = std::move(text);
 }
 
-const QString &Label::group() const noexcept
+const QString& Label::group() const noexcept
 {
     return m_group;
 }

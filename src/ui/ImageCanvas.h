@@ -1,21 +1,57 @@
 #pragma once
 
-#include <QGraphicsView>
+#include "core/Label.h"
 
-class ImageCanvas final : public QGraphicsView
-{
+#include <QColor>
+#include <QGraphicsView>
+#include <QStringList>
+#include <QVector>
+
+class QGraphicsItem;
+
+class ImageCanvas final : public QGraphicsView {
     Q_OBJECT
 
 public:
-    explicit ImageCanvas(QWidget *parent = nullptr);
+    explicit ImageCanvas(QWidget* parent = nullptr);
 
-    void openImage(const QString &path);
+    void setImage(const QString& path, const QVector<labelminus::core::Label>& labels);
+    void setGroups(QStringList groups);
+    void setSelectedLabel(int index);
+    void setZoomPercent(int percent);
+
+signals:
+    void labelCreateRequested(QPointF normalizedPosition);
+    void labelSelected(int index);
+    void undoRequested();
+    void zoomPercentChanged(int percent);
 
 protected:
-    void wheelEvent(QWheelEvent *event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 private:
-    QGraphicsScene m_scene;
-    QGraphicsPixmapItem *m_pixmapItem{nullptr};
-};
+    void rebuildLabelItems();
+    void applyZoom();
+    QColor colorForGroup(const QString& group) const;
+    QPointF normalizedPositionFromScene(QPointF scenePosition) const;
 
+    QGraphicsScene m_scene;
+    QGraphicsPixmapItem* m_pixmapItem{nullptr};
+    QVector<labelminus::core::Label> m_labels;
+    QVector<QGraphicsItem*> m_labelItems;
+    QString m_imagePath;
+    int m_selectedLabel{-1};
+    int m_zoomPercent{100};
+    int m_markerDiameter{36};
+    int m_markerFontPointSize{10};
+    QStringList m_groups;
+    QVector<QColor> m_groupColors;
+    bool m_hasUserZoom{false};
+    bool m_pendingLabelCreate{false};
+    QPoint m_labelCreatePressPosition;
+};

@@ -5,12 +5,11 @@
 
 namespace labelminus::services {
 
-class OcrProcess final : public QObject
-{
+class OcrProcess final : public QObject {
     Q_OBJECT
 
 public:
-    explicit OcrProcess(QObject *parent = nullptr);
+    explicit OcrProcess(QObject* parent = nullptr);
 
     QString pythonExecutable() const;
     void setPythonExecutable(QString executable);
@@ -20,4 +19,3 @@ private:
 };
 
 } // namespace labelminus::services
-

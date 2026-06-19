@@ -5,16 +5,15 @@
 
 namespace labelminus::core {
 
-class Label
-{
+class Label {
 public:
     Label() = default;
     Label(QString text, QString group, QPointF normalizedPosition);
 
-    const QString &text() const noexcept;
+    const QString& text() const noexcept;
     void setText(QString text);
 
-    const QString &group() const noexcept;
+    const QString& group() const noexcept;
     void setGroup(QString group);
 
     QPointF position() const noexcept;
@@ -31,4 +30,3 @@ private:
 };
 
 } // namespace labelminus::core
-
