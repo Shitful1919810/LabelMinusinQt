@@ -1,11 +1,15 @@
 #include "ui/MainWindow.h"
 
+#include "core/AppPreferences.h"
+
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QLocale>
+#include <QStyle>
+#include <QStyleFactory>
 #include <QTranslator>
 
 namespace {
@@ -23,11 +27,22 @@ void installTranslator(QApplication& app)
 
     translator->deleteLater();
 }
+
+void applyApplicationStyle(const QString& styleName)
+{
+    if (!styleName.isEmpty() && QStyleFactory::keys().contains(styleName, Qt::CaseInsensitive)) {
+        QApplication::setStyle(styleName);
+    }
+}
 } // namespace
 
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
+    app.setProperty("labelminus.defaultStyle", app.style()->objectName());
+    const labelminus::core::AppPreferencesLoadResult preferences =
+        labelminus::core::AppPreferences::loadWithDiagnostics();
+    applyApplicationStyle(preferences.preferences.applicationStyle());
     QApplication::setApplicationName("LabelMinus");
     QApplication::setOrganizationName("LabelMinus");
     QApplication::setApplicationVersion(QStringLiteral("0.1.0"));

@@ -17,6 +17,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QStyleFactory>
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QUrl>
@@ -69,6 +70,19 @@ QWidget* makeFontSelectorWidget(QWidget* parent, QLabel*& label, QPushButton*& c
     layout->addWidget(resetButton);
     return widget;
 }
+
+QString comboBoxDataOrText(const QComboBox* comboBox)
+{
+    if (comboBox == nullptr) {
+        return {};
+    }
+
+    if (comboBox->currentIndex() >= 0 && comboBox->currentText() == comboBox->itemText(comboBox->currentIndex())) {
+        return comboBox->currentData().toString();
+    }
+
+    return comboBox->currentText().trimmed();
+}
 } // namespace
 
 PreferenceDialog::PreferenceDialog(QString preferencePath, QWidget* parent)
@@ -99,6 +113,13 @@ void PreferenceDialog::createUi()
     m_tableMaxRowsSpinBox = new QSpinBox(generalPage);
     m_tableMaxRowsSpinBox->setRange(1, 50);
     m_tableMaxRowsSpinBox->setValue(4);
+    m_applicationStyleComboBox = new QComboBox(generalPage);
+    m_applicationStyleComboBox->setEditable(true);
+    m_applicationStyleComboBox->addItem(tr("Use system default"), QString());
+    const QStringList availableStyles = QStyleFactory::keys();
+    for (const QString& styleName : availableStyles) {
+        m_applicationStyleComboBox->addItem(styleName, styleName);
+    }
     auto* labelTableFontWidget = makeFontSelectorWidget(generalPage, m_labelTableFontLabel,
                                                         m_chooseLabelTableFontButton, m_resetLabelTableFontButton);
     auto* textEditorFontWidget = makeFontSelectorWidget(generalPage, m_textEditorFontLabel,
@@ -116,6 +137,7 @@ void PreferenceDialog::createUi()
 
     generalLayout->addRow(tr("Default marker diameter"), m_markerDiameterSpinBox);
     generalLayout->addRow(tr("Default marker font size"), m_markerFontSpinBox);
+    generalLayout->addRow(tr("Application style"), m_applicationStyleComboBox);
     generalLayout->addRow(tr("Maximum label table text rows"), m_tableMaxRowsSpinBox);
     generalLayout->addRow(tr("Label table font"), labelTableFontWidget);
     generalLayout->addRow(tr("Text editor font"), textEditorFontWidget);
@@ -184,6 +206,7 @@ void PreferenceDialog::createUi()
 
     connect(m_markerDiameterSpinBox, &QDoubleSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_markerFontSpinBox, &QDoubleSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_applicationStyleComboBox, &QComboBox::currentTextChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_tableMaxRowsSpinBox, &QSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_chooseLabelTableFontButton, &QPushButton::clicked, this, &PreferenceDialog::chooseLabelTableFont);
     connect(m_resetLabelTableFontButton, &QPushButton::clicked, this, &PreferenceDialog::resetLabelTableFont);
@@ -219,12 +242,20 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
 {
     const QJsonObject root = document.object();
     const QJsonObject labelMarker = root.value(QStringLiteral("labelMarker")).toObject();
+    const QJsonObject appearance = root.value(QStringLiteral("appearance")).toObject();
     const QJsonObject labelTable = root.value(QStringLiteral("labelTable")).toObject();
     const QJsonObject labelTextEditor = root.value(QStringLiteral("labelTextEditor")).toObject();
     const QJsonObject input = root.value(QStringLiteral("input")).toObject();
 
     m_markerDiameterSpinBox->setValue(labelMarker.value(QStringLiteral("diameter")).toDouble(20.0));
     m_markerFontSpinBox->setValue(labelMarker.value(QStringLiteral("fontPointSize")).toDouble(10.0));
+    const QString applicationStyle = appearance.value(QStringLiteral("style")).toString().trimmed();
+    if (applicationStyle.isEmpty()) {
+        m_applicationStyleComboBox->setCurrentIndex(0);
+    }
+    else {
+        m_applicationStyleComboBox->setCurrentText(applicationStyle);
+    }
     m_tableMaxRowsSpinBox->setValue(labelTable.value(QStringLiteral("maxTextRows")).toInt(4));
     const QString labelTableFontFamily = labelTable.value(QStringLiteral("fontFamily")).toString().trimmed();
     const double labelTableFontPointSize = labelTable.value(QStringLiteral("fontPointSize")).toDouble(0.0);
@@ -269,6 +300,9 @@ QJsonDocument PreferenceDialog::documentFromUi() const
     labelMarker.insert(QStringLiteral("diameter"), m_markerDiameterSpinBox->value());
     labelMarker.insert(QStringLiteral("fontPointSize"), m_markerFontSpinBox->value());
 
+    QJsonObject appearance;
+    appearance.insert(QStringLiteral("style"), comboBoxDataOrText(m_applicationStyleComboBox));
+
     QJsonObject labelTable;
     labelTable.insert(QStringLiteral("maxTextRows"), m_tableMaxRowsSpinBox->value());
     labelTable.insert(QStringLiteral("fontFamily"),
@@ -305,6 +339,7 @@ QJsonDocument PreferenceDialog::documentFromUi() const
     }
 
     QJsonObject root;
+    root.insert(QStringLiteral("appearance"), appearance);
     root.insert(QStringLiteral("labelMarker"), labelMarker);
     root.insert(QStringLiteral("labelTable"), labelTable);
     root.insert(QStringLiteral("labelTextEditor"), labelTextEditor);

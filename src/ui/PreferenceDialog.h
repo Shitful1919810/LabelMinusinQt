@@ -50,6 +50,7 @@ private:
     QDoubleSpinBox* m_markerDiameterSpinBox{nullptr};
     QDoubleSpinBox* m_markerFontSpinBox{nullptr};
     QSpinBox* m_tableMaxRowsSpinBox{nullptr};
+    QComboBox* m_applicationStyleComboBox{nullptr};
     QLabel* m_labelTableFontLabel{nullptr};
     QPushButton* m_chooseLabelTableFontButton{nullptr};
     QPushButton* m_resetLabelTableFontButton{nullptr};

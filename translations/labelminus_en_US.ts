@@ -257,6 +257,10 @@
         <translation>preference.json must contain a JSON object; using default preferences.</translation>
     </message>
     <message>
+        <source>appearance must be a JSON object; using default appearance preferences.</source>
+        <translation>appearance must be a JSON object; using default appearance preferences.</translation>
+    </message>
+    <message>
         <source>labelMarker must be a JSON object; using default marker preferences.</source>
         <translation>labelMarker must be a JSON object; using default marker preferences.</translation>
     </message>
@@ -334,6 +338,14 @@
     <message>
         <source>Default marker font size</source>
         <translation>Default marker font size</translation>
+    </message>
+    <message>
+        <source>Use system default</source>
+        <translation>Use system default</translation>
+    </message>
+    <message>
+        <source>Application style</source>
+        <translation>Application style</translation>
     </message>
     <message>
         <source>Maximum label table text rows</source>

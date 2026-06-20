@@ -38,6 +38,8 @@ enum class AppPreferenceWarningType {
     BackupPathWrongType,
     BackupIntervalWrongType,
     BackupIntervalOutOfRange,
+    AppearanceNotObject,
+    AppearanceStyleWrongType,
 };
 
 struct AppPreferenceWarning {
@@ -76,6 +78,7 @@ public:
     double labelTableFontPointSize() const noexcept;
     QString labelTextEditorFontFamily() const;
     double labelTextEditorFontPointSize() const noexcept;
+    QString applicationStyle() const;
     Qt::KeyboardModifiers moveLabelModifiers() const noexcept;
     QString backupPath() const;
     int backupIntervalSeconds() const noexcept;
@@ -91,6 +94,7 @@ private:
     double m_labelTableFontPointSize{0.0};
     QString m_labelTextEditorFontFamily;
     double m_labelTextEditorFontPointSize{0.0};
+    QString m_applicationStyle;
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
     QString m_backupPath{QStringLiteral("bak")};
     int m_backupIntervalSeconds{60};

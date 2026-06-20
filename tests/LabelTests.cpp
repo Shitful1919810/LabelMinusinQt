@@ -61,6 +61,9 @@ private slots:
         QTextStream stream(&file);
         stream.setEncoding(QStringConverter::Utf8);
         stream << "{\n"
+               << "  \"appearance\": {\n"
+               << "    \"style\": \"Fusion\"\n"
+               << "  },\n"
                << "  \"labelMarker\": {\n"
                << "    \"diameter\": 4.5,\n"
                << "    \"fontPointSize\": 2.5\n"
@@ -106,6 +109,7 @@ private slots:
         QCOMPARE(result.preferences.labelTableFontPointSize(), 11.5);
         QCOMPARE(result.preferences.labelTextEditorFontFamily(), QStringLiteral("Noto Sans Mono"));
         QCOMPARE(result.preferences.labelTextEditorFontPointSize(), 12.5);
+        QCOMPARE(result.preferences.applicationStyle(), QStringLiteral("Fusion"));
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier | Qt::ShiftModifier);
         QCOMPARE(result.preferences.backupPath(), QStringLiteral("custom-bak"));
         QCOMPARE(result.preferences.backupIntervalSeconds(), 30);
@@ -137,6 +141,7 @@ private slots:
         QCOMPARE(result.preferences.labelTableFontPointSize(), 0.0);
         QCOMPARE(result.preferences.labelTextEditorFontFamily(), QString());
         QCOMPARE(result.preferences.labelTextEditorFontPointSize(), 0.0);
+        QCOMPARE(result.preferences.applicationStyle(), QString());
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier);
         QCOMPARE(result.preferences.backupPath(), QStringLiteral("bak"));
         QCOMPARE(result.preferences.backupIntervalSeconds(), 60);

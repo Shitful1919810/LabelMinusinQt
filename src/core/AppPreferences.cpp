@@ -192,6 +192,25 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
     }
 
     const QJsonObject root = document.object();
+    const QJsonValue appearanceValue = root.value(QStringLiteral("appearance"));
+    if (!appearanceValue.isUndefined()) {
+        if (!appearanceValue.isObject()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::AppearanceNotObject));
+        }
+        else {
+            const QJsonValue styleValue = appearanceValue.toObject().value(QStringLiteral("style"));
+            if (!styleValue.isUndefined()) {
+                if (styleValue.isString()) {
+                    preferences.m_applicationStyle = styleValue.toString().trimmed();
+                }
+                else {
+                    warnings.append(makeWarning(AppPreferenceWarningType::AppearanceStyleWrongType,
+                                                QStringLiteral("appearance.style")));
+                }
+            }
+        }
+    }
+
     const QJsonValue labelMarkerValue = root.value(QStringLiteral("labelMarker"));
     if (!labelMarkerValue.isUndefined()) {
         if (!labelMarkerValue.isObject()) {
@@ -439,6 +458,11 @@ QString AppPreferences::labelTextEditorFontFamily() const
 double AppPreferences::labelTextEditorFontPointSize() const noexcept
 {
     return m_labelTextEditorFontPointSize;
+}
+
+QString AppPreferences::applicationStyle() const
+{
+    return m_applicationStyle;
 }
 
 Qt::KeyboardModifiers AppPreferences::moveLabelModifiers() const noexcept

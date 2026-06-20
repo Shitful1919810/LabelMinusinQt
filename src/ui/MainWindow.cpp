@@ -6,6 +6,7 @@
 
 #include <QAbstractItemView>
 #include <QAction>
+#include <QApplication>
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QFileDialog>
@@ -32,6 +33,7 @@
 #include <QStringList>
 #include <QStringView>
 #include <QStyle>
+#include <QStyleFactory>
 #include <QTableView>
 #include <QTimer>
 #include <QToolButton>
@@ -1260,6 +1262,13 @@ void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult res
     m_preferenceWarnings = std::move(result.warnings);
     m_labelTableMaxTextRows = m_preferences.labelTableMaxTextRows();
 
+    const QString styleName = m_preferences.applicationStyle().isEmpty()
+                                  ? qApp->property("labelminus.defaultStyle").toString()
+                                  : m_preferences.applicationStyle();
+    if (!styleName.isEmpty() && QStyleFactory::keys().contains(styleName, Qt::CaseInsensitive)) {
+        QApplication::setStyle(styleName);
+    }
+
     if (m_canvas != nullptr) {
         m_canvas->setPreferences(m_preferences);
     }
@@ -1284,6 +1293,10 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("preference.json is not valid JSON: %1; using default preferences.").arg(warning.detail);
     case AppPreferenceWarningType::RootNotObject:
         return tr("preference.json must contain a JSON object; using default preferences.");
+    case AppPreferenceWarningType::AppearanceNotObject:
+        return tr("appearance must be a JSON object; using default appearance preferences.");
+    case AppPreferenceWarningType::AppearanceStyleWrongType:
+        return tr("%1 must be a string; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::LabelMarkerNotObject:
         return tr("labelMarker must be a JSON object; using default marker preferences.");
     case AppPreferenceWarningType::MarkerSizeWrongType:

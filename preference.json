@@ -1,4 +1,7 @@
 {
+    "appearance": {
+        "style": ""
+    },
     "backupIntervalSeconds": 200,
     "backupPath": "bak",
     "groupStyles": [

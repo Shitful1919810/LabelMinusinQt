@@ -256,6 +256,10 @@
         <translation>preference.json 必须包含一个 JSON 对象；将使用默认偏好设置。</translation>
     </message>
     <message>
+        <source>appearance must be a JSON object; using default appearance preferences.</source>
+        <translation>appearance 必须是 JSON 对象；将使用默认外观偏好设置。</translation>
+    </message>
+    <message>
         <source>labelMarker must be a JSON object; using default marker preferences.</source>
         <translation>labelMarker 必须是 JSON 对象；将使用默认标记偏好设置。</translation>
     </message>
@@ -333,6 +337,14 @@
     <message>
         <source>Default marker font size</source>
         <translation>默认标记字号</translation>
+    </message>
+    <message>
+        <source>Use system default</source>
+        <translation>使用系统默认</translation>
+    </message>
+    <message>
+        <source>Application style</source>
+        <translation>应用程序风格</translation>
     </message>
     <message>
         <source>Maximum label table text rows</source>

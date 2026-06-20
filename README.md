@@ -180,6 +180,9 @@ cmake --build --preset windows-vs-release --target deploy_windows
 
 ```json
 {
+  "appearance": {
+    "style": ""
+  },
   "backupPath": "bak",
   "backupIntervalSeconds": 60,
   "labelMarker": {
@@ -223,6 +226,7 @@ cmake --build --preset windows-vs-release --target deploy_windows
 
 字段说明：
 
+- `appearance.style`：启动时强制使用的 Qt Style 名称，例如 `Fusion`。为空时不强制设置，使用系统默认风格。可选值由当前 Qt 环境的 `QStyleFactory::keys()` 决定，偏好设置窗口会自动列出可用 style。
 - `labelMarker.diameter`：默认 marker 直径，单位为屏幕像素，支持浮点数。
 - `labelMarker.fontPointSize`：默认 marker 内部序号字号，使用 Qt 字号单位，支持浮点数。
 - `labelTable.maxTextRows`：右侧标签列表文本列自动换行后的最大显示行数。
