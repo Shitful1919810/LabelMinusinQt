@@ -31,6 +31,7 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - Put project workflow, session state, OS, archive, OCR and process integration under `src/services`.
 - Keep Qt UI classes under `src/ui`.
 - Avoid reintroducing WPF, .NET or Windows-only dependencies on this branch.
+- Avoid Qt GPL-only modules unless the user explicitly approves the license impact.
 
 ## Required Conventions
 
@@ -43,3 +44,5 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - Label edits should go through `LabelEditController` rather than adding new label mutation paths in `MainWindow`.
 - Keep `MainWindow` focused on UI orchestration; put project workflow, session state and mutation logic in services.
 - Current-page label changes should update table/marker state in place and must not reload the image unless the current image actually changes.
+- New Qt modules and third-party dependencies must be checked for license compatibility and documented.
+- Do not commit bundled Qt SDK files, Qt source code or Qt runtime binaries into the repository.

@@ -22,6 +22,16 @@ This branch is a C++/Qt 6 port of LabelMinus. Keep changes aligned with the curr
 
 See `docs/architecture.md` for more detail.
 
+## Qt Licensing Constraints
+
+- Keep the application on LGPL-available Qt modules unless the project intentionally changes to a GPL-compatible release strategy.
+- Current runtime Qt dependencies should stay limited to `Qt6::Core`, `Qt6::Gui` and `Qt6::Widgets` unless a new module is reviewed.
+- Do not introduce Qt GPL-only modules without documenting the license impact and getting an explicit project decision.
+- Prefer dynamic linking for Qt in release packaging.
+- Do not commit Qt source code, Qt SDK files or bundled Qt binaries into this repository.
+- Binary releases must include Qt license notices, Qt module/version information and third-party dependency notices.
+- When adding a third-party dependency, document its license and keep it compatible with the intended project license.
+
 ## UI And Workflow Separation
 
 - Keep `MainWindow` as an orchestration layer for menus, widgets, signal/slot wiring and UI feedback.

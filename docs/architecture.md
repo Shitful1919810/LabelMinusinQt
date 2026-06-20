@@ -54,6 +54,22 @@ For edits on the current page, keep the image scene stable and refresh only the 
 - Undo replay on the current page should preserve zoom and view center.
 - Group, preference and label edits should not call full image refresh just to repaint markers.
 
+## Dependency And License Boundaries
+
+The current application is intended to stay on Qt modules that are available under LGPL-compatible open-source use. The
+runtime target currently links only:
+
+- `Qt6::Core`
+- `Qt6::Gui`
+- `Qt6::Widgets`
+
+Before adding any Qt module, check the official Qt licensing documentation. Do not add GPL-only Qt modules unless the
+project explicitly accepts the resulting GPL-oriented distribution requirements. Examples of modules that require extra
+care include Qt Graphs, Qt GRPC, Qt HTTP Server, Qt MQTT, Qt Virtual Keyboard and Qt Wayland Compositor.
+
+Release packaging should prefer dynamic linking to Qt. Source repositories should not vendor Qt SDK files, Qt source code
+or Qt runtime binaries. Binary releases need third-party notices covering Qt and any other bundled dependencies.
+
 ## Preferences
 
 Runtime UI tuning lives in `preference.json` and is read through `AppPreferences`.

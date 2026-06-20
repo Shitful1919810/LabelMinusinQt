@@ -57,6 +57,25 @@ add_custom_command(TARGET LabelMinus POST_BUILD
     VERBATIM
 )
 
+if(WIN32)
+    find_program(WINDEPLOYQT_EXECUTABLE
+        NAMES windeployqt
+        HINTS "${Qt6_DIR}/../../../bin"
+    )
+    if(WINDEPLOYQT_EXECUTABLE)
+        add_custom_target(deploy_windows
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                "$<IF:$<CONFIG:Debug>,--debug,--release>"
+                "$<TARGET_FILE:LabelMinus>"
+            DEPENDS LabelMinus
+            COMMENT "Deploying Qt runtime dependencies with windeployqt"
+            VERBATIM
+        )
+    else()
+        message(WARNING "windeployqt was not found. Add the Qt bin directory to PATH to enable the deploy_windows target.")
+    endif()
+endif()
+
 labelminus_enable_warnings(LabelMinus)
 
 set_target_properties(LabelMinus PROPERTIES

@@ -27,6 +27,19 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 
 项目仍处于移植和功能重构阶段，重点是复刻并改进 LabelPlus 文本工程的基础编辑流程。OCR、压缩包读取、平台集成等能力会在后续阶段继续完善。
 
+## 许可说明
+
+本项目源码使用仓库内 `LICENSE.txt` 声明的许可证。Qt 本身不属于本项目源码的一部分，使用和分发 Qt
+时需要遵守 Qt 对应的开源或商业许可。
+
+当前程序只链接 Qt 6 的 `Core`、`Gui`、`Widgets` 模块。发布源码仓库时不要提交 Qt 源码或 Qt
+二进制文件；发布二进制包时，应优先采用动态链接 Qt 的方式，并随包提供 Qt 使用声明、Qt 许可证文本、
+Qt 模块与版本信息，以及其他第三方依赖的许可证说明。
+
+除非项目明确决定切换到 GPL 兼容的发布策略，否则不要引入 Qt 的 GPL-only 模块，例如 Qt Graphs、
+Qt GRPC、Qt HTTP Server、Qt MQTT、Qt Virtual Keyboard、Qt Wayland Compositor 等。新增 Qt
+模块前请先核对 Qt 官方许可文档。
+
 ## 环境要求
 
 - CMake 3.25 或更高版本。
@@ -60,6 +73,7 @@ cmake --build --preset linux-release
 ```powershell
 cmake --preset windows-debug
 cmake --build --preset windows-debug
+cmake --build --preset windows-debug --target deploy_windows
 ctest --preset windows-debug
 ```
 
@@ -68,6 +82,7 @@ Release 构建：
 ```powershell
 cmake --preset windows-release
 cmake --build --preset windows-release
+cmake --build --preset windows-release --target deploy_windows
 ```
 
 如果不想安装 Ninja，也可以使用 Visual Studio 2022 生成器 preset：
@@ -75,6 +90,7 @@ cmake --build --preset windows-release
 ```powershell
 cmake --preset windows-vs-debug
 cmake --build --preset windows-vs-debug
+cmake --build --preset windows-vs-debug --target deploy_windows
 ctest --preset windows-vs-debug
 ```
 
@@ -83,6 +99,7 @@ Visual Studio Release 构建：
 ```powershell
 cmake --preset windows-vs-release
 cmake --build --preset windows-vs-release
+cmake --build --preset windows-vs-release --target deploy_windows
 ```
 
 ### macOS
@@ -129,6 +146,29 @@ Linux Release 构建对应路径为：
 ```
 
 Windows 构建会生成 GUI 可执行文件，macOS 构建会生成应用包。
+
+### Windows Qt 运行时
+
+Windows 上直接运行刚编译出的 `labelminus.exe` 时，如果系统找不到 `Qt6Widgets.dll`、`Qt6Core.dll`、
+`Qt6Gui.dll` 等文件，说明 Qt 运行时 DLL 还没有部署到 exe 旁边，或 Qt 的 `bin` 目录不在 `PATH` 中。
+
+推荐在构建后运行项目提供的部署目标：
+
+```powershell
+cmake --build --preset windows-debug --target deploy_windows
+cmake --build --preset windows-release --target deploy_windows
+```
+
+Visual Studio preset 对应：
+
+```powershell
+cmake --build --preset windows-vs-debug --target deploy_windows
+cmake --build --preset windows-vs-release --target deploy_windows
+```
+
+该目标会调用 Qt 自带的 `windeployqt`，把运行所需的 Qt DLL 和平台插件复制到 `labelminus.exe`
+所在目录。之后从该目录启动 exe 即可。若 CMake 提示找不到 `windeployqt`，请把 Qt 安装目录下的
+`bin` 目录加入 `PATH`，例如 `C:\Qt\6.x.x\msvc2022_64\bin`。
 
 ## 偏好设置
 
