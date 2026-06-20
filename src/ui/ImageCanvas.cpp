@@ -211,7 +211,6 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
     if (m_isMovingLabel && m_pixmapItem != nullptr && m_movingLabelIndex >= 0 && m_movingLabelIndex < m_labels.size()) {
         m_labels[m_movingLabelIndex].setPosition(normalizedPositionFromScene(mapToScene(event->pos())));
         rebuildLabelItems();
-        emit labelSelected(m_movingLabelIndex);
         event->accept();
         return;
     }

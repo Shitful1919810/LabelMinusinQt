@@ -3,6 +3,7 @@
 #include "core/AppPreferences.h"
 
 #include <QColor>
+#include <QPersistentModelIndex>
 #include <QStringList>
 #include <QStyledItemDelegate>
 #include <QVector>
@@ -19,6 +20,9 @@ public:
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override;
     void updateEditorGeometry(QWidget* editor, const QStyleOptionViewItem& option,
                               const QModelIndex& index) const override;
+
+signals:
+    void editorHeightHintChanged(QPersistentModelIndex index, QWidget* editor, int height);
 
 protected:
     bool eventFilter(QObject* object, QEvent* event) override;

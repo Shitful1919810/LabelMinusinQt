@@ -347,6 +347,24 @@ void MainWindow::createCentralWidget()
     connect(m_textEdit, &QPlainTextEdit::textChanged, this, &MainWindow::updateCurrentLabelText);
     connect(m_labelModel, &LabelTableModel::labelEdited, this, &MainWindow::updateLabelFromTable, Qt::QueuedConnection);
     connect(m_labelModel, &LabelTableModel::labelsReorderRequested, this, &MainWindow::reorderLabels);
+    connect(m_labelTextDelegate, &LabelTextDelegate::editorHeightHintChanged, this,
+            [this](const QPersistentModelIndex& index, QWidget* editor, int height) {
+                if (!index.isValid() || m_labelView == nullptr || index.model() != m_labelModel ||
+                    index.column() != 1) {
+                    return;
+                }
+
+                const int row = index.row();
+                if (editor == nullptr || height <= 0) {
+                    m_labelView->resizeRowToContents(row);
+                    capLabelRowHeight(row);
+                    return;
+                }
+
+                const int minimumHeight = m_labelView->verticalHeader()->minimumSectionSize();
+                m_labelView->setRowHeight(row, std::max(minimumHeight, height));
+                editor->setGeometry(m_labelView->visualRect(index));
+            });
     connect(m_groupFilterComboBox, &GroupFilterComboBox::selectedGroupsChanged, this, &MainWindow::updateGroupFilter);
     connect(m_labelGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateCurrentLabelGroup);
     connect(m_insertGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateInsertGroupTextColor);

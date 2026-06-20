@@ -10,7 +10,7 @@ Required:
 Recommended platform toolchains:
 
 - Linux: GCC or Clang, Ninja, Qt 6 development packages.
-- Windows: Visual Studio 2022 Build Tools or full Visual Studio, Ninja, Qt 6 for MSVC.
+- Windows: Visual Studio 2022 Build Tools or full Visual Studio, Qt 6 for MSVC. Ninja is optional when using the Visual Studio presets.
 - macOS: Xcode Command Line Tools, Ninja, Qt 6 for macOS.
 
 Recommended for the full application:

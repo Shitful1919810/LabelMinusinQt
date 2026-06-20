@@ -30,7 +30,7 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 ## 环境要求
 
 - CMake 3.25 或更高版本。
-- Ninja。
+- Ninja，或 Windows 上的 Visual Studio 2022 生成器。
 - 支持 C++20 的编译器。
 - Qt 6，至少需要 Qt Widgets；开发翻译资源时还需要 Qt Linguist Tools。
 
@@ -55,6 +55,8 @@ cmake --build --preset linux-release
 
 ### Windows
 
+默认 Windows preset 使用 Ninja：
+
 ```powershell
 cmake --preset windows-debug
 cmake --build --preset windows-debug
@@ -66,6 +68,21 @@ Release 构建：
 ```powershell
 cmake --preset windows-release
 cmake --build --preset windows-release
+```
+
+如果不想安装 Ninja，也可以使用 Visual Studio 2022 生成器 preset：
+
+```powershell
+cmake --preset windows-vs-debug
+cmake --build --preset windows-vs-debug
+ctest --preset windows-vs-debug
+```
+
+Visual Studio Release 构建：
+
+```powershell
+cmake --preset windows-vs-release
+cmake --build --preset windows-vs-release
 ```
 
 ### macOS
@@ -231,4 +248,5 @@ scripts         开发辅助脚本
 
 - `CONTRIBUTING.md`
 - `docs/architecture.md`
+- `docs/code-walkthrough.md`
 - `AGENTS.md`

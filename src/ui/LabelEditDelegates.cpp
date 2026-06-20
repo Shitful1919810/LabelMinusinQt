@@ -9,24 +9,54 @@
 #include <QPlainTextEdit>
 #include <QPointer>
 #include <QStyle>
+#include <QTextDocument>
 #include <QTimer>
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace {
 constexpr int groupPopupDelayMs = 120;
 constexpr int maximumPreviewTextLines = 4;
 constexpr int textCellVerticalPadding = 8;
+
+int textEditorHeightHint(QPlainTextEdit* editor)
+{
+    if (editor == nullptr) {
+        return 0;
+    }
+
+    QTextDocument* document = editor->document();
+    document->setTextWidth(std::max(1, editor->viewport()->width()));
+    const int documentHeight = static_cast<int>(std::ceil(document->size().height()));
+    const int explicitLineHeight = editor->fontMetrics().lineSpacing() * std::max(1, document->blockCount());
+    return std::max(editor->fontMetrics().lineSpacing() + textCellVerticalPadding,
+                    std::max(documentHeight, explicitLineHeight) + textCellVerticalPadding);
+}
 } // namespace
 
 LabelTextDelegate::LabelTextDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
 
-QWidget* LabelTextDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem&, const QModelIndex&) const
+QWidget* LabelTextDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem&, const QModelIndex& index) const
 {
     auto* editor = new QPlainTextEdit(parent);
     editor->setFrameShape(QFrame::NoFrame);
     editor->installEventFilter(const_cast<LabelTextDelegate*>(this));
+    connect(editor, &QPlainTextEdit::textChanged, this,
+            [delegate = const_cast<LabelTextDelegate*>(this), guardedEditor = QPointer<QPlainTextEdit>(editor),
+             persistentIndex = QPersistentModelIndex(index)]() {
+                if (guardedEditor != nullptr && persistentIndex.isValid()) {
+                    emit delegate->editorHeightHintChanged(persistentIndex, guardedEditor,
+                                                           textEditorHeightHint(guardedEditor));
+                }
+            });
+    connect(editor, &QObject::destroyed, this,
+            [delegate = const_cast<LabelTextDelegate*>(this), persistentIndex = QPersistentModelIndex(index)]() {
+                if (persistentIndex.isValid()) {
+                    emit delegate->editorHeightHintChanged(persistentIndex, nullptr, 0);
+                }
+            });
     return editor;
 }
 
@@ -38,7 +68,14 @@ void LabelTextDelegate::setEditorData(QWidget* editor, const QModelIndex& index)
     }
 
     textEdit->setPlainText(index.data(Qt::EditRole).toString());
-    textEdit->selectAll();
+    const QPointer<QPlainTextEdit> guardedEditor(textEdit);
+    QTimer::singleShot(0, textEdit, [guardedEditor]() {
+        if (guardedEditor != nullptr) {
+            guardedEditor->selectAll();
+        }
+    });
+    emit const_cast<LabelTextDelegate*>(this)->editorHeightHintChanged(QPersistentModelIndex(index), textEdit,
+                                                                       textEditorHeightHint(textEdit));
 }
 
 void LabelTextDelegate::setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const

@@ -9,7 +9,7 @@ project(LabelMinus
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Generate compile_commands.json for clangd" FORCE)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Generate compile_commands.json for clangd")
 
 option(LABELMINUS_ENABLE_TESTS "Build tests" ON)
 option(LABELMINUS_REQUIRE_LIBARCHIVE "Fail configure when libarchive is unavailable" OFF)
@@ -26,7 +26,7 @@ if(LABELMINUS_ENABLE_TESTS)
     add_subdirectory(tests)
 endif()
 
-if(CMAKE_EXPORT_COMPILE_COMMANDS)
+if(CMAKE_EXPORT_COMPILE_COMMANDS AND CMAKE_GENERATOR MATCHES "Ninja|Makefiles")
     add_custom_target(LabelMinusCompileCommands ALL
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_BINARY_DIR}/compile_commands.json"

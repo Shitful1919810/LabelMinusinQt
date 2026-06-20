@@ -1,5 +1,5 @@
 {
-    "backupIntervalSeconds": 60,
+    "backupIntervalSeconds": 200,
     "backupPath": "bak",
     "groupStyles": [
         {
@@ -38,3 +38,4 @@
         "fontPointSize": 12
     }
 }
+
