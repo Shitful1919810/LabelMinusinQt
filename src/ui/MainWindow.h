@@ -1,8 +1,10 @@
 #pragma once
 
 #include "core/AppPreferences.h"
-#include "core/Project.h"
 #include "core/UndoStack.h"
+#include "services/LabelEditController.h"
+#include "services/ProjectController.h"
+#include "services/SessionStateStore.h"
 #include "ui/GroupFilterComboBox.h"
 #include "ui/ImageCanvas.h"
 #include "ui/LabelTableModel.h"
@@ -13,6 +15,8 @@
 #include <QPointF>
 #include <QVariant>
 #include <QVector>
+
+#include <memory>
 
 class QCloseEvent;
 class QAction;
@@ -64,31 +68,22 @@ private:
     void updateLabelFromTable(int sourceIndex, int column, QVariant oldValue, QVariant newValue);
     void moveLabel(int index, QPointF normalizedPosition);
     void undoLastOperation();
-    void applyLabelText(int imageIndex, int labelIndex, const QString& text);
-    void applyLabelGroup(int imageIndex, int labelIndex, const QString& group);
-    void applyLabelPosition(int imageIndex, int labelIndex, QPointF normalizedPosition);
-    void applyLabelDeleted(int imageIndex, int labelIndex, bool deleted);
-    void applyLabelOrder(int imageIndex, QVector<labelminus::core::Label> labels, QVector<int> selectedIndexes);
-    void applyBatchLabelGroups(int imageIndex, QVector<int> labelIndexes, QVector<QString> groups);
-    void applyBatchLabelDeleted(int imageIndex, QVector<int> labelIndexes, QVector<bool> deleted);
-    void pushLabelTextUndo(int imageIndex, int labelIndex, const QString& oldText, const QString& newText);
-    void pushLabelGroupUndo(int imageIndex, int labelIndex, const QString& oldGroup, const QString& newGroup);
-    void pushLabelPositionUndo(int imageIndex, int labelIndex, QPointF oldPosition, QPointF newPosition);
-    void pushLabelOrderUndo(int imageIndex, QVector<labelminus::core::Label> oldLabels,
-                            QVector<int> oldSelectedIndexes);
-    void pushBatchLabelGroupUndo(int imageIndex, QVector<int> labelIndexes, QVector<QString> oldGroups,
-                                 QVector<QString> newGroups);
-    void pushBatchLabelDeletedUndo(int imageIndex, QVector<int> labelIndexes, QVector<bool> oldDeleted,
-                                   QVector<bool> newDeleted);
     QVector<int> selectedLabelIndexes() const;
     void selectLabelIndexes(const QVector<int>& sourceIndexes);
     void refreshProjectUi();
     void refreshImageUi();
+    void refreshCanvasLabels();
+    void refreshCurrentLabelUi();
+    void refreshLabelEditSelection(int imageIndex, int labelIndex);
+    void refreshLabelEditSelection(int imageIndex, QVector<int> labelIndexes);
+    void clearLabelEditSelection(int imageIndex);
     void refreshGroupUi();
     void resizeLabelRowsToContents();
     void capLabelRowHeight(int row);
     void restoreLayoutState();
     void saveLayoutState() const;
+    void restoreProjectSessionState();
+    void saveProjectSessionState() const;
     void configureBackupTimer();
     void performAutoBackup();
     void applyLabelTableFont();
@@ -104,6 +99,8 @@ private:
     void updateInsertGroupTextColor();
     QColor colorForGroup(const QString& group) const;
     void setEditorEnabled(bool enabled);
+    labelminus::core::Project& project() noexcept;
+    const labelminus::core::Project& project() const noexcept;
     labelminus::core::ImageEntry* currentImage();
     const labelminus::core::ImageEntry* currentImage() const;
 
@@ -130,19 +127,19 @@ private:
     QAction* m_quitAction{nullptr};
     QPushButton* m_previousButton{nullptr};
     QPushButton* m_nextButton{nullptr};
-    labelminus::core::Project m_project;
+    labelminus::services::ProjectController m_projectController;
+    std::unique_ptr<labelminus::services::LabelEditController> m_labelEditController;
     labelminus::core::AppPreferences m_preferences;
     QVector<labelminus::core::AppPreferenceWarning> m_preferenceWarnings;
     int m_currentImageIndex{-1};
     int m_currentLabelIndex{-1};
     bool m_isUpdatingUi{false};
-    bool m_isDirty{false};
-    bool m_hasPendingBackup{false};
     int m_textEditUndoImageIndex{-1};
     int m_textEditUndoLabelIndex{-1};
     QString m_textEditUndoOriginalText;
     int m_labelTableMaxTextRows{3};
     QFont m_defaultLabelTableFont;
     QFont m_defaultTextEditFont;
+    labelminus::services::SessionStateStore m_sessionStateStore;
     labelminus::core::UndoStack m_undoStack;
 };

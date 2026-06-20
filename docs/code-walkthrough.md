@@ -16,7 +16,7 @@
 可执行目标在 `src/CMakeLists.txt` 中定义。源码被分为三组：
 
 - `LABELMINUS_CORE_SOURCES`：平台无关的数据、解析、偏好和撤销。
-- `LABELMINUS_SERVICE_SOURCES`：外部服务预留层，目前包含压缩包和 OCR 进程占位实现。
+- `LABELMINUS_SERVICE_SOURCES`：应用服务层，目前包含工程控制、会话状态、压缩包和 OCR 进程占位实现。
 - `LABELMINUS_UI_SOURCES`：Qt Widgets 界面。
 
 构建后会把仓库根目录的 `preference.json` 复制到可执行文件目录，便于运行时读取默认偏好。
@@ -26,12 +26,12 @@
 ```text
 src/core      数据模型、LabelPlus 文本解析保存、偏好设置、撤销栈
 src/ui        Qt Widgets 界面、模型/委托、画布、主窗口、偏好窗口
-src/services  OCR、压缩包、进程等外部集成预留位置
+src/services  工程工作流、会话状态、OCR、压缩包、进程等服务层
 tests         Qt Test 单元测试
 translations  Qt Linguist .ts 翻译源文件
 ```
 
-核心原则是：`src/core` 不依赖 Qt Widgets，不应该知道按钮、表格、窗口；`src/ui` 可以协调 core 对象，但不要把文件格式解析逻辑散落进 UI。
+核心原则是：`src/core` 不依赖 Qt Widgets，不应该知道按钮、表格、窗口；`src/services` 承接不属于具体控件的应用服务；`src/ui` 可以协调这些对象，但不要把文件格式解析、备份或本机会话存储逻辑散落进 UI。
 
 ## 核心数据模型
 
@@ -65,7 +65,8 @@ translations  Qt Linguist .ts 翻译源文件
 - `path`：图片绝对路径。
 - `labels`：该页标签。
 
-大多数编辑功能最终都是在修改 `m_project.images()[page].labels` 或 `m_project.groups()`。
+当前打开工程由 `ProjectController` 持有。UI 侧通常通过 `MainWindow::project()` 访问它，再修改
+`project().images()[page].labels` 或 `project().groups()`。
 
 ### `LabelPlusDocument`
 
@@ -113,7 +114,51 @@ translations  Qt Linguist .ts 翻译源文件
 - `text`：命令名称。
 - `undo`：撤销函数。
 
-当前只实现撤销，没有 redo。`MainWindow` 在编辑工程数据时负责把对应命令压栈。
+当前只实现撤销，没有 redo。标签编辑由 `LabelEditController` 负责把对应命令压栈。
+
+## 服务层
+
+### `ProjectController`
+
+文件：`src/services/ProjectController.h`、`src/services/ProjectController.cpp`
+
+`ProjectController` 是当前工程工作流的入口，负责：
+
+- 持有打开中的 `Project`。
+- 通过 `LabelPlusDocument` 打开、保存、另存工程。
+- 从图片目录创建新的 LabelPlus 文本工程。
+- 维护 dirty 状态。
+- 在存在未保存修改时执行自动备份。
+
+这样 `MainWindow` 不需要直接管理“工程是否已修改”“备份文件写到哪里”“保存失败时如何报告错误”等非控件细节。主窗口仍负责弹窗、状态栏提示和菜单动作，因为这些属于 UI 反馈。
+
+### `LabelEditController`
+
+文件：`src/services/LabelEditController.h`、`src/services/LabelEditController.cpp`
+
+`LabelEditController` 负责标签数据编辑和 undo 注册：
+
+- 新增标签。
+- 删除标签。
+- 修改文本、类别和坐标。
+- 批量切换类别。
+- 拖拽重排标签顺序。
+- undo 回放时恢复旧文本、旧类别、旧坐标、旧顺序或旧删除状态。
+
+它不依赖 Qt Widgets，也不直接操作表格、画布或文本框。需要更新 UI 时，它通过 `MainWindow` 注册的回调通知“某页某个标签应被选中”或“某页选区应被清空”。这样标签编辑规则集中在服务层，窗口层只保留刷新和交互反馈。
+
+### `SessionStateStore`
+
+文件：`src/services/SessionStateStore.h`、`src/services/SessionStateStore.cpp`
+
+`SessionStateStore` 负责使用 `QSettings` 保存本机状态：
+
+- 主窗口几何信息。
+- 左右 splitter 状态。
+- 每个工程上次停留的图片页。
+- 缩放比例、视图中心和选中标签。
+
+这些状态是“本机使用习惯”，不写入 `preference.json`，也不写入 LabelPlus 工程文本。工程下次打开时，`MainWindow` 会读取这些状态并做边界检查，例如图片页被外部删除时会退回到仍然存在的页。
 
 ## 主窗口：`MainWindow`
 
@@ -122,12 +167,13 @@ translations  Qt Linguist .ts 翻译源文件
 `MainWindow` 是当前 UI 编排中心，也是最值得先读的文件。它负责：
 
 - 创建菜单、工具栏区域和左右布局。
-- 打开、保存、新建工程。
+- 响应打开、保存、新建工程等菜单动作，并把工程读写交给 `ProjectController`。
 - 连接 `ImageCanvas`、`LabelTableModel`、右下角文本编辑框和类别控件。
 - 管理当前页 `m_currentImageIndex` 和当前标签 `m_currentLabelIndex`。
-- 调用 `LabelPlusDocument` 做工程读写。
+- 调用 `ProjectController` 做工程读写、dirty 状态和自动备份。
+- 调用 `SessionStateStore` 恢复和保存窗口布局、每个工程的查看位置。
 - 把 `AppPreferences` 应用到画布、表格、文本框和自动备份计时器。
-- 将可撤销编辑注册到 `UndoStack`。
+- 把标签编辑请求交给 `LabelEditController`，再根据结果刷新表格、画布和选区。
 
 ### 常见入口函数
 
@@ -141,6 +187,7 @@ translations  Qt Linguist .ts 翻译源文件
 - `refreshImageUi()`：当前图片、标签表格、画布刷新。
 - `refreshGroupUi()`：类别相关 UI 刷新。
 - `applyPreferences()`：应用偏好设置窗口或启动读取到的配置。
+- `restoreProjectSessionState()` / `saveProjectSessionState()`：恢复和保存每个工程的查看位置。
 
 ### 编辑数据的基本路径
 
@@ -148,17 +195,16 @@ translations  Qt Linguist .ts 翻译源文件
 
 1. `ImageCanvas` 判断点击位置并发出 `labelCreateRequested(QPointF)`。
 2. `MainWindow::addLabel()` 收到信号。
-3. 向当前 `ImageEntry::labels` 追加 `Label`。
-4. 调用相关刷新函数，让表格和画布更新。
-5. 调用 `markDirty()` 标记工程已修改。
-6. 注册撤销命令。
+3. `MainWindow::addLabel()` 调用 `LabelEditController::addLabel()`。
+4. `LabelEditController` 修改当前 `ImageEntry::labels`，注册撤销命令，并标记工程已修改。
+5. `MainWindow` 根据返回结果刷新表格、画布和当前选中标签。
 
 以“右侧表格原地修改文本/类别”为例：
 
 1. `LabelTableModel::setData()` 发现文本或类别变化。
 2. 发出 `labelEdited(sourceIndex, column, oldValue, newValue)`。
-3. `MainWindow::updateLabelFromTable()` 把变化应用到当前工程数据。
-4. 注册对应 undo。
+3. `MainWindow::updateLabelFromTable()` 注册对应 undo，并刷新画布与选区。
+4. 实际数据修改发生在 `LabelTableModel::setData()`；后续如果表格编辑路径继续重构，应考虑让它也统一走 `LabelEditController`。
 
 如果你要新增会修改工程内容的功能，优先确认它是否走了 `markDirty()` 和 `UndoStack`。
 
@@ -179,7 +225,7 @@ translations  Qt Linguist .ts 翻译源文件
 - 鼠标悬停 marker 时显示标签文本提示。
 - 在焦点位于画布时触发 undo 请求。
 
-注意：`ImageCanvas` 不直接修改 `Project`。它通过信号告诉 `MainWindow` 用户想做什么：
+注意：`ImageCanvas` 不直接修改 `Project`。它持有当前页标签的绘制快照，通过信号告诉 `MainWindow` 用户想做什么：
 
 - `labelCreateRequested`
 - `labelMoveRequested`
@@ -187,7 +233,7 @@ translations  Qt Linguist .ts 翻译源文件
 - `undoRequested`
 - `zoomPercentChanged`
 
-这种设计让画布只处理交互和绘制，真实工程数据仍由主窗口统一维护。
+这种设计让画布只处理交互和绘制，真实工程数据仍由 `ProjectController` 持有，并由主窗口协调更新。当前页标签变化时，主窗口通过 `refreshCanvasLabels()` 更新画布快照；整页切换时才重新载入图片。
 
 ## 右侧标签列表
 
@@ -261,11 +307,13 @@ translations  Qt Linguist .ts 翻译源文件
 
 ## 自动备份
 
-自动备份逻辑在 `MainWindow` 中：
+自动备份由 `MainWindow` 和 `ProjectController` 分工完成：
 
 - `configureBackupTimer()` 根据 `backupIntervalSeconds` 配置定时器。
-- `markDirty()` 会把 `m_hasPendingBackup` 置为 true。
-- `performAutoBackup()` 在工程已打开、存在未保存修改且有待备份标记时保存一份副本。
+- `MainWindow::markDirty()` 将修改状态交给 `ProjectController`。
+- `ProjectController::markDirty()` 会记录工程已修改且存在待备份内容。
+- `MainWindow::performAutoBackup()` 负责定时触发和展示结果。
+- `ProjectController::performAutoBackup()` 在工程已打开、存在未保存修改且有待备份标记时保存一份副本。
 
 备份路径由 `backupPath` 决定：
 
@@ -325,5 +373,6 @@ translations  Qt Linguist .ts 翻译源文件
 - 新增可配置行为：改 `AppPreferences`、`preference.json`、`PreferenceDialog`、README、测试。
 - 新增画布交互：改 `ImageCanvas` 发信号，再由 `MainWindow` 改数据。
 - 新增标签表格行为：改 `LabelTableModel`、必要时改 `LabelEditDelegates`。
-- 新增会修改工程的操作：必须 `markDirty()`，并注册 `UndoStack` 命令。
+- 新增标签编辑操作：优先走 `LabelEditController`，并确保注册 `UndoStack` 命令。
+- 新增其他会修改工程的操作：必须 `markDirty()`，并注册 `UndoStack` 命令。
 - 新增 UI 文本：必须 `tr()`，并同步中英文翻译。

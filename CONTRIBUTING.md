@@ -16,11 +16,19 @@ This branch is a C++/Qt 6 port of LabelMinus. Keep changes aligned with the curr
 
 - `src/core`: platform-independent models, parsing, preferences and undo infrastructure.
 - `src/ui`: Qt Widgets UI classes.
-- `src/services`: external integrations such as OCR, archive and process handling.
+- `src/services`: application services such as project workflow, session persistence, backup, OCR, archive and process handling.
 - `translations`: Qt `.ts` files.
 - `preference.json`: runtime UI tuning defaults.
 
 See `docs/architecture.md` for more detail.
+
+## UI And Workflow Separation
+
+- Keep `MainWindow` as an orchestration layer for menus, widgets, signal/slot wiring and UI feedback.
+- Do not add new file-format parsing, project workflow, label mutation or session persistence logic directly to `MainWindow`.
+- Put non-widget workflow logic in `src/services`; UI classes can call services and then refresh controls.
+- When a current-page label edit only changes marker/table/editor state, refresh labels in place instead of reloading the image.
+- Reserve full image reloads for real page/image changes, project open/creation, and explicit session restore paths.
 
 ## UI Text And i18n
 
@@ -47,6 +55,13 @@ cmake --build --preset linux-debug --target release_translations
 - New reversible project edits must use `UndoStack`.
 - When adding a feature that changes labels, groups, pages or project data, add the undo command in the same change.
 - Avoid adding one-off undo state in UI code.
+- Label edits should go through `LabelEditController` so normal edits and undo replay use the same apply helpers.
+- Prefer small undo callbacks that call shared apply helpers, so table edits, canvas edits and future batch tools keep the same behavior.
+
+## Session And Local State
+
+- Store machine-local layout and per-project resume state with `QSettings` through `SessionStateStore`.
+- Do not write local window geometry, splitter positions or last-viewed page back to `preference.json`.
 
 ## Verification
 

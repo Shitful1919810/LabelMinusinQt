@@ -28,7 +28,7 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 
 - Prefer Qt Widgets for the main desktop workflow.
 - Keep platform-independent logic under `src/core`.
-- Put OS, archive, OCR and process integration under `src/services`.
+- Put project workflow, session state, OS, archive, OCR and process integration under `src/services`.
 - Keep Qt UI classes under `src/ui`.
 - Avoid reintroducing WPF, .NET or Windows-only dependencies on this branch.
 
@@ -40,3 +40,6 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - Run `scripts/check_translations.sh` after UI text changes.
 - Configurable UI behavior should go through `AppPreferences` and `preference.json`.
 - Reversible project edits must use `UndoStack`; add the undo command in the same change that introduces the edit.
+- Label edits should go through `LabelEditController` rather than adding new label mutation paths in `MainWindow`.
+- Keep `MainWindow` focused on UI orchestration; put project workflow, session state and mutation logic in services.
+- Current-page label changes should update table/marker state in place and must not reload the image unless the current image actually changes.

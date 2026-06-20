@@ -8,7 +8,10 @@ set(LABELMINUS_CORE_SOURCES
 
 set(LABELMINUS_SERVICE_SOURCES
     services/ArchiveReader.cpp
+    services/LabelEditController.cpp
     services/OcrProcess.cpp
+    services/ProjectController.cpp
+    services/SessionStateStore.cpp
 )
 
 set(LABELMINUS_UI_SOURCES
@@ -29,17 +32,9 @@ qt_add_executable(LabelMinus
     ${LABELMINUS_UI_SOURCES}
 )
 
-target_include_directories(LabelMinus
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-)
+target_include_directories(LabelMinus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(LabelMinus
-    PRIVATE
-        Qt6::Core
-        Qt6::Gui
-        Qt6::Widgets
-)
+target_link_libraries(LabelMinus PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
 
 if(LibArchive_FOUND)
     target_link_libraries(LabelMinus PRIVATE LibArchive::LibArchive)
@@ -51,8 +46,7 @@ if(COMMAND qt_add_translations)
         TS_FILES
             "${CMAKE_CURRENT_SOURCE_DIR}/../translations/labelminus_zh_CN.ts"
             "${CMAKE_CURRENT_SOURCE_DIR}/../translations/labelminus_en_US.ts"
-        RESOURCE_PREFIX
-            "/i18n"
+        RESOURCE_PREFIX "/i18n"
     )
 endif()
 

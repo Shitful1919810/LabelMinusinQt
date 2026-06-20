@@ -9,9 +9,11 @@
 #include <QPainter>
 #include <QPen>
 #include <QPixmap>
+#include <QScrollBar>
 #include <QWheelEvent>
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace {
@@ -120,11 +122,21 @@ void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::
     rebuildLabelItems();
 
     if (!m_hasUserZoom) {
-        fitInView(m_scene.sceneRect(), Qt::KeepAspectRatio);
+        fitInView(m_pixmapItem->boundingRect(), Qt::KeepAspectRatio);
+        updateScenePadding();
     }
     else {
         applyZoom();
     }
+}
+
+void ImageCanvas::setLabels(const QVector<labelminus::core::Label>& labels)
+{
+    m_labels = labels;
+    if (m_selectedLabel >= m_labels.size()) {
+        m_selectedLabel = -1;
+    }
+    rebuildLabelItems();
 }
 
 void ImageCanvas::setGroups(QStringList groups)
@@ -155,6 +167,36 @@ void ImageCanvas::setZoomPercent(int percent)
     m_hasUserZoom = true;
     m_zoomPercent = std::clamp(percent, 10, 400);
     applyZoom();
+}
+
+int ImageCanvas::zoomPercent() const noexcept
+{
+    return m_zoomPercent;
+}
+
+QPointF ImageCanvas::normalizedViewCenter() const
+{
+    if (m_pixmapItem == nullptr) {
+        return QPointF(0.5, 0.5);
+    }
+
+    return normalizedPositionFromScene(mapToScene(viewport()->rect().center()));
+}
+
+void ImageCanvas::restoreView(int zoomPercent, QPointF normalizedCenter)
+{
+    if (m_pixmapItem == nullptr) {
+        return;
+    }
+
+    m_hasUserZoom = true;
+    m_zoomPercent = std::clamp(zoomPercent, 10, 400);
+    applyZoom();
+
+    normalizedCenter.setX(std::clamp(normalizedCenter.x(), 0.0, 1.0));
+    normalizedCenter.setY(std::clamp(normalizedCenter.y(), 0.0, 1.0));
+    const QRectF rect = m_pixmapItem->boundingRect();
+    centerOn(rect.left() + normalizedCenter.x() * rect.width(), rect.top() + normalizedCenter.y() * rect.height());
 }
 
 void ImageCanvas::keyPressEvent(QKeyEvent* event)
@@ -261,7 +303,7 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
 void ImageCanvas::wheelEvent(QWheelEvent* event)
 {
     const int step = event->angleDelta().y() > 0 ? 10 : -10;
-    setZoomPercent(m_zoomPercent + step);
+    setZoomPercentAt(m_zoomPercent + step, event->position().toPoint());
     emit zoomPercentChanged(m_zoomPercent);
     event->accept();
 }
@@ -270,8 +312,9 @@ void ImageCanvas::resizeEvent(QResizeEvent* event)
 {
     QGraphicsView::resizeEvent(event);
     if (!m_hasUserZoom && m_pixmapItem != nullptr) {
-        fitInView(m_scene.sceneRect(), Qt::KeepAspectRatio);
+        fitInView(m_pixmapItem->boundingRect(), Qt::KeepAspectRatio);
     }
+    updateScenePadding();
 }
 
 void ImageCanvas::leaveEvent(QEvent* event)
@@ -311,6 +354,38 @@ void ImageCanvas::applyZoom()
     resetTransform();
     const double scaleFactor = static_cast<double>(m_zoomPercent) / 100.0;
     scale(scaleFactor, scaleFactor);
+    updateScenePadding();
+}
+
+void ImageCanvas::updateScenePadding()
+{
+    if (m_pixmapItem == nullptr) {
+        return;
+    }
+
+    const QRectF imageRect = m_pixmapItem->boundingRect();
+    const double scaleFactor = std::max(std::abs(transform().m11()), 0.001);
+    const double horizontalPadding = static_cast<double>(viewport()->width()) / scaleFactor;
+    const double verticalPadding = static_cast<double>(viewport()->height()) / scaleFactor;
+    m_scene.setSceneRect(imageRect.adjusted(-horizontalPadding, -verticalPadding, horizontalPadding, verticalPadding));
+}
+
+void ImageCanvas::setZoomPercentAt(int percent, QPoint viewportAnchor)
+{
+    if (m_pixmapItem == nullptr) {
+        setZoomPercent(percent);
+        return;
+    }
+
+    m_hasUserZoom = true;
+    const QPointF sceneAnchor = mapToScene(viewportAnchor);
+    m_zoomPercent = std::clamp(percent, 10, 400);
+    applyZoom();
+
+    const QPoint viewportAnchorAfter = mapFromScene(sceneAnchor);
+    const QPoint delta = viewportAnchorAfter - viewportAnchor;
+    horizontalScrollBar()->setValue(horizontalScrollBar()->value() + delta.x());
+    verticalScrollBar()->setValue(verticalScrollBar()->value() + delta.y());
 }
 
 bool ImageCanvas::isLabelVisible(const labelminus::core::Label& label) const

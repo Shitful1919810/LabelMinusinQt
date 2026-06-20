@@ -11,6 +11,11 @@ void UndoStack::push(Command command)
     }
 }
 
+void UndoStack::push(QString text, std::function<void()> undo)
+{
+    push(Command{std::move(text), std::move(undo)});
+}
+
 bool UndoStack::canUndo() const noexcept
 {
     return !m_commands.empty();

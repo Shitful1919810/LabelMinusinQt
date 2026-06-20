@@ -24,15 +24,35 @@ Qt Widgets classes live here:
 - `LabelTableModel`: table model for current image labels.
 - `GroupFilterComboBox`: multi-select group filtering widget.
 
-UI classes may coordinate core objects, but should avoid embedding file-format parsing or platform-service code.
+UI classes may coordinate core objects, but should avoid embedding file-format parsing, project workflow, label mutation
+rules or platform-service code. `MainWindow` should stay close to UI orchestration: creating controls, connecting
+signals, calling services and reflecting service results in widgets.
 
 ### `src/services`
 
-External integrations belong here:
+Application services belong here. They can use QtCore services such as file IO, timers and `QSettings`, but should avoid
+Qt Widgets. Current services include:
 
+- `ProjectController`: owns the open `Project`, project dirty state, file load/save and auto-backup writes.
+- `LabelEditController`: applies label edits and registers undo commands without depending on widgets.
+- `SessionStateStore`: persists local window layout and per-project session state through `QSettings`.
 - Archive reading.
 - OCR subprocesses.
 - Future platform-specific desktop integration.
+
+Keep workflow/state persistence code here when it would otherwise make `MainWindow` responsible for non-UI details.
+
+## UI Refresh Rules
+
+Avoid using full image reloads as a generic refresh tool. `ImageCanvas::setImage()` rebuilds the scene for a page and can
+change the user's current view position. Use it only when the current image actually changes, such as opening a project,
+switching pages or restoring a saved session.
+
+For edits on the current page, keep the image scene stable and refresh only the affected view state:
+
+- Use label/model refresh helpers for marker, table and editor updates.
+- Undo replay on the current page should preserve zoom and view center.
+- Group, preference and label edits should not call full image refresh just to repaint markers.
 
 ## Preferences
 
@@ -102,3 +122,21 @@ Run `scripts/check_translations.sh` after changing UI text.
 Use `UndoStack` for every reversible project edit. Current covered commands include adding labels, moving labels,
 editing label text, changing label groups, deleting labels, reordering labels and bulk group changes. Future operations
 such as OCR writes should be added as commands instead of separate ad hoc state.
+
+Undo commands should be registered close to the code that performs the edit. Label edits should go through
+`LabelEditController`, which routes normal edits and undo replay through shared apply functions. Future non-label
+project edits should follow the same pattern instead of adding one-off undo state in UI code.
+
+## Session State
+
+Local, machine-specific state is stored with `QSettings`, not in `preference.json`.
+
+Current session state includes:
+
+- Main window geometry and splitter positions.
+- Last viewed page for each project file.
+- Image zoom percentage and normalized view center.
+- Last selected label index.
+
+`SessionStateStore` clamps and validates restored values through `MainWindow`, so external edits to a project file, such
+as deleting pages, should not crash the next launch.

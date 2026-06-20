@@ -237,7 +237,7 @@ find src tests -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -prin
 ```text
 src/core        平台无关的数据模型、LabelPlus 解析与保存、偏好设置、撤销栈
 src/ui          Qt Widgets 用户界面
-src/services    OCR、压缩包、进程等外部集成预留位置
+src/services    工程工作流、会话状态、自动备份、OCR 与压缩包等服务层
 translations    Qt Linguist 翻译源文件
 tests           Qt Test 单元测试
 docs            架构与开发文档

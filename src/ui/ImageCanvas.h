@@ -20,10 +20,14 @@ public:
 
     void setPreferences(const labelminus::core::AppPreferences& preferences);
     void setImage(const QString& path, const QVector<labelminus::core::Label>& labels);
+    void setLabels(const QVector<labelminus::core::Label>& labels);
     void setGroups(QStringList groups);
     void setVisibleGroups(QStringList groups);
     void setSelectedLabel(int index);
     void setZoomPercent(int percent);
+    int zoomPercent() const noexcept;
+    QPointF normalizedViewCenter() const;
+    void restoreView(int zoomPercent, QPointF normalizedCenter);
 
 signals:
     void labelCreateRequested(QPointF normalizedPosition);
@@ -44,6 +48,8 @@ protected:
 private:
     void rebuildLabelItems();
     void applyZoom();
+    void updateScenePadding();
+    void setZoomPercentAt(int percent, QPoint viewportAnchor);
     bool isLabelVisible(const labelminus::core::Label& label) const;
     bool hasMoveLabelModifiers(Qt::KeyboardModifiers modifiers) const;
     void updateHoveredLabelToolTip(const QPoint& viewportPosition, const QPoint& globalPosition);
