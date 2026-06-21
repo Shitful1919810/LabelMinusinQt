@@ -113,8 +113,17 @@ cmake --preset windows-static-release
 cmake --build --preset windows-static-release
 ```
 
-该 preset 只启用 `LabelMinusStatic` 目标，并要求当前 CMake 能找到静态构建的 Qt。使用普通动态 Qt
-安装包时，它通常不能生成真正的单 exe。该目标仅供本地实验，不作为官方 release 推荐路径。
+如果希望使用 Visual Studio 2022 生成器，而不是 Ninja：
+
+```powershell
+cmake --preset windows-vs-static-release
+cmake --build --preset windows-vs-static-release
+```
+
+这些 preset 只启用 `LabelMinusStatic` 目标，并要求当前 CMake 能找到静态构建的 Qt。使用普通动态 Qt
+安装包时，它通常不能生成真正的单 exe。该目标仅供本地实验，不作为官方 release 推荐路径。若使用 Ninja
+preset，请先进入 “x64 Native Tools Command Prompt for VS 2022” 或手动设置 MSVC 编译器环境；VS preset
+则会直接使用 Visual Studio 2022 生成器。
 
 ### macOS
 

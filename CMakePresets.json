@@ -118,6 +118,23 @@
       }
     },
     {
+      "name": "windows-vs-static-release",
+      "displayName": "Windows Static Release (Visual Studio, Experimental)",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/windows-vs/static-release",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "OFF",
+        "LABELMINUS_ENABLE_STATIC_QT_EXPERIMENT": "ON",
+        "LABELMINUS_ENABLE_TESTS": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
       "name": "macos-debug",
       "displayName": "macOS Debug",
       "inherits": "debug-base",
@@ -173,6 +190,14 @@
       "name": "windows-vs-release",
       "configurePreset": "windows-vs-release",
       "configuration": "Release"
+    },
+    {
+      "name": "windows-vs-static-release",
+      "configurePreset": "windows-vs-static-release",
+      "configuration": "Release",
+      "targets": [
+        "LabelMinusStatic"
+      ]
     },
     {
       "name": "macos-debug",

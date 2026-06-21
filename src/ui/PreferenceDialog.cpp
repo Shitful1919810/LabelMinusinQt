@@ -25,6 +25,8 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include <optional>
+
 namespace {
 constexpr int colorColumn = 0;
 constexpr int diameterColumn = 1;
@@ -84,6 +86,24 @@ QString comboBoxDataOrText(const QComboBox* comboBox)
     }
 
     return comboBox->currentText().trimmed();
+}
+
+std::optional<QFont> chooseFontWithQtDialog(QWidget* parent, const QFont& initialFont, const QString& title)
+{
+    QFontDialog dialog(initialFont, parent);
+    dialog.setWindowTitle(title);
+#ifdef Q_OS_WIN
+    dialog.setOption(QFontDialog::DontUseNativeDialog, true);
+#endif
+    if (dialog.exec() != QDialog::Accepted) {
+        return std::nullopt;
+    }
+
+    QFont font = dialog.selectedFont();
+    if (font.pointSizeF() <= 0.0) {
+        font.setPointSizeF(parent != nullptr ? parent->font().pointSizeF() : initialFont.pointSizeF());
+    }
+    return font;
 }
 } // namespace
 
@@ -456,17 +476,13 @@ void PreferenceDialog::chooseGroupColor(int row)
 
 void PreferenceDialog::chooseLabelTableFont()
 {
-    bool ok = false;
-    QFont font = QFontDialog::getFont(&ok, m_usesDefaultLabelTableFont ? this->font() : m_labelTableFont, this,
-                                      tr("Choose label table font"));
-    if (!ok) {
+    const std::optional<QFont> font = chooseFontWithQtDialog(
+        this, m_usesDefaultLabelTableFont ? this->font() : m_labelTableFont, tr("Choose label table font"));
+    if (!font.has_value()) {
         return;
     }
 
-    if (font.pointSizeF() <= 0.0) {
-        font.setPointSizeF(this->font().pointSizeF());
-    }
-    m_labelTableFont = font;
+    m_labelTableFont = font.value();
     m_usesDefaultLabelTableFont = false;
     updateLabelTableFontSummary();
     updateJsonPreview();
@@ -494,22 +510,18 @@ void PreferenceDialog::updateLabelTableFontSummary()
 
     m_labelTableFontLabel->setText(
         tr("%1, %2 pt").arg(m_labelTableFont.family()).arg(m_labelTableFont.pointSizeF(), 0, 'f', 1));
-    m_labelTableFontLabel->setFont(m_labelTableFont);
+    m_labelTableFontLabel->setFont(font());
 }
 
 void PreferenceDialog::chooseTextEditorFont()
 {
-    bool ok = false;
-    QFont font = QFontDialog::getFont(&ok, m_usesDefaultTextEditorFont ? this->font() : m_textEditorFont, this,
-                                      tr("Choose text editor font"));
-    if (!ok) {
+    const std::optional<QFont> font = chooseFontWithQtDialog(
+        this, m_usesDefaultTextEditorFont ? this->font() : m_textEditorFont, tr("Choose text editor font"));
+    if (!font.has_value()) {
         return;
     }
 
-    if (font.pointSizeF() <= 0.0) {
-        font.setPointSizeF(this->font().pointSizeF());
-    }
-    m_textEditorFont = font;
+    m_textEditorFont = font.value();
     m_usesDefaultTextEditorFont = false;
     updateTextEditorFontSummary();
     updateJsonPreview();
@@ -537,7 +549,7 @@ void PreferenceDialog::updateTextEditorFontSummary()
 
     m_textEditorFontLabel->setText(
         tr("%1, %2 pt").arg(m_textEditorFont.family()).arg(m_textEditorFont.pointSizeF(), 0, 'f', 1));
-    m_textEditorFontLabel->setFont(m_textEditorFont);
+    m_textEditorFontLabel->setFont(font());
 }
 
 void PreferenceDialog::applyPreferences()
