@@ -28,6 +28,12 @@ enum class AppPreferenceWarningType {
     LabelTextEditorFontFamilyWrongType,
     LabelTextEditorFontPointSizeWrongType,
     LabelTextEditorFontPointSizeOutOfRange,
+    MarkerTextBubbleNotObject,
+    MarkerTextBubbleFontFamilyWrongType,
+    MarkerTextBubbleFontPointSizeWrongType,
+    MarkerTextBubbleFontPointSizeOutOfRange,
+    MarkerTextBubbleOpacityWrongType,
+    MarkerTextBubbleOpacityOutOfRange,
     GroupStylesNotArray,
     GroupStyleNotObject,
     InvalidGroupStyleColor,
@@ -38,11 +44,15 @@ enum class AppPreferenceWarningType {
     MoveLabelModifierInvalid,
     UndoShortcutInvalid,
     RedoShortcutInvalid,
+    NextLabelShortcutInvalid,
+    EditLabelTextShortcutInvalid,
+    CommitLabelTextShortcutInvalid,
     BackupPathWrongType,
     BackupIntervalWrongType,
     BackupIntervalOutOfRange,
     AppearanceNotObject,
     AppearanceStyleWrongType,
+    AppearanceThemeWrongType,
 };
 
 struct AppPreferenceWarning {
@@ -81,10 +91,17 @@ public:
     double labelTableFontPointSize() const noexcept;
     QString labelTextEditorFontFamily() const;
     double labelTextEditorFontPointSize() const noexcept;
+    QString markerTextBubbleFontFamily() const;
+    double markerTextBubbleFontPointSize() const noexcept;
+    double markerTextBubbleOpacity() const noexcept;
     QString applicationStyle() const;
+    QString applicationTheme() const;
     Qt::KeyboardModifiers moveLabelModifiers() const noexcept;
     QKeySequence undoShortcut() const;
     QKeySequence redoShortcut() const;
+    QKeySequence nextLabelShortcut() const;
+    QKeySequence editLabelTextShortcut() const;
+    QKeySequence commitLabelTextShortcut() const;
     QString backupPath() const;
     int backupIntervalSeconds() const noexcept;
     const QVector<LabelGroupStyle>& groupStyles() const noexcept;
@@ -99,10 +116,17 @@ private:
     double m_labelTableFontPointSize{0.0};
     QString m_labelTextEditorFontFamily;
     double m_labelTextEditorFontPointSize{0.0};
+    QString m_markerTextBubbleFontFamily;
+    double m_markerTextBubbleFontPointSize{0.0};
+    double m_markerTextBubbleOpacity{1.0};
     QString m_applicationStyle;
+    QString m_applicationTheme;
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
     QKeySequence m_undoShortcut{QStringLiteral("Ctrl+Z")};
     QKeySequence m_redoShortcut{QStringLiteral("Ctrl+Y")};
+    QKeySequence m_nextLabelShortcut{QStringLiteral("Tab")};
+    QKeySequence m_editLabelTextShortcut{QStringLiteral("Return")};
+    QKeySequence m_commitLabelTextShortcut{QStringLiteral("Ctrl+Return")};
     QString m_backupPath{QStringLiteral("bak")};
     int m_backupIntervalSeconds{60};
     QVector<LabelGroupStyle> m_groupStyles;

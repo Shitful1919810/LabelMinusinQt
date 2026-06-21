@@ -33,12 +33,75 @@ LabelEditController::LabelEditController(labelminus::core::Project& project, lab
 }
 
 void LabelEditController::setCallbacks(LabelSelectedCallback labelSelected, LabelsSelectedCallback labelsSelected,
-                                       ImageSelectionClearedCallback imageSelectionCleared, DirtyCallback dirty)
+                                       ImageSelectionClearedCallback imageSelectionCleared,
+                                       ProjectChangedCallback projectChanged, DirtyCallback dirty)
 {
     m_labelSelected = std::move(labelSelected);
     m_labelsSelected = std::move(labelsSelected);
     m_imageSelectionCleared = std::move(imageSelectionCleared);
+    m_projectChanged = std::move(projectChanged);
     m_dirty = std::move(dirty);
+}
+
+LabelEditResult LabelEditController::addGroup(const QString& group)
+{
+    const QString trimmedGroup = group.trimmed();
+    if (trimmedGroup.isEmpty() || m_project.groups().contains(trimmedGroup)) {
+        return {};
+    }
+
+    const QStringList oldGroups = m_project.groups();
+    const QVector<QVector<QString>> oldLabelGroups = currentLabelGroups();
+    QStringList newGroups = oldGroups;
+    newGroups.append(trimmedGroup);
+
+    m_project.setGroups(newGroups);
+    m_undoStack.push(
+        m_commandTexts.addGroup,
+        [this, oldGroups, oldLabelGroups]() { applyGroupsAndLabelGroups(oldGroups, oldLabelGroups); },
+        [this, newGroups, oldLabelGroups]() { applyGroupsAndLabelGroups(newGroups, oldLabelGroups); });
+    if (m_projectChanged) {
+        m_projectChanged();
+    }
+    markDirty();
+    LabelEditResult result;
+    result.changed = true;
+    return result;
+}
+
+LabelEditResult LabelEditController::removeGroup(const QString& group, const QString& fallbackGroup)
+{
+    if (group.isEmpty() || group == fallbackGroup || !m_project.groups().contains(group) ||
+        !m_project.groups().contains(fallbackGroup) || m_project.groups().size() <= 1) {
+        return {};
+    }
+
+    const QStringList oldGroups = m_project.groups();
+    const QVector<QVector<QString>> oldLabelGroups = currentLabelGroups();
+    QStringList newGroups = oldGroups;
+    newGroups.removeAll(group);
+
+    for (labelminus::core::ImageEntry& image : m_project.images()) {
+        for (labelminus::core::Label& label : image.labels) {
+            if (label.group() == group) {
+                label.setGroup(fallbackGroup);
+            }
+        }
+    }
+    const QVector<QVector<QString>> newLabelGroups = currentLabelGroups();
+    m_project.setGroups(newGroups);
+
+    m_undoStack.push(
+        m_commandTexts.removeGroup,
+        [this, oldGroups, oldLabelGroups]() { applyGroupsAndLabelGroups(oldGroups, oldLabelGroups); },
+        [this, newGroups, newLabelGroups]() { applyGroupsAndLabelGroups(newGroups, newLabelGroups); });
+    if (m_projectChanged) {
+        m_projectChanged();
+    }
+    markDirty();
+    LabelEditResult result;
+    result.changed = true;
+    return result;
 }
 
 LabelEditResult LabelEditController::addLabel(int imageIndex, const labelminus::core::Label& label)
@@ -454,6 +517,39 @@ void LabelEditController::applyBatchLabelDeleted(int imageIndex, QVector<int> la
         m_imageSelectionCleared(imageIndex);
     }
     markDirty();
+}
+
+void LabelEditController::applyGroupsAndLabelGroups(QStringList groups, QVector<QVector<QString>> labelGroups)
+{
+    m_project.setGroups(std::move(groups));
+    for (int imageIndex = 0; imageIndex < m_project.images().size() && imageIndex < labelGroups.size(); ++imageIndex) {
+        labelminus::core::ImageEntry& image = m_project.images()[imageIndex];
+        const QVector<QString>& imageLabelGroups = labelGroups.at(imageIndex);
+        for (int labelIndex = 0; labelIndex < image.labels.size() && labelIndex < imageLabelGroups.size();
+             ++labelIndex) {
+            image.labels[labelIndex].setGroup(imageLabelGroups.at(labelIndex));
+        }
+    }
+
+    if (m_projectChanged) {
+        m_projectChanged();
+    }
+    markDirty();
+}
+
+QVector<QVector<QString>> LabelEditController::currentLabelGroups() const
+{
+    QVector<QVector<QString>> labelGroups;
+    labelGroups.reserve(m_project.images().size());
+    for (const labelminus::core::ImageEntry& image : m_project.images()) {
+        QVector<QString> imageLabelGroups;
+        imageLabelGroups.reserve(image.labels.size());
+        for (const labelminus::core::Label& label : image.labels) {
+            imageLabelGroups.append(label.group());
+        }
+        labelGroups.append(std::move(imageLabelGroups));
+    }
+    return labelGroups;
 }
 
 labelminus::core::ImageEntry* LabelEditController::imageAt(int imageIndex)

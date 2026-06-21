@@ -12,6 +12,7 @@
 #include <QColor>
 #include <QFont>
 #include <QMainWindow>
+#include <QPersistentModelIndex>
 #include <QPointF>
 #include <QVariant>
 #include <QVector>
@@ -43,6 +44,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
     void createActions();
@@ -64,12 +66,22 @@ private:
     void showLabelContextMenu(const QPoint& position);
     void reorderLabels(QVector<int> sourceIndexes, int visibleDropRow);
     void updateCurrentLabelText();
+    void commitPendingTextEdit();
+    void resetPendingTextEdit();
     void updateCurrentLabelGroup(int index);
-    void updateLabelFromTable(int sourceIndex, int column, QVariant oldValue, QVariant newValue);
+    void updateLabelFromTable(int sourceIndex, int column, QVariant newValue);
+    void previewLabelTextFromTableEditor(QPersistentModelIndex index, const QString& text);
+    void clearLabelTextPreviewFromTableEditor(QPersistentModelIndex index);
     void moveLabel(int index, QPointF normalizedPosition);
     void undoLastOperation();
     void redoLastOperation();
     void updateEditShortcuts();
+    bool handleLabelViewShortcut(QEvent* event);
+    void selectNextVisibleLabel();
+    void editCurrentLabelText();
+    void selectLabelAndCenter(int imageIndex, int labelIndex);
+    int firstVisibleLabelIndex(int imageIndex) const;
+    bool isLabelVisibleByGroupFilter(const labelminus::core::Label& label) const;
     QVector<int> selectedLabelIndexes() const;
     void selectLabelIndexes(const QVector<int>& sourceIndexes);
     void refreshProjectUi();
@@ -138,6 +150,9 @@ private:
     int m_currentImageIndex{-1};
     int m_currentLabelIndex{-1};
     bool m_isUpdatingUi{false};
+    int m_pendingTextEditImageIndex{-1};
+    int m_pendingTextEditLabelIndex{-1};
+    QString m_pendingTextEditOldText;
     int m_labelTableMaxTextRows{3};
     QFont m_defaultLabelTableFont;
     QFont m_defaultTextEditFont;

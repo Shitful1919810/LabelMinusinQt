@@ -3,6 +3,7 @@
 #include "core/AppPreferences.h"
 
 #include <QColor>
+#include <QKeySequence>
 #include <QPersistentModelIndex>
 #include <QStringList>
 #include <QStyledItemDelegate>
@@ -14,6 +15,7 @@ class LabelTextDelegate final : public QStyledItemDelegate {
 public:
     explicit LabelTextDelegate(QObject* parent = nullptr);
 
+    void setCommitShortcut(QKeySequence shortcut);
     QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
     void setEditorData(QWidget* editor, const QModelIndex& index) const override;
     void setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const override;
@@ -23,9 +25,14 @@ public:
 
 signals:
     void editorHeightHintChanged(QPersistentModelIndex index, QWidget* editor, int height);
+    void editorTextChanged(QPersistentModelIndex index, QString text);
+    void editorTextPreviewFinished(QPersistentModelIndex index);
 
 protected:
     bool eventFilter(QObject* object, QEvent* event) override;
+
+private:
+    QKeySequence m_commitShortcut{QStringLiteral("Ctrl+Return")};
 };
 
 class LabelGroupDelegate final : public QStyledItemDelegate {

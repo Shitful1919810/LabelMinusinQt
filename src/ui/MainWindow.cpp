@@ -3,6 +3,7 @@
 #include "services/SessionStateStore.h"
 #include "ui/LabelEditDelegates.h"
 #include "ui/PreferenceDialog.h"
+#include "ui/ThemeManager.h"
 
 #include <QAbstractItemView>
 #include <QAction>
@@ -18,6 +19,7 @@
 #include <QInputDialog>
 #include <QItemSelection>
 #include <QItemSelectionModel>
+#include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
@@ -53,6 +55,7 @@ MainWindow::MainWindow(QWidget* parent)
     m_preferences = preferences.preferences;
     m_preferenceWarnings = preferences.warnings;
     m_labelTableMaxTextRows = m_preferences.labelTableMaxTextRows();
+    m_labelTextDelegate->setCommitShortcut(m_preferences.commitLabelTextShortcut());
     m_labelEditController =
         std::make_unique<labelminus::services::LabelEditController>(project(), m_undoStack,
                                                                     labelminus::services::LabelEditCommandTexts{
@@ -62,13 +65,20 @@ MainWindow::MainWindow(QWidget* parent)
                                                                         tr("Move label"),
                                                                         tr("Delete labels"),
                                                                         tr("Reorder labels"),
+                                                                        tr("Add group"),
+                                                                        tr("Remove group"),
                                                                     });
     m_labelEditController->setCallbacks(
         [this](int imageIndex, int labelIndex) { refreshLabelEditSelection(imageIndex, labelIndex); },
         [this](int imageIndex, QVector<int> labelIndexes) {
             refreshLabelEditSelection(imageIndex, std::move(labelIndexes));
         },
-        [this](int imageIndex) { clearLabelEditSelection(imageIndex); }, [this]() { markDirty(); });
+        [this](int imageIndex) { clearLabelEditSelection(imageIndex); },
+        [this]() {
+            refreshGroupUi();
+            refreshCurrentLabelUi();
+        },
+        [this]() { markDirty(); });
 
     setWindowTitle(QStringLiteral("LabelMinus"));
     resize(1200, 800);
@@ -102,6 +112,20 @@ void MainWindow::closeEvent(QCloseEvent* event)
     saveProjectSessionState();
     saveLayoutState();
     event->accept();
+}
+
+bool MainWindow::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == m_textEdit && event->type() == QEvent::FocusOut) {
+        commitPendingTextEdit();
+    }
+
+    if ((watched == m_labelView || (m_labelView != nullptr && watched == m_labelView->viewport())) &&
+        handleLabelViewShortcut(event)) {
+        return true;
+    }
+
+    return QMainWindow::eventFilter(watched, event);
 }
 
 void MainWindow::createActions()
@@ -250,10 +274,12 @@ void MainWindow::createCentralWidget()
     m_labelView->setWordWrap(true);
     m_labelView->verticalHeader()->setVisible(false);
     m_labelView->horizontalHeader()->setStretchLastSection(false);
-    m_labelView->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    m_labelView->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    m_labelView->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    m_labelView->horizontalHeader()->setSectionResizeMode(LabelTableModel::NumberColumn, QHeaderView::ResizeToContents);
+    m_labelView->horizontalHeader()->setSectionResizeMode(LabelTableModel::TextColumn, QHeaderView::Stretch);
+    m_labelView->horizontalHeader()->setSectionResizeMode(LabelTableModel::GroupColumn, QHeaderView::ResizeToContents);
     m_labelView->setAlternatingRowColors(true);
+    m_labelView->installEventFilter(this);
+    m_labelView->viewport()->installEventFilter(this);
     auto* labelRowsResizeTimer = new QTimer(m_labelView);
     labelRowsResizeTimer->setSingleShot(true);
     labelRowsResizeTimer->setInterval(0);
@@ -278,6 +304,7 @@ void MainWindow::createCentralWidget()
     m_textEdit = new QPlainTextEdit(editorPanel);
     m_defaultTextEditFont = m_textEdit->font();
     m_textEdit->setPlaceholderText(tr("Selected label text"));
+    m_textEdit->installEventFilter(this);
     editorLayout->addWidget(m_textEdit, 1);
     m_rightSplitter->setStretchFactor(0, 3);
     m_rightSplitter->setStretchFactor(1, 1);
@@ -307,6 +334,12 @@ void MainWindow::createCentralWidget()
                     selectLabel(m_labelModel->sourceIndexForRow(current.row()));
                 }
             });
+    connect(m_labelView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() {
+        if (m_isUpdatingUi || m_canvas == nullptr) {
+            return;
+        }
+        m_canvas->setSelectedLabels(selectedLabelIndexes());
+    });
     auto* deleteLabelShortcut = new QAction(m_labelView);
     deleteLabelShortcut->setShortcut(QKeySequence::Delete);
     deleteLabelShortcut->setShortcutContext(Qt::WidgetShortcut);
@@ -314,12 +347,13 @@ void MainWindow::createCentralWidget()
     connect(deleteLabelShortcut, &QAction::triggered, this, &MainWindow::deleteSelectedLabels);
     connect(m_labelView, &QTableView::customContextMenuRequested, this, &MainWindow::showLabelContextMenu);
     connect(m_textEdit, &QPlainTextEdit::textChanged, this, &MainWindow::updateCurrentLabelText);
-    connect(m_labelModel, &LabelTableModel::labelEdited, this, &MainWindow::updateLabelFromTable, Qt::QueuedConnection);
+    connect(m_labelModel, &LabelTableModel::labelEditRequested, this, &MainWindow::updateLabelFromTable,
+            Qt::QueuedConnection);
     connect(m_labelModel, &LabelTableModel::labelsReorderRequested, this, &MainWindow::reorderLabels);
     connect(m_labelTextDelegate, &LabelTextDelegate::editorHeightHintChanged, this,
             [this](const QPersistentModelIndex& index, QWidget* editor, int height) {
                 if (!index.isValid() || m_labelView == nullptr || index.model() != m_labelModel ||
-                    index.column() != 1) {
+                    index.column() != LabelTableModel::TextColumn) {
                     return;
                 }
 
@@ -334,6 +368,10 @@ void MainWindow::createCentralWidget()
                 m_labelView->setRowHeight(row, std::max(minimumHeight, height));
                 editor->setGeometry(m_labelView->visualRect(index));
             });
+    connect(m_labelTextDelegate, &LabelTextDelegate::editorTextChanged, this,
+            &MainWindow::previewLabelTextFromTableEditor);
+    connect(m_labelTextDelegate, &LabelTextDelegate::editorTextPreviewFinished, this,
+            &MainWindow::clearLabelTextPreviewFromTableEditor);
     connect(m_groupFilterComboBox, &GroupFilterComboBox::selectedGroupsChanged, this, &MainWindow::updateGroupFilter);
     connect(m_labelGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateCurrentLabelGroup);
     connect(m_insertGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateInsertGroupTextColor);
@@ -436,6 +474,8 @@ bool MainWindow::saveProject()
         return true;
     }
 
+    commitPendingTextEdit();
+
     if (project().filePath().isEmpty()) {
         return saveProjectAs();
     }
@@ -457,6 +497,8 @@ bool MainWindow::saveProjectAs()
     if (project().isEmpty()) {
         return true;
     }
+
+    commitPendingTextEdit();
 
     const QString path = QFileDialog::getSaveFileName(this, tr("Save LabelPlus text"), project().filePath(),
                                                       tr("LabelPlus text (*.txt);;All files (*)"));
@@ -486,10 +528,15 @@ void MainWindow::addGroup()
     if (!ok || group.isEmpty()) {
         return;
     }
-    if (!project().groups().contains(group)) {
-        project().groups().append(group);
-        markDirty();
+    if (m_labelEditController == nullptr) {
+        return;
     }
+
+    const labelminus::services::LabelEditResult result = m_labelEditController->addGroup(group);
+    if (!result.changed) {
+        return;
+    }
+
     refreshGroupUi();
     m_insertGroupComboBox->setCurrentText(group);
     refreshCurrentLabelUi();
@@ -502,19 +549,28 @@ void MainWindow::removeGroup()
         return;
     }
 
-    const QString fallback = project().groups().first();
-    for (labelminus::core::ImageEntry& image : project().images()) {
-        for (labelminus::core::Label& label : image.labels) {
-            if (label.group() == group) {
-                label.setGroup(fallback);
-            }
+    QString fallback;
+    for (const QString& candidate : project().groups()) {
+        if (candidate != group) {
+            fallback = candidate;
+            break;
         }
     }
+    if (fallback.isEmpty()) {
+        return;
+    }
+    if (m_labelEditController == nullptr) {
+        return;
+    }
 
-    project().groups().removeAll(group);
+    const labelminus::services::LabelEditResult result = m_labelEditController->removeGroup(group, fallback);
+    if (!result.changed) {
+        return;
+    }
+
     refreshGroupUi();
+    m_insertGroupComboBox->setCurrentText(fallback);
     refreshCurrentLabelUi();
-    markDirty();
 }
 
 void MainWindow::updateGroupFilter(const QStringList& groups)
@@ -529,7 +585,7 @@ void MainWindow::updateGroupFilter(const QStringList& groups)
 
     if (m_currentLabelIndex >= 0 && m_labelModel->rowForSourceIndex(m_currentLabelIndex) < 0) {
         m_currentLabelIndex = -1;
-        m_canvas->setSelectedLabel(-1);
+        m_canvas->setSelectedLabels({});
         m_textEdit->clear();
         setEditorEnabled(false);
     }
@@ -541,6 +597,7 @@ void MainWindow::selectImage(int index)
         return;
     }
 
+    commitPendingTextEdit();
     saveProjectSessionState();
     m_currentImageIndex = index;
     m_currentLabelIndex = -1;
@@ -549,27 +606,36 @@ void MainWindow::selectImage(int index)
 
 void MainWindow::selectLabel(int index)
 {
+    if (!m_isUpdatingUi &&
+        (m_pendingTextEditImageIndex != m_currentImageIndex || m_pendingTextEditLabelIndex != index)) {
+        commitPendingTextEdit();
+    }
+
     labelminus::core::ImageEntry* image = currentImage();
     if (image == nullptr || index < 0 || index >= image->labels.size()) {
         m_currentLabelIndex = -1;
+        resetPendingTextEdit();
         setEditorEnabled(false);
         return;
     }
 
     m_isUpdatingUi = true;
     m_currentLabelIndex = index;
-    m_canvas->setSelectedLabel(index);
     m_textEdit->setPlainText(image->labels.at(index).text());
     m_labelGroupComboBox->setCurrentText(image->labels.at(index).group());
     const int visibleRow = m_labelModel->rowForSourceIndex(index);
     if (visibleRow >= 0) {
-        m_labelView->selectRow(visibleRow);
+        const QModelIndex rowIndex = m_labelModel->index(visibleRow, LabelTableModel::NumberColumn);
+        if (!m_labelView->selectionModel()->isSelected(rowIndex)) {
+            m_labelView->selectRow(visibleRow);
+        }
         m_labelView->resizeRowToContents(visibleRow);
         capLabelRowHeight(visibleRow);
     }
     else {
         m_labelView->clearSelection();
     }
+    m_canvas->setSelectedLabels(selectedLabelIndexes());
     setEditorEnabled(true);
     m_isUpdatingUi = false;
 }
@@ -638,7 +704,7 @@ void MainWindow::changeSelectedLabelsGroup(const QString& group)
     }
     else {
         m_currentLabelIndex = -1;
-        m_canvas->setSelectedLabel(-1);
+        m_canvas->setSelectedLabels({});
         m_labelView->clearSelection();
         m_textEdit->clear();
         setEditorEnabled(false);
@@ -731,8 +797,14 @@ void MainWindow::updateCurrentLabelText()
         return;
     }
 
+    if (m_pendingTextEditImageIndex < 0 || m_pendingTextEditLabelIndex < 0) {
+        m_pendingTextEditImageIndex = m_currentImageIndex;
+        m_pendingTextEditLabelIndex = m_currentLabelIndex;
+        m_pendingTextEditOldText = image->labels.at(m_currentLabelIndex).text();
+    }
+
     if (m_labelEditController != nullptr) {
-        m_labelEditController->setLabelText(m_currentImageIndex, m_currentLabelIndex, newText);
+        m_labelEditController->setLabelText(m_currentImageIndex, m_currentLabelIndex, newText, false);
     }
     refreshCanvasLabels();
     m_labelModel->labelChanged(m_currentLabelIndex);
@@ -741,6 +813,38 @@ void MainWindow::updateCurrentLabelText()
         m_labelView->resizeRowToContents(visibleRow);
         capLabelRowHeight(visibleRow);
     }
+}
+
+void MainWindow::commitPendingTextEdit()
+{
+    if (m_pendingTextEditImageIndex < 0 || m_pendingTextEditLabelIndex < 0 || m_labelEditController == nullptr) {
+        return;
+    }
+
+    if (m_pendingTextEditImageIndex >= project().images().size()) {
+        resetPendingTextEdit();
+        return;
+    }
+
+    const labelminus::core::ImageEntry& image = project().images().at(m_pendingTextEditImageIndex);
+    if (m_pendingTextEditLabelIndex >= image.labels.size()) {
+        resetPendingTextEdit();
+        return;
+    }
+
+    const QString currentText = image.labels.at(m_pendingTextEditLabelIndex).text();
+    if (currentText != m_pendingTextEditOldText) {
+        m_labelEditController->registerLabelTextUndo(m_pendingTextEditImageIndex, m_pendingTextEditLabelIndex,
+                                                     m_pendingTextEditOldText, currentText);
+    }
+    resetPendingTextEdit();
+}
+
+void MainWindow::resetPendingTextEdit()
+{
+    m_pendingTextEditImageIndex = -1;
+    m_pendingTextEditLabelIndex = -1;
+    m_pendingTextEditOldText.clear();
 }
 
 void MainWindow::updateCurrentLabelGroup(int index)
@@ -773,27 +877,61 @@ void MainWindow::updateCurrentLabelGroup(int index)
     selectLabel(m_currentLabelIndex);
 }
 
-void MainWindow::updateLabelFromTable(int sourceIndex, int column, QVariant oldValue, QVariant newValue)
+void MainWindow::updateLabelFromTable(int sourceIndex, int column, QVariant newValue)
 {
+    commitPendingTextEdit();
+
     labelminus::core::ImageEntry* image = currentImage();
     if (image == nullptr || sourceIndex < 0 || sourceIndex >= image->labels.size()) {
         return;
     }
 
-    if (column == 1 && m_labelEditController != nullptr) {
-        m_labelEditController->registerLabelTextUndo(m_currentImageIndex, sourceIndex, oldValue.toString(),
-                                                     newValue.toString());
+    if (column == LabelTableModel::TextColumn && m_labelEditController != nullptr) {
+        if (m_canvas != nullptr) {
+            m_canvas->clearLabelTextPreview(sourceIndex);
+        }
+        m_labelEditController->setLabelText(m_currentImageIndex, sourceIndex, newValue.toString());
+        m_labelModel->labelChanged(sourceIndex);
         refreshCanvasLabels();
     }
-    if (column == 2 && m_labelEditController != nullptr) {
-        m_labelEditController->registerLabelGroupUndo(m_currentImageIndex, sourceIndex, oldValue.toString(),
-                                                      newValue.toString());
+    if (column == LabelTableModel::GroupColumn && m_labelEditController != nullptr) {
+        m_labelEditController->setLabelGroup(m_currentImageIndex, sourceIndex, newValue.toString());
         m_labelModel->refresh();
         refreshCanvasLabels();
     }
 
     selectLabel(sourceIndex);
-    markDirty();
+}
+
+void MainWindow::previewLabelTextFromTableEditor(QPersistentModelIndex index, const QString& text)
+{
+    if (!index.isValid() || index.model() != m_labelModel || index.column() != LabelTableModel::TextColumn) {
+        return;
+    }
+
+    if (m_canvas == nullptr) {
+        return;
+    }
+
+    const int sourceIndex = m_labelModel->sourceIndexForRow(index.row());
+    if (sourceIndex < 0) {
+        return;
+    }
+
+    m_canvas->setLabelTextPreview(sourceIndex, text);
+}
+
+void MainWindow::clearLabelTextPreviewFromTableEditor(QPersistentModelIndex index)
+{
+    if (!index.isValid() || index.model() != m_labelModel || index.column() != LabelTableModel::TextColumn ||
+        m_canvas == nullptr) {
+        return;
+    }
+
+    const int sourceIndex = m_labelModel->sourceIndexForRow(index.row());
+    if (sourceIndex >= 0) {
+        m_canvas->clearLabelTextPreview(sourceIndex);
+    }
 }
 
 void MainWindow::moveLabel(int index, QPointF normalizedPosition)
@@ -821,11 +959,13 @@ void MainWindow::moveLabel(int index, QPointF normalizedPosition)
 
 void MainWindow::undoLastOperation()
 {
+    commitPendingTextEdit();
     m_undoStack.undo();
 }
 
 void MainWindow::redoLastOperation()
 {
+    commitPendingTextEdit();
     m_undoStack.redo();
 }
 
@@ -837,6 +977,124 @@ void MainWindow::updateEditShortcuts()
     if (m_redoAction != nullptr) {
         m_redoAction->setShortcut(m_preferences.redoShortcut());
     }
+}
+
+bool MainWindow::handleLabelViewShortcut(QEvent* event)
+{
+    if (event->type() != QEvent::KeyPress) {
+        return false;
+    }
+
+    const auto* keyEvent = static_cast<QKeyEvent*>(event);
+    if (keyEvent->key() == Qt::Key_unknown || keyEvent->isAutoRepeat()) {
+        return false;
+    }
+
+    const QKeySequence pressedKey(keyEvent->keyCombination());
+    if (pressedKey.matches(m_preferences.editLabelTextShortcut()) == QKeySequence::ExactMatch) {
+        editCurrentLabelText();
+        return true;
+    }
+
+    if (pressedKey.matches(m_preferences.nextLabelShortcut()) == QKeySequence::ExactMatch) {
+        selectNextVisibleLabel();
+        return true;
+    }
+
+    return false;
+}
+
+void MainWindow::selectNextVisibleLabel()
+{
+    if (project().isEmpty() || currentImage() == nullptr || m_labelModel == nullptr) {
+        return;
+    }
+
+    int currentVisibleRow = -1;
+    if (m_labelView != nullptr && m_labelView->currentIndex().isValid()) {
+        currentVisibleRow = m_labelView->currentIndex().row();
+    }
+    if (currentVisibleRow < 0 && m_currentLabelIndex >= 0) {
+        currentVisibleRow = m_labelModel->rowForSourceIndex(m_currentLabelIndex);
+    }
+
+    if (currentVisibleRow < 0 && m_labelModel->rowCount() > 0) {
+        selectLabelAndCenter(m_currentImageIndex, m_labelModel->sourceIndexForRow(0));
+        return;
+    }
+
+    if (currentVisibleRow >= 0 && currentVisibleRow + 1 < m_labelModel->rowCount()) {
+        selectLabelAndCenter(m_currentImageIndex, m_labelModel->sourceIndexForRow(currentVisibleRow + 1));
+        return;
+    }
+
+    for (int imageIndex = m_currentImageIndex + 1; imageIndex < project().images().size(); ++imageIndex) {
+        const int labelIndex = firstVisibleLabelIndex(imageIndex);
+        if (labelIndex >= 0) {
+            selectLabelAndCenter(imageIndex, labelIndex);
+            return;
+        }
+    }
+}
+
+void MainWindow::editCurrentLabelText()
+{
+    if (m_labelView == nullptr || m_labelModel == nullptr || currentImage() == nullptr) {
+        return;
+    }
+
+    int row = m_labelView->currentIndex().row();
+    if (row < 0 && m_currentLabelIndex >= 0) {
+        row = m_labelModel->rowForSourceIndex(m_currentLabelIndex);
+    }
+    if (row < 0) {
+        return;
+    }
+
+    const QModelIndex textIndex = m_labelModel->index(row, LabelTableModel::TextColumn);
+    if (!textIndex.isValid()) {
+        return;
+    }
+
+    m_labelView->setCurrentIndex(textIndex);
+    m_labelView->edit(textIndex);
+}
+
+void MainWindow::selectLabelAndCenter(int imageIndex, int labelIndex)
+{
+    if (imageIndex < 0 || imageIndex >= project().images().size()) {
+        return;
+    }
+
+    if (imageIndex != m_currentImageIndex) {
+        selectImage(imageIndex);
+    }
+
+    selectLabel(labelIndex);
+    if (m_canvas != nullptr) {
+        m_canvas->centerOnLabel(labelIndex);
+    }
+}
+
+int MainWindow::firstVisibleLabelIndex(int imageIndex) const
+{
+    if (imageIndex < 0 || imageIndex >= project().images().size()) {
+        return -1;
+    }
+
+    const QVector<labelminus::core::Label>& labels = project().images().at(imageIndex).labels;
+    for (int labelIndex = 0; labelIndex < labels.size(); ++labelIndex) {
+        if (isLabelVisibleByGroupFilter(labels.at(labelIndex))) {
+            return labelIndex;
+        }
+    }
+    return -1;
+}
+
+bool MainWindow::isLabelVisibleByGroupFilter(const labelminus::core::Label& label) const
+{
+    return !label.isDeleted() && m_groupFilterComboBox != nullptr &&
+           m_groupFilterComboBox->selectedGroups().contains(label.group());
 }
 
 QVector<int> MainWindow::selectedLabelIndexes() const
@@ -885,7 +1143,7 @@ void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes)
     if (visibleSourceIndexes.isEmpty()) {
         m_isUpdatingUi = true;
         m_currentLabelIndex = -1;
-        m_canvas->setSelectedLabel(-1);
+        m_canvas->setSelectedLabels({});
         m_textEdit->clear();
         setEditorEnabled(false);
         m_isUpdatingUi = false;
@@ -897,7 +1155,7 @@ void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes)
 
     m_isUpdatingUi = true;
     m_currentLabelIndex = primarySourceIndex;
-    m_canvas->setSelectedLabel(primarySourceIndex);
+    m_canvas->setSelectedLabels(visibleSourceIndexes);
     m_textEdit->setPlainText(primaryLabel.text());
     m_labelGroupComboBox->setCurrentText(primaryLabel.group());
     setEditorEnabled(true);
@@ -908,7 +1166,7 @@ void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes)
         if (visibleRow < 0) {
             continue;
         }
-        selection.select(m_labelModel->index(visibleRow, 0),
+        selection.select(m_labelModel->index(visibleRow, LabelTableModel::NumberColumn),
                          m_labelModel->index(visibleRow, m_labelModel->columnCount() - 1));
         m_labelView->resizeRowToContents(visibleRow);
         capLabelRowHeight(visibleRow);
@@ -917,8 +1175,9 @@ void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes)
     m_labelView->selectionModel()->select(selection, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     const int primaryVisibleRow = m_labelModel->rowForSourceIndex(primarySourceIndex);
     if (primaryVisibleRow >= 0) {
-        m_labelView->selectionModel()->setCurrentIndex(m_labelModel->index(primaryVisibleRow, 0),
-                                                       QItemSelectionModel::Current | QItemSelectionModel::Rows);
+        m_labelView->selectionModel()->setCurrentIndex(
+            m_labelModel->index(primaryVisibleRow, LabelTableModel::NumberColumn),
+            QItemSelectionModel::Current | QItemSelectionModel::Rows);
     }
     m_isUpdatingUi = false;
 }
@@ -946,6 +1205,7 @@ void MainWindow::refreshImageUi()
     if (image == nullptr) {
         m_labelModel->setLabels(nullptr);
         m_textEdit->clear();
+        resetPendingTextEdit();
         setEditorEnabled(false);
         m_isUpdatingUi = false;
         return;
@@ -958,6 +1218,7 @@ void MainWindow::refreshImageUi()
     m_labelModel->setLabels(&project().images()[m_currentImageIndex].labels);
     resizeLabelRowsToContents();
     m_textEdit->clear();
+    resetPendingTextEdit();
     setEditorEnabled(false);
     m_isUpdatingUi = false;
 }
@@ -998,7 +1259,7 @@ void MainWindow::refreshLabelEditSelection(int imageIndex, int labelIndex)
     }
     else {
         m_currentLabelIndex = -1;
-        m_canvas->setSelectedLabel(-1);
+        m_canvas->setSelectedLabels({});
         m_labelView->clearSelection();
         m_textEdit->clear();
         setEditorEnabled(false);
@@ -1028,7 +1289,7 @@ void MainWindow::clearLabelEditSelection(int imageIndex)
     }
 
     m_currentLabelIndex = -1;
-    m_canvas->setSelectedLabel(-1);
+    m_canvas->setSelectedLabels({});
     m_labelView->clearSelection();
     m_textEdit->clear();
     setEditorEnabled(false);
@@ -1273,12 +1534,20 @@ void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult res
     m_preferences = result.preferences;
     m_preferenceWarnings = std::move(result.warnings);
     m_labelTableMaxTextRows = m_preferences.labelTableMaxTextRows();
+    m_labelTextDelegate->setCommitShortcut(m_preferences.commitLabelTextShortcut());
 
     const QString styleName = m_preferences.applicationStyle().isEmpty()
                                   ? qApp->property("labelminus.defaultStyle").toString()
                                   : m_preferences.applicationStyle();
     if (!styleName.isEmpty() && QStyleFactory::keys().contains(styleName, Qt::CaseInsensitive)) {
         QApplication::setStyle(styleName);
+    }
+    if (!labelminus::ui::applyApplicationTheme(m_preferences.applicationTheme())) {
+        m_preferenceWarnings.append(labelminus::core::AppPreferenceWarning{
+            labelminus::core::AppPreferenceWarningType::AppearanceThemeWrongType,
+            QStringLiteral("appearance.theme"),
+            m_preferences.applicationTheme(),
+        });
     }
 
     if (m_canvas != nullptr) {
@@ -1310,6 +1579,8 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("appearance must be a JSON object; using default appearance preferences.");
     case AppPreferenceWarningType::AppearanceStyleWrongType:
         return tr("%1 must be a string; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::AppearanceThemeWrongType:
+        return tr("%1 must name a built-in theme; using no application theme.").arg(warning.key);
     case AppPreferenceWarningType::LabelMarkerNotObject:
         return tr("labelMarker must be a JSON object; using default marker preferences.");
     case AppPreferenceWarningType::MarkerSizeWrongType:
@@ -1336,6 +1607,18 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("%1 must be zero or a positive number; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::LabelTextEditorFontPointSizeOutOfRange:
         return tr("%1 must be zero or a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::MarkerTextBubbleNotObject:
+        return tr("markerTextBubble must be a JSON object; using default marker text bubble preferences.");
+    case AppPreferenceWarningType::MarkerTextBubbleFontFamilyWrongType:
+        return tr("%1 must be a string; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::MarkerTextBubbleFontPointSizeWrongType:
+        return tr("%1 must be zero or a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::MarkerTextBubbleFontPointSizeOutOfRange:
+        return tr("%1 must be zero or a positive number; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::MarkerTextBubbleOpacityWrongType:
+        return tr("%1 must be a number between 0 and 1; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::MarkerTextBubbleOpacityOutOfRange:
+        return tr("%1 must be a number between 0 and 1; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::GroupStylesNotArray:
         return tr("groupStyles must be an array; group styles will use defaults.");
     case AppPreferenceWarningType::GroupStyleNotObject:
@@ -1354,6 +1637,9 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("%1 must be a modifier name or modifier combination; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::UndoShortcutInvalid:
     case AppPreferenceWarningType::RedoShortcutInvalid:
+    case AppPreferenceWarningType::NextLabelShortcutInvalid:
+    case AppPreferenceWarningType::EditLabelTextShortcutInvalid:
+    case AppPreferenceWarningType::CommitLabelTextShortcutInvalid:
         return tr("%1 must be a valid key sequence; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::BackupPathWrongType:
         return tr("%1 must be a non-empty string; using the default value.").arg(warning.key);

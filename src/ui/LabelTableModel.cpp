@@ -35,7 +35,7 @@ void LabelTableModel::setGroups(QStringList groups, QVector<labelminus::core::La
     m_groups = std::move(groups);
     m_groupStyles = std::move(groupStyles);
     if (rowCount() > 0) {
-        emit dataChanged(index(0, 0), index(rowCount() - 1, columnCount() - 1));
+        emit dataChanged(index(0, NumberColumn), index(rowCount() - 1, columnCount() - 1));
     }
 }
 
@@ -53,7 +53,7 @@ void LabelTableModel::labelChanged(int row)
         return;
     }
 
-    emit dataChanged(index(visibleRow, 0), index(visibleRow, columnCount() - 1));
+    emit dataChanged(index(visibleRow, NumberColumn), index(visibleRow, columnCount() - 1));
 }
 
 int LabelTableModel::sourceIndexForRow(int row) const
@@ -84,7 +84,7 @@ int LabelTableModel::rowCount(const QModelIndex& parent) const
 
 int LabelTableModel::columnCount(const QModelIndex& parent) const
 {
-    return parent.isValid() ? 0 : 3;
+    return parent.isValid() ? 0 : ColumnCount;
 }
 
 QVariant LabelTableModel::data(const QModelIndex& index, int role) const
@@ -97,22 +97,22 @@ QVariant LabelTableModel::data(const QModelIndex& index, int role) const
     const labelminus::core::Label& label = m_labels->at(sourceIndex);
     if (role == Qt::DisplayRole || role == Qt::EditRole) {
         switch (index.column()) {
-        case 0:
+        case NumberColumn:
             return sourceIndex + 1;
-        case 1:
+        case TextColumn:
             return label.text();
-        case 2:
+        case GroupColumn:
             return label.group();
         default:
             return {};
         }
     }
 
-    if (role == Qt::TextAlignmentRole && index.column() != 1) {
+    if (role == Qt::TextAlignmentRole && index.column() != TextColumn) {
         return Qt::AlignCenter;
     }
 
-    if (role == Qt::ForegroundRole && index.column() == 2) {
+    if (role == Qt::ForegroundRole && index.column() == GroupColumn) {
         const QColor color = colorForGroup(label.group());
         if (color.isValid()) {
             return QBrush(color);
@@ -130,37 +130,31 @@ bool LabelTableModel::setData(const QModelIndex& index, const QVariant& value, i
     }
 
     const int sourceIndex = m_visibleRows.at(index.row());
-    labelminus::core::Label& label = (*m_labels)[sourceIndex];
-    QVariant oldValue;
+    const labelminus::core::Label& label = m_labels->at(sourceIndex);
     QVariant newValue;
 
     switch (index.column()) {
-    case 1: {
+    case TextColumn: {
         const QString text = value.toString();
         if (label.text() == text) {
             return false;
         }
-        oldValue = label.text();
         newValue = text;
-        label.setText(text);
         break;
     }
-    case 2: {
+    case GroupColumn: {
         const QString group = value.toString();
         if (!m_groups.contains(group) || label.group() == group) {
             return false;
         }
-        oldValue = label.group();
         newValue = group;
-        label.setGroup(group);
         break;
     }
     default:
         return false;
     }
 
-    emit dataChanged(index, index);
-    emit labelEdited(sourceIndex, index.column(), oldValue, newValue);
+    emit labelEditRequested(sourceIndex, index.column(), newValue);
     return true;
 }
 
@@ -172,7 +166,7 @@ Qt::ItemFlags LabelTableModel::flags(const QModelIndex& index) const
     }
 
     itemFlags |= Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
-    if (index.isValid() && (index.column() == 1 || index.column() == 2)) {
+    if (index.isValid() && (index.column() == TextColumn || index.column() == GroupColumn)) {
         itemFlags |= Qt::ItemIsEditable;
     }
     return itemFlags;
@@ -298,12 +292,12 @@ QVariant LabelTableModel::headerData(int section, Qt::Orientation orientation, i
     }
 
     switch (section) {
-    case 0:
+    case NumberColumn:
         return QStringLiteral("#");
-    case 1:
-        return QStringLiteral("文本");
-    case 2:
-        return QStringLiteral("类别");
+    case TextColumn:
+        return tr("Text");
+    case GroupColumn:
+        return tr("Group");
     default:
         return {};
     }

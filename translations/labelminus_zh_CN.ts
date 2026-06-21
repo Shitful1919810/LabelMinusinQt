@@ -38,6 +38,17 @@
     </message>
 </context>
 <context>
+    <name>LabelTableModel</name>
+    <message>
+        <source>Text</source>
+        <translation>文本</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>类别</translation>
+    </message>
+</context>
+<context>
     <name>MainWindow</name>
     <message>
         <source>&amp;New Project...</source>
@@ -106,6 +117,10 @@
     <message>
         <source>Add group</source>
         <translation>新增分组</translation>
+    </message>
+    <message>
+        <source>Remove group</source>
+        <translation>删除分组</translation>
     </message>
     <message>
         <source>Remove selected group</source>
@@ -292,12 +307,24 @@
         <translation>labelTextEditor 必须是 JSON 对象；将使用默认文本编辑器偏好设置。</translation>
     </message>
     <message>
+        <source>markerTextBubble must be a JSON object; using default marker text bubble preferences.</source>
+        <translation>markerTextBubble 必须是 JSON 对象；将使用默认标记文本气泡偏好设置。</translation>
+    </message>
+    <message>
         <source>%1 must be a string; using the default value.</source>
         <translation>%1 必须是字符串；将使用默认值。</translation>
     </message>
     <message>
+        <source>%1 must name a built-in theme; using no application theme.</source>
+        <translation>%1 必须指定内置主题；将不使用应用程序主题。</translation>
+    </message>
+    <message>
         <source>%1 must be zero or a positive number; using the default value.</source>
         <translation>%1 必须是零或正数；将使用默认值。</translation>
+    </message>
+    <message>
+        <source>%1 must be a number between 0 and 1; using the default value.</source>
+        <translation>%1 必须是 0 到 1 之间的数字；将使用默认值。</translation>
     </message>
     <message>
         <source>groupStyles must be an array; group styles will use defaults.</source>
@@ -363,6 +390,38 @@
         <translation>应用程序风格</translation>
     </message>
     <message>
+        <source>Qt widget style</source>
+        <translation>Qt 控件风格</translation>
+    </message>
+    <message>
+        <source>Use no application theme</source>
+        <translation>不使用应用程序主题</translation>
+    </message>
+    <message>
+        <source>Breeze Dark</source>
+        <translation>Breeze 深色</translation>
+    </message>
+    <message>
+        <source>Breeze Light</source>
+        <translation>Breeze 浅色</translation>
+    </message>
+    <message>
+        <source>Breeze Dark Blue</source>
+        <translation>Breeze 深蓝色</translation>
+    </message>
+    <message>
+        <source>Breeze Light Blue</source>
+        <translation>Breeze 浅蓝色</translation>
+    </message>
+    <message>
+        <source>Application theme</source>
+        <translation>应用程序主题</translation>
+    </message>
+    <message>
+        <source>Breeze stylesheet theme</source>
+        <translation>Breeze 样式表主题</translation>
+    </message>
+    <message>
         <source>Maximum label table text rows</source>
         <translation>标签列表文本最大行数</translation>
     </message>
@@ -399,6 +458,18 @@
         <translation>标签列表字体</translation>
     </message>
     <message>
+        <source>Marker text bubble font</source>
+        <translation>标记文本气泡字体</translation>
+    </message>
+    <message>
+        <source>Marker text bubble opacity</source>
+        <translation>标记文本气泡不透明度</translation>
+    </message>
+    <message>
+        <source>%1%</source>
+        <translation>%1%</translation>
+    </message>
+    <message>
         <source>Move-label modifier</source>
         <translation>移动标签修饰键</translation>
     </message>
@@ -409,6 +480,18 @@
     <message>
         <source>Redo shortcut</source>
         <translation>重做快捷键</translation>
+    </message>
+    <message>
+        <source>Next label shortcut</source>
+        <translation>下一个标签快捷键</translation>
+    </message>
+    <message>
+        <source>Edit label text shortcut</source>
+        <translation>编辑标签文本快捷键</translation>
+    </message>
+    <message>
+        <source>Commit label text shortcut</source>
+        <translation>提交标签文本快捷键</translation>
     </message>
     <message>
         <source>Key mappings</source>
@@ -509,6 +592,10 @@
     <message>
         <source>Choose label table font</source>
         <translation>选择标签列表字体</translation>
+    </message>
+    <message>
+        <source>Choose marker text bubble font</source>
+        <translation>选择标记文本气泡字体</translation>
     </message>
     <message>
         <source>Default font and size</source>

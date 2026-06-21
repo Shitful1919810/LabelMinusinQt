@@ -39,6 +39,17 @@
     </message>
 </context>
 <context>
+    <name>LabelTableModel</name>
+    <message>
+        <source>Text</source>
+        <translation>Text</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>Group</translation>
+    </message>
+</context>
+<context>
     <name>MainWindow</name>
     <message>
         <source>&amp;New Project...</source>
@@ -107,6 +118,10 @@
     <message>
         <source>Add group</source>
         <translation>Add group</translation>
+    </message>
+    <message>
+        <source>Remove group</source>
+        <translation>Remove group</translation>
     </message>
     <message>
         <source>Remove selected group</source>
@@ -293,12 +308,24 @@
         <translation>labelTextEditor must be a JSON object; using default text editor preferences.</translation>
     </message>
     <message>
+        <source>markerTextBubble must be a JSON object; using default marker text bubble preferences.</source>
+        <translation>markerTextBubble must be a JSON object; using default marker text bubble preferences.</translation>
+    </message>
+    <message>
         <source>%1 must be a string; using the default value.</source>
         <translation>%1 must be a string; using the default value.</translation>
     </message>
     <message>
+        <source>%1 must name a built-in theme; using no application theme.</source>
+        <translation>%1 must name a built-in theme; using no application theme.</translation>
+    </message>
+    <message>
         <source>%1 must be zero or a positive number; using the default value.</source>
         <translation>%1 must be zero or a positive number; using the default value.</translation>
+    </message>
+    <message>
+        <source>%1 must be a number between 0 and 1; using the default value.</source>
+        <translation>%1 must be a number between 0 and 1; using the default value.</translation>
     </message>
     <message>
         <source>groupStyles must be an array; group styles will use defaults.</source>
@@ -364,6 +391,38 @@
         <translation>Application style</translation>
     </message>
     <message>
+        <source>Qt widget style</source>
+        <translation>Qt widget style</translation>
+    </message>
+    <message>
+        <source>Use no application theme</source>
+        <translation>Use no application theme</translation>
+    </message>
+    <message>
+        <source>Breeze Dark</source>
+        <translation>Breeze Dark</translation>
+    </message>
+    <message>
+        <source>Breeze Light</source>
+        <translation>Breeze Light</translation>
+    </message>
+    <message>
+        <source>Breeze Dark Blue</source>
+        <translation>Breeze Dark Blue</translation>
+    </message>
+    <message>
+        <source>Breeze Light Blue</source>
+        <translation>Breeze Light Blue</translation>
+    </message>
+    <message>
+        <source>Application theme</source>
+        <translation>Application theme</translation>
+    </message>
+    <message>
+        <source>Breeze stylesheet theme</source>
+        <translation>Breeze stylesheet theme</translation>
+    </message>
+    <message>
         <source>Maximum label table text rows</source>
         <translation>Maximum label table text rows</translation>
     </message>
@@ -400,6 +459,18 @@
         <translation>Label table font</translation>
     </message>
     <message>
+        <source>Marker text bubble font</source>
+        <translation>Marker text bubble font</translation>
+    </message>
+    <message>
+        <source>Marker text bubble opacity</source>
+        <translation>Marker text bubble opacity</translation>
+    </message>
+    <message>
+        <source>%1%</source>
+        <translation>%1%</translation>
+    </message>
+    <message>
         <source>Move-label modifier</source>
         <translation>Move-label modifier</translation>
     </message>
@@ -410,6 +481,18 @@
     <message>
         <source>Redo shortcut</source>
         <translation>Redo shortcut</translation>
+    </message>
+    <message>
+        <source>Next label shortcut</source>
+        <translation>Next label shortcut</translation>
+    </message>
+    <message>
+        <source>Edit label text shortcut</source>
+        <translation>Edit label text shortcut</translation>
+    </message>
+    <message>
+        <source>Commit label text shortcut</source>
+        <translation>Commit label text shortcut</translation>
     </message>
     <message>
         <source>Key mappings</source>
@@ -510,6 +593,10 @@
     <message>
         <source>Choose label table font</source>
         <translation>Choose label table font</translation>
+    </message>
+    <message>
+        <source>Choose marker text bubble font</source>
+        <translation>Choose marker text bubble font</translation>
     </message>
     <message>
         <source>Default font and size</source>

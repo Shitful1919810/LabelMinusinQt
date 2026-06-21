@@ -20,6 +20,7 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 - 提供简单的命令式撤销栈，覆盖新增、删除、移动、文本编辑和类别修改等标签编辑操作。
 - 支持按间隔自动备份已修改的 LabelPlus 文本工程。
 - 偏好设置窗口支持通过系统字体选择器分别调整标签列表和大文本编辑框字体。
+- 支持通过偏好设置启用内置 Breeze 风格 QSS 主题。
 - 提供简体中文和英文界面文本，并使用 Qt Linguist 工作流生成翻译资源。
 - `preference.json` 支持对界面交互和 marker 样式做运行时调优。
 
@@ -32,7 +33,7 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 本项目源码使用仓库内 `LICENSE.txt` 声明的许可证。Qt 本身不属于本项目源码的一部分，使用和分发 Qt
 时需要遵守 Qt 对应的开源或商业许可。
 
-当前程序只链接 Qt 6 的 `Core`、`Gui`、`Widgets` 模块。发布源码仓库时不要提交 Qt 源码或 Qt
+当前程序链接 Qt 6 的 `Core`、`Gui`、`Widgets` 模块；检测到 Qt Svg 时会额外链接 `Svg`，用于更完整地支持内置 Breeze 主题中的 SVG 图标。发布源码仓库时不要提交 Qt 源码或 Qt
 二进制文件；发布二进制包时，应优先采用动态链接 Qt 的方式，并随包提供 Qt 使用声明、Qt 许可证文本、
 Qt 模块与版本信息，以及其他第三方依赖的许可证说明。
 
@@ -44,12 +45,15 @@ GPL 或商业授权要求。
 Qt GRPC、Qt HTTP Server、Qt MQTT、Qt Virtual Keyboard、Qt Wayland Compositor 等。新增 Qt
 模块前请先核对 Qt 官方许可文档。
 
+仓库内置的 BreezeStyleSheets 主题资源位于 `resources/themes/breeze`，遵循 MIT 许可证；其中部分 SVG
+图标资源带有 Apache License 2.0 notice。详见 `THIRD_PARTY_NOTICES.md`。
+
 ## 环境要求
 
 - CMake 3.25 或更高版本。
 - Ninja，或 Windows 上的 Visual Studio 2022 生成器。
 - 支持 C++20 的编译器。
-- Qt 6，至少需要 Qt Widgets；开发翻译资源时还需要 Qt Linguist Tools。
+- Qt 6，至少需要 Qt Widgets；建议安装 Qt Svg 以完整显示内置 Breeze 主题图标；开发翻译资源时还需要 Qt Linguist Tools。
 
 ## 构建
 
@@ -204,7 +208,8 @@ cmake --build --preset windows-vs-release --target deploy_windows
 ```json
 {
   "appearance": {
-    "style": ""
+    "style": "",
+    "theme": ""
   },
   "backupPath": "bak",
   "backupIntervalSeconds": 60,
@@ -221,8 +226,15 @@ cmake --build --preset windows-vs-release --target deploy_windows
     "fontFamily": "",
     "fontPointSize": 0.0
   },
+  "markerTextBubble": {
+    "fontFamily": "",
+    "fontPointSize": 0.0
+  },
   "input": {
     "moveLabelModifier": "ctrl",
+    "nextLabelShortcut": "Tab",
+    "editLabelTextShortcut": "Return",
+    "commitLabelTextShortcut": "Ctrl+Return",
     "undoShortcut": "Ctrl+Z",
     "redoShortcut": "Ctrl+Y"
   },
@@ -251,7 +263,8 @@ cmake --build --preset windows-vs-release --target deploy_windows
 
 字段说明：
 
-- `appearance.style`：启动时强制使用的 Qt Style 名称，例如 `Fusion`。为空时不强制设置，使用系统默认风格。可选值由当前 Qt 环境的 `QStyleFactory::keys()` 决定，偏好设置窗口会自动列出可用 style。
+- `appearance.style`：启动时强制使用的 Qt 控件风格名称，例如 `Fusion`。为空时不强制设置，使用系统默认风格。可选值由当前 Qt 环境的 `QStyleFactory::keys()` 决定，偏好设置窗口会自动列出可用 style。
+- `appearance.theme`：应用内置 Breeze QSS 样式表主题。为空时不使用样式表；当前支持 `breezeDark`、`breezeLight`、`breezeDarkBlue`、`breezeLightBlue`。该字段与 `appearance.style` 可同时使用，程序会先设置 Qt style，再叠加 Breeze QSS。
 - `labelMarker.diameter`：默认 marker 直径，单位为屏幕像素，支持浮点数。
 - `labelMarker.fontPointSize`：默认 marker 内部序号字号，使用 Qt 字号单位，支持浮点数。
 - `labelTable.maxTextRows`：右侧标签列表文本列自动换行后的最大显示行数。
@@ -259,7 +272,12 @@ cmake --build --preset windows-vs-release --target deploy_windows
 - `labelTable.fontPointSize`：右侧标签列表字号。为 `0` 时使用系统默认字号。
 - `labelTextEditor.fontFamily`：右下角大文本编辑框字体。为空时使用系统默认字体。
 - `labelTextEditor.fontPointSize`：右下角大文本编辑框字号。为 `0` 时使用系统默认字号。
+- `markerTextBubble.fontFamily`：图像 marker 文本气泡字体。为空时使用系统默认字体。
+- `markerTextBubble.fontPointSize`：图像 marker 文本气泡字号。为 `0` 时使用系统默认字号。
 - `input.moveLabelModifier`：拖动图像 marker 时需要按住的修饰键，默认 `ctrl`。
+- `input.nextLabelShortcut`：焦点位于右侧标签列表时切换到下一个可见标签的快捷键，默认 `Tab`。
+- `input.editLabelTextShortcut`：焦点位于右侧标签列表时进入当前标签文本原地编辑的快捷键，默认 `Return`。
+- `input.commitLabelTextShortcut`：焦点位于标签文本原地编辑器时提交并退出编辑的快捷键，默认 `Ctrl+Return`。
 - `input.undoShortcut`：撤销快捷键，使用 Qt portable key sequence 文本格式，默认 `Ctrl+Z`。
 - `input.redoShortcut`：重做快捷键，使用 Qt portable key sequence 文本格式，默认 `Ctrl+Y`，可改为 `Ctrl+Shift+Z` 等组合键。
 - `backupPath`：自动备份目录，默认 `bak`。相对路径会解析到当前工程文件所在目录下，绝对路径会直接使用。

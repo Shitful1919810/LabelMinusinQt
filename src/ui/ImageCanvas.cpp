@@ -6,9 +6,11 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPalette>
 #include <QPen>
 #include <QPixmap>
 #include <QScrollBar>
+#include <QTextDocument>
 #include <QWheelEvent>
 
 #include <algorithm>
@@ -17,6 +19,26 @@
 
 namespace {
 constexpr int markerType = QGraphicsItem::UserType + 100;
+
+QString htmlEscapedWithLineBreaks(QString text)
+{
+    text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+    text.replace(QLatin1Char('\r'), QLatin1Char('\n'));
+
+    QStringList escapedLines;
+    const QStringList lines = text.split(QLatin1Char('\n'));
+    escapedLines.reserve(lines.size());
+    for (const QString& line : lines) {
+        escapedLines.append(line.toHtmlEscaped());
+    }
+    return escapedLines.join(QStringLiteral("<br/>"));
+}
+
+QString labelBubbleHtml(int labelIndex, const QString& text, const QColor& color)
+{
+    return QStringLiteral("<span style=\"color:%1; font-weight:600;\">#%2</span> : %3")
+        .arg(color.name(), QString::number(labelIndex + 1), htmlEscapedWithLineBreaks(text));
+}
 
 class LabelMarkerItem final : public QGraphicsItem {
 public:
@@ -71,10 +93,63 @@ private:
     bool m_selected;
     labelminus::core::LabelGroupStyle m_style;
 };
+
+class LabelTextBubbleItem final : public QGraphicsItem {
+public:
+    LabelTextBubbleItem(int labelIndex, QString text, labelminus::core::LabelGroupStyle style, QFont bubbleFont,
+                        double opacity, QGraphicsItem* parent = nullptr)
+        : QGraphicsItem(parent), m_labelIndex(labelIndex), m_text(std::move(text)), m_style(std::move(style)),
+          m_bubbleFont(std::move(bubbleFont)), m_opacity(opacity)
+    {
+        setFlag(QGraphicsItem::ItemIgnoresTransformations);
+        setZValue(11.0);
+        rebuildDocument();
+    }
+
+    QRectF boundingRect() const override
+    {
+        const QSizeF textSize = m_document.size();
+        return QRectF(m_style.markerDiameter / 2.0 + 8.0, -textSize.height() / 2.0 - 6.0, textSize.width() + 16.0,
+                      textSize.height() + 12.0);
+    }
+
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override
+    {
+        painter->setRenderHint(QPainter::Antialiasing, true);
+        painter->setOpacity(m_opacity);
+        const QPalette palette = QApplication::palette();
+        painter->setPen(QPen(palette.color(QPalette::Mid), 1.0));
+        painter->setBrush(palette.color(QPalette::ToolTipBase));
+        painter->drawRoundedRect(boundingRect(), 3.0, 3.0);
+
+        painter->save();
+        painter->translate(boundingRect().topLeft() + QPointF(8.0, 6.0));
+        m_document.drawContents(painter);
+        painter->restore();
+    }
+
+private:
+    void rebuildDocument()
+    {
+        const QColor color = m_style.groupColor.isValid() ? m_style.groupColor : QColor(Qt::black);
+        m_document.setDefaultFont(m_bubbleFont);
+        m_document.setDocumentMargin(0.0);
+        m_document.setHtml(labelBubbleHtml(m_labelIndex, m_text, color));
+    }
+
+    int m_labelIndex;
+    QString m_text;
+    labelminus::core::LabelGroupStyle m_style;
+    QFont m_bubbleFont;
+    double m_opacity{1.0};
+    QTextDocument m_document;
+};
 } // namespace
 
 ImageCanvas::ImageCanvas(QWidget* parent) : QGraphicsView(parent)
 {
+    m_textBubbleFont = QApplication::font();
+
     setScene(&m_scene);
     setDragMode(QGraphicsView::ScrollHandDrag);
     setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
@@ -102,6 +177,15 @@ void ImageCanvas::setPreferences(const labelminus::core::AppPreferences& prefere
 {
     m_markerDiameterPixels = preferences.labelMarkerDiameterPixels();
     m_markerFontPointSize = preferences.labelMarkerFontPointSize();
+    m_textBubbleOpacity = preferences.markerTextBubbleOpacity();
+    m_hoverToolTip->setWindowOpacity(m_textBubbleOpacity);
+    m_textBubbleFont = QApplication::font();
+    if (!preferences.markerTextBubbleFontFamily().isEmpty()) {
+        m_textBubbleFont.setFamily(preferences.markerTextBubbleFontFamily());
+    }
+    if (preferences.markerTextBubbleFontPointSize() > 0.0) {
+        m_textBubbleFont.setPointSizeF(preferences.markerTextBubbleFontPointSize());
+    }
     m_moveLabelModifiers = preferences.moveLabelModifiers();
     m_groupStyles = preferences.groupStyles();
     rebuildLabelItems();
@@ -111,7 +195,8 @@ void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::
 {
     m_imagePath = path;
     m_labels = labels;
-    m_selectedLabel = -1;
+    m_selectedLabels.clear();
+    m_labelTextPreviews.clear();
 
     QPixmap pixmap(path);
     m_scene.clear();
@@ -132,8 +217,21 @@ void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::
 void ImageCanvas::setLabels(const QVector<labelminus::core::Label>& labels)
 {
     m_labels = labels;
-    if (m_selectedLabel >= m_labels.size()) {
-        m_selectedLabel = -1;
+    for (auto it = m_selectedLabels.begin(); it != m_selectedLabels.end();) {
+        if (*it < 0 || *it >= m_labels.size()) {
+            it = m_selectedLabels.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+    for (auto it = m_labelTextPreviews.begin(); it != m_labelTextPreviews.end();) {
+        if (it.key() < 0 || it.key() >= m_labels.size()) {
+            it = m_labelTextPreviews.erase(it);
+        }
+        else {
+            ++it;
+        }
     }
     rebuildLabelItems();
 }
@@ -153,12 +251,58 @@ void ImageCanvas::setVisibleGroups(QStringList groups)
 
 void ImageCanvas::setSelectedLabel(int index)
 {
-    if (m_selectedLabel == index) {
+    setSelectedLabels(index >= 0 ? QVector<int>{index} : QVector<int>{});
+}
+
+void ImageCanvas::setSelectedLabels(QVector<int> indexes)
+{
+    QSet<int> selectedLabels;
+    for (int index : indexes) {
+        if (index >= 0 && index < m_labels.size()) {
+            selectedLabels.insert(index);
+        }
+    }
+
+    if (m_selectedLabels == selectedLabels) {
         return;
     }
 
-    m_selectedLabel = index;
+    m_selectedLabels = std::move(selectedLabels);
     rebuildLabelItems();
+}
+
+void ImageCanvas::setLabelTextPreview(int index, const QString& text)
+{
+    if (index < 0 || index >= m_labels.size()) {
+        return;
+    }
+
+    if (m_labelTextPreviews.value(index) == text) {
+        return;
+    }
+
+    m_labelTextPreviews.insert(index, text);
+    rebuildLabelItems();
+}
+
+void ImageCanvas::clearLabelTextPreview(int index)
+{
+    if (!m_labelTextPreviews.remove(index)) {
+        return;
+    }
+
+    rebuildLabelItems();
+}
+
+void ImageCanvas::centerOnLabel(int index)
+{
+    if (m_pixmapItem == nullptr || index < 0 || index >= m_labels.size()) {
+        return;
+    }
+
+    const QRectF rect = m_pixmapItem->boundingRect();
+    const QPointF position = m_labels.at(index).position();
+    centerOn(rect.left() + position.x() * rect.width(), rect.top() + position.y() * rect.height());
 }
 
 void ImageCanvas::setZoomPercent(int percent)
@@ -329,11 +473,20 @@ void ImageCanvas::rebuildLabelItems()
             continue;
         }
 
-        auto* marker = new LabelMarkerItem(i, i == m_selectedLabel, styleForGroup(m_labels.at(i).group()));
+        const labelminus::core::LabelGroupStyle style = styleForGroup(m_labels.at(i).group());
+        auto* marker = new LabelMarkerItem(i, m_selectedLabels.contains(i), style);
         const QPointF position = m_labels.at(i).position();
         marker->setPos(rect.left() + position.x() * rect.width(), rect.top() + position.y() * rect.height());
         m_scene.addItem(marker);
         m_labelItems.append(marker);
+
+        if (m_selectedLabels.contains(i)) {
+            auto* bubble =
+                new LabelTextBubbleItem(i, displayTextForLabel(i), style, m_textBubbleFont, m_textBubbleOpacity);
+            bubble->setPos(marker->pos());
+            m_scene.addItem(bubble);
+            m_labelItems.append(bubble);
+        }
     }
 }
 
@@ -388,6 +541,19 @@ bool ImageCanvas::hasMoveLabelModifiers(Qt::KeyboardModifiers modifiers) const
     return (modifiers & relevantModifiers) == m_moveLabelModifiers;
 }
 
+QString ImageCanvas::displayTextForLabel(int index) const
+{
+    if (m_labelTextPreviews.contains(index)) {
+        return m_labelTextPreviews.value(index);
+    }
+
+    if (index < 0 || index >= m_labels.size()) {
+        return {};
+    }
+
+    return m_labels.at(index).text();
+}
+
 void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, const QPoint& globalPosition)
 {
     QStringList lines;
@@ -403,7 +569,8 @@ void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, cons
 
         const auto* marker = static_cast<LabelMarkerItem*>(item);
         const int labelIndex = marker->labelIndex();
-        if (seenLabels.contains(labelIndex) || labelIndex < 0 || labelIndex >= m_labels.size()) {
+        if (seenLabels.contains(labelIndex) || m_selectedLabels.contains(labelIndex) || labelIndex < 0 ||
+            labelIndex >= m_labels.size()) {
             continue;
         }
 
@@ -415,8 +582,7 @@ void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, cons
 
         const QColor color = styleForGroup(label.group()).groupColor.isValid() ? styleForGroup(label.group()).groupColor
                                                                                : QColor(Qt::black);
-        lines.append(QStringLiteral("<span style=\"color:%1; font-weight:600;\">#%2</span> : %3")
-                         .arg(color.name(), QString::number(labelIndex + 1), label.text().toHtmlEscaped()));
+        lines.append(labelBubbleHtml(labelIndex, displayTextForLabel(labelIndex), color));
     }
 
     if (lines.isEmpty()) {
@@ -425,6 +591,8 @@ void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, cons
     }
 
     m_hoverToolTip->setText(lines.join(QStringLiteral("<br/>")));
+    m_hoverToolTip->setFont(m_textBubbleFont);
+    m_hoverToolTip->setWindowOpacity(m_textBubbleOpacity);
     m_hoverToolTip->adjustSize();
     m_hoverToolTip->move(globalPosition + QPoint(12, 18));
     m_hoverToolTip->show();

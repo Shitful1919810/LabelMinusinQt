@@ -4,7 +4,9 @@
 #include "core/Label.h"
 
 #include <QColor>
+#include <QFont>
 #include <QGraphicsView>
+#include <QHash>
 #include <QSet>
 #include <QStringList>
 #include <QVector>
@@ -24,6 +26,10 @@ public:
     void setGroups(QStringList groups);
     void setVisibleGroups(QStringList groups);
     void setSelectedLabel(int index);
+    void setSelectedLabels(QVector<int> indexes);
+    void setLabelTextPreview(int index, const QString& text);
+    void clearLabelTextPreview(int index);
+    void centerOnLabel(int index);
     void setZoomPercent(int percent);
     int zoomPercent() const noexcept;
     QPointF normalizedViewCenter() const;
@@ -50,6 +56,7 @@ private:
     void setZoomPercentAt(int percent, QPoint viewportAnchor);
     bool isLabelVisible(const labelminus::core::Label& label) const;
     bool hasMoveLabelModifiers(Qt::KeyboardModifiers modifiers) const;
+    QString displayTextForLabel(int index) const;
     void updateHoveredLabelToolTip(const QPoint& viewportPosition, const QPoint& globalPosition);
     void hideHoveredLabelToolTip();
     labelminus::core::LabelGroupStyle styleForGroup(const QString& group) const;
@@ -61,10 +68,13 @@ private:
     QVector<labelminus::core::Label> m_labels;
     QVector<QGraphicsItem*> m_labelItems;
     QString m_imagePath;
-    int m_selectedLabel{-1};
+    QSet<int> m_selectedLabels;
     int m_zoomPercent{100};
     double m_markerDiameterPixels{20.0};
     double m_markerFontPointSize{10.0};
+    double m_textBubbleOpacity{1.0};
+    QFont m_textBubbleFont;
+    QHash<int, QString> m_labelTextPreviews;
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
     QStringList m_groups;
     QSet<QString> m_visibleGroups;

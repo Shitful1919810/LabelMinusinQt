@@ -15,6 +15,13 @@ class LabelTableModel final : public QAbstractTableModel {
     Q_OBJECT
 
 public:
+    enum Column {
+        NumberColumn = 0,
+        TextColumn = 1,
+        GroupColumn = 2,
+        ColumnCount = 3,
+    };
+
     explicit LabelTableModel(QObject* parent = nullptr);
 
     void setLabels(QVector<labelminus::core::Label>* labels);
@@ -41,7 +48,7 @@ public:
                       const QModelIndex& parent) override;
 
 signals:
-    void labelEdited(int sourceIndex, int column, QVariant oldValue, QVariant newValue);
+    void labelEditRequested(int sourceIndex, int column, QVariant newValue);
     void labelsReorderRequested(QVector<int> sourceIndexes, int visibleDropRow);
 
 private:

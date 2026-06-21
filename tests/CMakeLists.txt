@@ -2,6 +2,7 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Test)
 
 qt_add_executable(LabelMinusTests
     LabelTests.cpp
+    ../src/core/ApplicationTheme.cpp
     ../src/core/AppPreferences.cpp
     ../src/core/LabelPlusDocument.cpp
     ../src/core/Label.cpp

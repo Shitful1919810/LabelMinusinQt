@@ -38,6 +38,13 @@ int textEditorHeightHint(QPlainTextEdit* editor)
 
 LabelTextDelegate::LabelTextDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
 
+void LabelTextDelegate::setCommitShortcut(QKeySequence shortcut)
+{
+    if (!shortcut.isEmpty()) {
+        m_commitShortcut = std::move(shortcut);
+    }
+}
+
 QWidget* LabelTextDelegate::createEditor(QWidget* parent, const QStyleOptionViewItem&, const QModelIndex& index) const
 {
     auto* editor = new QPlainTextEdit(parent);
@@ -49,12 +56,14 @@ QWidget* LabelTextDelegate::createEditor(QWidget* parent, const QStyleOptionView
                 if (guardedEditor != nullptr && persistentIndex.isValid()) {
                     emit delegate->editorHeightHintChanged(persistentIndex, guardedEditor,
                                                            textEditorHeightHint(guardedEditor));
+                    emit delegate->editorTextChanged(persistentIndex, guardedEditor->toPlainText());
                 }
             });
     connect(editor, &QObject::destroyed, this,
             [delegate = const_cast<LabelTextDelegate*>(this), persistentIndex = QPersistentModelIndex(index)]() {
                 if (persistentIndex.isValid()) {
                     emit delegate->editorHeightHintChanged(persistentIndex, nullptr, 0);
+                    emit delegate->editorTextPreviewFinished(persistentIndex);
                 }
             });
     return editor;
@@ -117,7 +126,8 @@ bool LabelTextDelegate::eventFilter(QObject* object, QEvent* event)
 
     if (event->type() == QEvent::KeyPress) {
         const auto* keyEvent = static_cast<QKeyEvent*>(event);
-        if (keyEvent->key() == Qt::Key_Return && keyEvent->modifiers().testFlag(Qt::ControlModifier)) {
+        const QKeySequence pressedKey(keyEvent->keyCombination());
+        if (pressedKey.matches(m_commitShortcut) == QKeySequence::ExactMatch) {
             emit commitData(editor);
             emit closeEditor(editor);
             return true;

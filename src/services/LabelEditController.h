@@ -26,6 +26,8 @@ struct LabelEditCommandTexts {
     QString moveLabel;
     QString deleteLabels;
     QString reorderLabels;
+    QString addGroup;
+    QString removeGroup;
 };
 
 class LabelEditController {
@@ -33,14 +35,18 @@ public:
     using LabelSelectedCallback = std::function<void(int imageIndex, int labelIndex)>;
     using LabelsSelectedCallback = std::function<void(int imageIndex, QVector<int> labelIndexes)>;
     using ImageSelectionClearedCallback = std::function<void(int imageIndex)>;
+    using ProjectChangedCallback = std::function<void()>;
     using DirtyCallback = std::function<void()>;
 
     LabelEditController(labelminus::core::Project& project, labelminus::core::UndoStack& undoStack,
                         LabelEditCommandTexts commandTexts);
 
     void setCallbacks(LabelSelectedCallback labelSelected, LabelsSelectedCallback labelsSelected,
-                      ImageSelectionClearedCallback imageSelectionCleared, DirtyCallback dirty);
+                      ImageSelectionClearedCallback imageSelectionCleared, ProjectChangedCallback projectChanged,
+                      DirtyCallback dirty);
 
+    LabelEditResult addGroup(const QString& group);
+    LabelEditResult removeGroup(const QString& group, const QString& fallbackGroup);
     LabelEditResult addLabel(int imageIndex, const labelminus::core::Label& label);
     LabelEditResult deleteLabels(int imageIndex, const QVector<int>& labelIndexes);
     LabelEditResult changeLabelsGroup(int imageIndex, const QVector<int>& labelIndexes, const QString& group);
@@ -59,6 +65,8 @@ private:
     void applyLabelOrder(int imageIndex, QVector<labelminus::core::Label> labels, QVector<int> selectedIndexes);
     void applyBatchLabelGroups(int imageIndex, QVector<int> labelIndexes, QVector<QString> groups);
     void applyBatchLabelDeleted(int imageIndex, QVector<int> labelIndexes, QVector<bool> deleted);
+    void applyGroupsAndLabelGroups(QStringList groups, QVector<QVector<QString>> labelGroups);
+    QVector<QVector<QString>> currentLabelGroups() const;
     labelminus::core::ImageEntry* imageAt(int imageIndex);
     const labelminus::core::ImageEntry* imageAt(int imageIndex) const;
     bool hasGroup(const QString& group) const;
@@ -70,6 +78,7 @@ private:
     LabelSelectedCallback m_labelSelected;
     LabelsSelectedCallback m_labelsSelected;
     ImageSelectionClearedCallback m_imageSelectionCleared;
+    ProjectChangedCallback m_projectChanged;
     DirtyCallback m_dirty;
 };
 

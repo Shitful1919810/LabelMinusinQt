@@ -14,8 +14,11 @@ class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
 class QPushButton;
+class QScrollBar;
 class QSpinBox;
 class QTableWidget;
+class QTabWidget;
+class QWidget;
 
 class PreferenceDialog final : public QDialog {
     Q_OBJECT
@@ -28,6 +31,11 @@ signals:
 
 private:
     void createUi();
+    QWidget* createGeneralPage(QTabWidget* tabWidget);
+    QWidget* createKeyMappingPage(QTabWidget* tabWidget);
+    QWidget* createGroupStylesPage(QTabWidget* tabWidget);
+    QWidget* createJsonPage(QTabWidget* tabWidget);
+    void connectPreferenceChangeSignals();
     void loadFromDisk();
     void loadDocument(const QJsonDocument& document);
     QJsonDocument documentFromUi() const;
@@ -43,6 +51,9 @@ private:
     void chooseTextEditorFont();
     void resetTextEditorFont();
     void updateTextEditorFontSummary();
+    void chooseMarkerTextBubbleFont();
+    void resetMarkerTextBubbleFont();
+    void updateMarkerTextBubbleFontSummary();
     void applyPreferences();
     void savePreferences();
     void openPreferenceFile();
@@ -52,15 +63,24 @@ private:
     QDoubleSpinBox* m_markerFontSpinBox{nullptr};
     QSpinBox* m_tableMaxRowsSpinBox{nullptr};
     QComboBox* m_applicationStyleComboBox{nullptr};
+    QComboBox* m_applicationThemeComboBox{nullptr};
     QLabel* m_labelTableFontLabel{nullptr};
     QPushButton* m_chooseLabelTableFontButton{nullptr};
     QPushButton* m_resetLabelTableFontButton{nullptr};
     QLabel* m_textEditorFontLabel{nullptr};
     QPushButton* m_chooseTextEditorFontButton{nullptr};
     QPushButton* m_resetTextEditorFontButton{nullptr};
+    QLabel* m_markerTextBubbleFontLabel{nullptr};
+    QPushButton* m_chooseMarkerTextBubbleFontButton{nullptr};
+    QPushButton* m_resetMarkerTextBubbleFontButton{nullptr};
+    QScrollBar* m_markerTextBubbleOpacityScrollBar{nullptr};
+    QLabel* m_markerTextBubbleOpacityLabel{nullptr};
     QComboBox* m_moveModifierComboBox{nullptr};
     QKeySequenceEdit* m_undoShortcutEdit{nullptr};
     QKeySequenceEdit* m_redoShortcutEdit{nullptr};
+    QKeySequenceEdit* m_nextLabelShortcutEdit{nullptr};
+    QKeySequenceEdit* m_editLabelTextShortcutEdit{nullptr};
+    QKeySequenceEdit* m_commitLabelTextShortcutEdit{nullptr};
     QLineEdit* m_backupPathEdit{nullptr};
     QSpinBox* m_backupIntervalSpinBox{nullptr};
     QTableWidget* m_groupStyleTable{nullptr};
@@ -70,6 +90,8 @@ private:
     QPushButton* m_saveButton{nullptr};
     QFont m_labelTableFont;
     QFont m_textEditorFont;
+    QFont m_markerTextBubbleFont;
     bool m_usesDefaultLabelTableFont{true};
     bool m_usesDefaultTextEditorFont{true};
+    bool m_usesDefaultMarkerTextBubbleFont{true};
 };

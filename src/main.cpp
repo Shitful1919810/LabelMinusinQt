@@ -1,4 +1,5 @@
 #include "ui/MainWindow.h"
+#include "ui/ThemeManager.h"
 
 #include "core/AppPreferences.h"
 
@@ -43,6 +44,7 @@ int main(int argc, char* argv[])
     const labelminus::core::AppPreferencesLoadResult preferences =
         labelminus::core::AppPreferences::loadWithDiagnostics();
     applyApplicationStyle(preferences.preferences.applicationStyle());
+    labelminus::ui::applyApplicationTheme(preferences.preferences.applicationTheme());
     QApplication::setApplicationName("LabelMinus");
     QApplication::setOrganizationName("LabelMinus");
     QApplication::setApplicationVersion(QStringLiteral("0.1.0"));

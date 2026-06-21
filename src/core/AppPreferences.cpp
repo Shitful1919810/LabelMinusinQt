@@ -1,5 +1,7 @@
 #include "core/AppPreferences.h"
 
+#include "core/ApplicationTheme.h"
+
 #include <QByteArray>
 #include <QCoreApplication>
 #include <QDir>
@@ -118,6 +120,29 @@ double nonNegativeNumberFromJsonValue(const QJsonObject& object, const QString& 
     return std::clamp(number, 0.0, maximum);
 }
 
+double boundedNumberFromJsonValue(const QJsonObject& object, const QString& key, const QString& displayKey,
+                                  double fallback, double minimum, double maximum, AppPreferenceWarningType wrongType,
+                                  AppPreferenceWarningType outOfRange, QVector<AppPreferenceWarning>& warnings)
+{
+    const QJsonValue value = object.value(key);
+    if (value.isUndefined()) {
+        return fallback;
+    }
+
+    if (!value.isDouble()) {
+        warnings.append(makeWarning(wrongType, displayKey));
+        return fallback;
+    }
+
+    const double number = value.toDouble();
+    if (number < minimum || number > maximum) {
+        warnings.append(makeWarning(outOfRange, displayKey));
+        return fallback;
+    }
+
+    return number;
+}
+
 MarkerShape markerShapeFromString(const QString& markerStyle, MarkerShape fallback, qsizetype index,
                                   QVector<AppPreferenceWarning>& warnings)
 {
@@ -231,6 +256,24 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
                                                 QStringLiteral("appearance.style")));
                 }
             }
+
+            const QJsonValue themeValue = appearanceValue.toObject().value(QStringLiteral("theme"));
+            if (!themeValue.isUndefined()) {
+                if (themeValue.isString()) {
+                    const QString applicationTheme = themeValue.toString().trimmed();
+                    if (isBuiltInApplicationTheme(applicationTheme)) {
+                        preferences.m_applicationTheme = applicationTheme;
+                    }
+                    else {
+                        warnings.append(makeWarning(AppPreferenceWarningType::AppearanceThemeWrongType,
+                                                    QStringLiteral("appearance.theme")));
+                    }
+                }
+                else {
+                    warnings.append(makeWarning(AppPreferenceWarningType::AppearanceThemeWrongType,
+                                                QStringLiteral("appearance.theme")));
+                }
+            }
         }
     }
 
@@ -309,6 +352,37 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
         }
     }
 
+    const QJsonValue markerTextBubbleValue = root.value(QStringLiteral("markerTextBubble"));
+    if (!markerTextBubbleValue.isUndefined()) {
+        if (!markerTextBubbleValue.isObject()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::MarkerTextBubbleNotObject));
+        }
+        else {
+            const QJsonObject markerTextBubble = markerTextBubbleValue.toObject();
+            const QJsonValue fontFamilyValue = markerTextBubble.value(QStringLiteral("fontFamily"));
+            if (!fontFamilyValue.isUndefined()) {
+                if (fontFamilyValue.isString()) {
+                    preferences.m_markerTextBubbleFontFamily = fontFamilyValue.toString().trimmed();
+                }
+                else {
+                    warnings.append(makeWarning(AppPreferenceWarningType::MarkerTextBubbleFontFamilyWrongType,
+                                                QStringLiteral("markerTextBubble.fontFamily")));
+                }
+            }
+
+            preferences.m_markerTextBubbleFontPointSize = nonNegativeNumberFromJsonValue(
+                markerTextBubble, QStringLiteral("fontPointSize"), QStringLiteral("markerTextBubble.fontPointSize"),
+                preferences.m_markerTextBubbleFontPointSize, 256.0,
+                AppPreferenceWarningType::MarkerTextBubbleFontPointSizeWrongType,
+                AppPreferenceWarningType::MarkerTextBubbleFontPointSizeOutOfRange, warnings);
+            preferences.m_markerTextBubbleOpacity = boundedNumberFromJsonValue(
+                markerTextBubble, QStringLiteral("opacity"), QStringLiteral("markerTextBubble.opacity"),
+                preferences.m_markerTextBubbleOpacity, 0.0, 1.0,
+                AppPreferenceWarningType::MarkerTextBubbleOpacityWrongType,
+                AppPreferenceWarningType::MarkerTextBubbleOpacityOutOfRange, warnings);
+        }
+    }
+
     const QJsonValue inputValue = root.value(QStringLiteral("input"));
     if (!inputValue.isUndefined()) {
         if (!inputValue.isObject()) {
@@ -334,6 +408,16 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
             preferences.m_redoShortcut = keySequenceFromJsonValue(
                 input.value(QStringLiteral("redoShortcut")), QStringLiteral("input.redoShortcut"),
                 preferences.m_redoShortcut, AppPreferenceWarningType::RedoShortcutInvalid, warnings);
+            preferences.m_nextLabelShortcut = keySequenceFromJsonValue(
+                input.value(QStringLiteral("nextLabelShortcut")), QStringLiteral("input.nextLabelShortcut"),
+                preferences.m_nextLabelShortcut, AppPreferenceWarningType::NextLabelShortcutInvalid, warnings);
+            preferences.m_editLabelTextShortcut = keySequenceFromJsonValue(
+                input.value(QStringLiteral("editLabelTextShortcut")), QStringLiteral("input.editLabelTextShortcut"),
+                preferences.m_editLabelTextShortcut, AppPreferenceWarningType::EditLabelTextShortcutInvalid, warnings);
+            preferences.m_commitLabelTextShortcut = keySequenceFromJsonValue(
+                input.value(QStringLiteral("commitLabelTextShortcut")), QStringLiteral("input.commitLabelTextShortcut"),
+                preferences.m_commitLabelTextShortcut, AppPreferenceWarningType::CommitLabelTextShortcutInvalid,
+                warnings);
         }
     }
 
@@ -491,9 +575,29 @@ double AppPreferences::labelTextEditorFontPointSize() const noexcept
     return m_labelTextEditorFontPointSize;
 }
 
+QString AppPreferences::markerTextBubbleFontFamily() const
+{
+    return m_markerTextBubbleFontFamily;
+}
+
+double AppPreferences::markerTextBubbleFontPointSize() const noexcept
+{
+    return m_markerTextBubbleFontPointSize;
+}
+
+double AppPreferences::markerTextBubbleOpacity() const noexcept
+{
+    return m_markerTextBubbleOpacity;
+}
+
 QString AppPreferences::applicationStyle() const
 {
     return m_applicationStyle;
+}
+
+QString AppPreferences::applicationTheme() const
+{
+    return m_applicationTheme;
 }
 
 Qt::KeyboardModifiers AppPreferences::moveLabelModifiers() const noexcept
@@ -509,6 +613,21 @@ QKeySequence AppPreferences::undoShortcut() const
 QKeySequence AppPreferences::redoShortcut() const
 {
     return m_redoShortcut;
+}
+
+QKeySequence AppPreferences::nextLabelShortcut() const
+{
+    return m_nextLabelShortcut;
+}
+
+QKeySequence AppPreferences::editLabelTextShortcut() const
+{
+    return m_editLabelTextShortcut;
+}
+
+QKeySequence AppPreferences::commitLabelTextShortcut() const
+{
+    return m_commitLabelTextShortcut;
 }
 
 QString AppPreferences::backupPath() const

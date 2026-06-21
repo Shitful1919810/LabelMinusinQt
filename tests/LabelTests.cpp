@@ -63,7 +63,8 @@ private slots:
         stream.setEncoding(QStringConverter::Utf8);
         stream << "{\n"
                << "  \"appearance\": {\n"
-               << "    \"style\": \"Fusion\"\n"
+               << "    \"style\": \"Fusion\",\n"
+               << "    \"theme\": \"breezeDark\"\n"
                << "  },\n"
                << "  \"labelMarker\": {\n"
                << "    \"diameter\": 4.5,\n"
@@ -78,8 +79,15 @@ private slots:
                << "    \"fontFamily\": \"Noto Sans Mono\",\n"
                << "    \"fontPointSize\": 12.5\n"
                << "  },\n"
+               << "  \"markerTextBubble\": {\n"
+               << "    \"fontFamily\": \"Noto Sans CJK SC\",\n"
+               << "    \"fontPointSize\": 9.5\n"
+               << "  },\n"
                << "  \"input\": {\n"
                << "    \"moveLabelModifier\": \"ctrl+shift\",\n"
+               << "    \"nextLabelShortcut\": \"Tab\",\n"
+               << "    \"editLabelTextShortcut\": \"Return\",\n"
+               << "    \"commitLabelTextShortcut\": \"Ctrl+Return\",\n"
                << "    \"undoShortcut\": \"Ctrl+Z\",\n"
                << "    \"redoShortcut\": \"Ctrl+Shift+Z\"\n"
                << "  },\n"
@@ -112,11 +120,19 @@ private slots:
         QCOMPARE(result.preferences.labelTableFontPointSize(), 11.5);
         QCOMPARE(result.preferences.labelTextEditorFontFamily(), QStringLiteral("Noto Sans Mono"));
         QCOMPARE(result.preferences.labelTextEditorFontPointSize(), 12.5);
+        QCOMPARE(result.preferences.markerTextBubbleFontFamily(), QStringLiteral("Noto Sans CJK SC"));
+        QCOMPARE(result.preferences.markerTextBubbleFontPointSize(), 9.5);
         QCOMPARE(result.preferences.applicationStyle(), QStringLiteral("Fusion"));
+        QCOMPARE(result.preferences.applicationTheme(), QStringLiteral("breezeDark"));
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier | Qt::ShiftModifier);
         QCOMPARE(result.preferences.undoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Z"));
         QCOMPARE(result.preferences.redoShortcut().toString(QKeySequence::PortableText),
                  QStringLiteral("Ctrl+Shift+Z"));
+        QCOMPARE(result.preferences.nextLabelShortcut().toString(QKeySequence::PortableText), QStringLiteral("Tab"));
+        QCOMPARE(result.preferences.editLabelTextShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Return"));
+        QCOMPARE(result.preferences.commitLabelTextShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Ctrl+Return"));
         QCOMPARE(result.preferences.backupPath(), QStringLiteral("custom-bak"));
         QCOMPARE(result.preferences.backupIntervalSeconds(), 30);
         QCOMPARE(result.preferences.groupStyles().size(), 2);
@@ -147,10 +163,18 @@ private slots:
         QCOMPARE(result.preferences.labelTableFontPointSize(), 0.0);
         QCOMPARE(result.preferences.labelTextEditorFontFamily(), QString());
         QCOMPARE(result.preferences.labelTextEditorFontPointSize(), 0.0);
+        QCOMPARE(result.preferences.markerTextBubbleFontFamily(), QString());
+        QCOMPARE(result.preferences.markerTextBubbleFontPointSize(), 0.0);
         QCOMPARE(result.preferences.applicationStyle(), QString());
+        QCOMPARE(result.preferences.applicationTheme(), QString());
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier);
         QCOMPARE(result.preferences.undoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Z"));
         QCOMPARE(result.preferences.redoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Y"));
+        QCOMPARE(result.preferences.nextLabelShortcut().toString(QKeySequence::PortableText), QStringLiteral("Tab"));
+        QCOMPARE(result.preferences.editLabelTextShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Return"));
+        QCOMPARE(result.preferences.commitLabelTextShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Ctrl+Return"));
         QCOMPARE(result.preferences.backupPath(), QStringLiteral("bak"));
         QCOMPARE(result.preferences.backupIntervalSeconds(), 60);
     }

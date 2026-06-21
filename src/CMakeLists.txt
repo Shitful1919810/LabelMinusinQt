@@ -1,4 +1,5 @@
 set(LABELMINUS_CORE_SOURCES
+    core/ApplicationTheme.cpp
     core/AppPreferences.cpp
     core/Label.cpp
     core/LabelPlusDocument.cpp
@@ -21,6 +22,11 @@ set(LABELMINUS_UI_SOURCES
     ui/LabelTableModel.cpp
     ui/MainWindow.cpp
     ui/PreferenceDialog.cpp
+    ui/ThemeManager.cpp
+)
+
+qt_add_resources(LABELMINUS_RESOURCE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../resources/themes/breeze/breeze.qrc"
 )
 
 qt_add_executable(LabelMinus
@@ -30,11 +36,16 @@ qt_add_executable(LabelMinus
     ${LABELMINUS_CORE_SOURCES}
     ${LABELMINUS_SERVICE_SOURCES}
     ${LABELMINUS_UI_SOURCES}
+    ${LABELMINUS_RESOURCE_SOURCES}
 )
 
 target_include_directories(LabelMinus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(LabelMinus PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+
+if(TARGET Qt6::Svg)
+    target_link_libraries(LabelMinus PRIVATE Qt6::Svg)
+endif()
 
 if(LibArchive_FOUND)
     target_link_libraries(LabelMinus PRIVATE LibArchive::LibArchive)
@@ -97,10 +108,15 @@ if(LABELMINUS_ENABLE_STATIC_QT_EXPERIMENT)
         ${LABELMINUS_CORE_SOURCES}
         ${LABELMINUS_SERVICE_SOURCES}
         ${LABELMINUS_UI_SOURCES}
+        ${LABELMINUS_RESOURCE_SOURCES}
     )
 
     target_include_directories(LabelMinusStatic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(LabelMinusStatic PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+
+    if(TARGET Qt6::Svg)
+        target_link_libraries(LabelMinusStatic PRIVATE Qt6::Svg)
+    endif()
 
     if(LibArchive_FOUND)
         target_link_libraries(LabelMinusStatic PRIVATE LibArchive::LibArchive)

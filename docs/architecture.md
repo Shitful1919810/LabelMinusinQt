@@ -11,6 +11,7 @@ Core code should not depend on widgets. It contains:
 - `Project`, `ImageEntry`, `Label`: project data model.
 - `LabelPlusDocument`: LabelPlus text parsing and serialization.
 - `AppPreferences`: typed access to `preference.json`.
+- `ApplicationTheme`: built-in application stylesheet theme registry.
 - `UndoStack`: thin wrapper around Qt `QUndoCommand` / `QUndoStack` for undo and redo infrastructure.
 
 Keep LabelPlus file-format details here, not in UI code.
@@ -23,10 +24,15 @@ Qt Widgets classes live here:
 - `ImageCanvas`: image preview, marker drawing, click-to-label and view interaction.
 - `LabelTableModel`: table model for current image labels.
 - `GroupFilterComboBox`: multi-select group filtering widget.
+- `ThemeManager`: application-level Qt stylesheet theme loading.
 
 UI classes may coordinate core objects, but should avoid embedding file-format parsing, project workflow, label mutation
 rules or platform-service code. `MainWindow` should stay close to UI orchestration: creating controls, connecting
 signals, calling services and reflecting service results in widgets.
+
+`LabelTableModel` is a view model: it may validate edits and emit edit requests, but it must not mutate `Label` objects
+directly. Route label and group mutations through `LabelEditController` so undo, dirty state and UI refresh stay
+consistent.
 
 ### `src/services`
 
@@ -34,7 +40,7 @@ Application services belong here. They can use QtCore services such as file IO, 
 Qt Widgets. Current services include:
 
 - `ProjectController`: owns the open `Project`, project dirty state, file load/save and auto-backup writes.
-- `LabelEditController`: applies label edits and registers undo commands without depending on widgets.
+- `LabelEditController`: applies label/group edits and registers undo commands without depending on widgets.
 - `SessionStateStore`: persists local window layout and per-project session state through `QSettings`.
 - Archive reading.
 - OCR subprocesses.
@@ -57,11 +63,14 @@ For edits on the current page, keep the image scene stable and refresh only the 
 ## Dependency And License Boundaries
 
 The current application is intended to stay on Qt modules that are available under LGPL-compatible open-source use. The
-runtime target currently links only:
+runtime target currently links:
 
 - `Qt6::Core`
 - `Qt6::Gui`
 - `Qt6::Widgets`
+
+When Qt Svg is available, the build also links `Qt6::Svg` so the bundled Breeze stylesheet SVG icons work more
+completely. The application should still build without Qt Svg.
 
 Before adding any Qt module, check the official Qt licensing documentation. Do not add GPL-only Qt modules unless the
 project explicitly accepts the resulting GPL-oriented distribution requirements. Examples of modules that require extra
@@ -72,13 +81,18 @@ experiments with a static Qt build only; it is not the default release path. Do 
 Qt license review. Source repositories should not vendor Qt SDK files, Qt source code or Qt runtime binaries. Binary
 releases need third-party notices covering Qt and any other bundled dependencies.
 
+The repository bundles BreezeStyleSheets resources under `resources/themes/breeze`. They are MIT-licensed, and the SVG
+icon assets carry the Apache License 2.0 notice included with the upstream project. Keep `THIRD_PARTY_NOTICES.md` and
+the local license files in sync when updating those resources.
+
 ## Preferences
 
 Runtime UI tuning lives in `preference.json` and is read through `AppPreferences`.
 
 Current preferences:
 
-- `appearance.style`: optional Qt application style name. Empty means the platform/system default is used. Available values are discovered with `QStyleFactory::keys()` at runtime.
+- `appearance.style`: optional Qt widget style name. Empty means the platform/system default is used. Available values are discovered with `QStyleFactory::keys()` at runtime.
+- `appearance.theme`: optional built-in Breeze stylesheet theme. Empty means no application stylesheet. Current built-in values are `breezeDark`, `breezeLight`, `breezeDarkBlue` and `breezeLightBlue`. This is layered on top of `appearance.style`, so Qt styles and Breeze QSS themes coexist.
 - `labelMarker.diameter`: marker diameter in screen pixels; floating-point values are accepted.
 - `labelMarker.fontPointSize`: marker number size as a Qt font point size; floating-point values are accepted.
 - `labelTable.maxTextRows`: maximum visible wrapped text lines for each label table row.
@@ -86,7 +100,12 @@ Current preferences:
 - `labelTable.fontPointSize`: optional label table font point size; `0` keeps the Qt/system default.
 - `labelTextEditor.fontFamily`: optional bottom text editor font family; an empty value keeps the Qt/system default.
 - `labelTextEditor.fontPointSize`: optional bottom text editor font point size; `0` keeps the Qt/system default.
+- `markerTextBubble.fontFamily`: optional marker text bubble font family; an empty value keeps the Qt/system default.
+- `markerTextBubble.fontPointSize`: optional marker text bubble font point size; `0` keeps the Qt/system default.
 - `input.moveLabelModifier`: modifier key or key combination used to drag label markers.
+- `input.nextLabelShortcut`: shortcut used in the label table to select the next visible label.
+- `input.editLabelTextShortcut`: shortcut used in the label table to edit the current label text.
+- `input.commitLabelTextShortcut`: shortcut used in the label text editor delegate to commit and close inline editing.
 - `input.undoShortcut`: undo shortcut in Qt portable key sequence text format.
 - `input.redoShortcut`: redo shortcut in Qt portable key sequence text format.
 - `backupPath`: auto-backup directory; relative paths are resolved from the open project file directory.
@@ -97,8 +116,9 @@ Do not read `preference.json` directly from UI classes except through `AppPrefer
 Invalid or unreadable preference values should fall back to defaults and be reported through non-blocking UI, such as
 the status bar.
 
-The preference dialog should update the same JSON shape that `AppPreferences` reads. User-facing preference text must
-still go through `tr()` and both translation files.
+The preference dialog should update the same JSON shape that `AppPreferences` reads and should reuse `AppPreferences`
+defaults instead of duplicating fallback values. User-facing preference text must still go through `tr()` and both
+translation files.
 
 ## Group Styles
 
@@ -142,8 +162,9 @@ Run `scripts/check_translations.sh` after changing UI text.
 
 Use the Qt-backed `UndoStack` wrapper for every reversible project edit. It stores commands as `QUndoCommand` instances
 inside a `QUndoStack`, so new edit commands must provide both undo and redo behavior. Current covered commands include
-adding labels, moving labels, editing label text, changing label groups, deleting labels, reordering labels and bulk
-group changes. Future operations such as OCR writes should be added as commands instead of separate ad hoc state.
+adding labels, moving labels, editing label text, changing label groups, adding/removing groups, deleting labels,
+reordering labels and bulk group changes. Future operations such as OCR writes should be added as commands instead of
+separate ad hoc state.
 
 Undo commands should be registered close to the code that performs the edit. Label edits should go through
 `LabelEditController`, which routes normal edits and undo replay through shared apply functions. Future non-label
