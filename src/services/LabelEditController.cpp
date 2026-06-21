@@ -51,23 +51,37 @@ LabelEditResult LabelEditController::addLabel(int imageIndex, const labelminus::
     image->labels.append(label);
     const int labelIndex = static_cast<int>(image->labels.size()) - 1;
     const labelminus::core::Label addedLabel = image->labels.last();
-    m_undoStack.push(m_commandTexts.addLabel, [this, imageIndex, labelIndex, addedLabel]() {
-        labelminus::core::ImageEntry* targetImage = imageAt(imageIndex);
-        if (targetImage == nullptr || labelIndex < 0 || labelIndex >= targetImage->labels.size()) {
-            return;
-        }
+    m_undoStack.push(
+        m_commandTexts.addLabel,
+        [this, imageIndex, labelIndex, addedLabel]() {
+            labelminus::core::ImageEntry* targetImage = imageAt(imageIndex);
+            if (targetImage == nullptr || labelIndex < 0 || labelIndex >= targetImage->labels.size()) {
+                return;
+            }
 
-        const labelminus::core::Label& currentLabel = targetImage->labels.at(labelIndex);
-        if (!labelEquals(currentLabel, addedLabel)) {
-            return;
-        }
+            const labelminus::core::Label& currentLabel = targetImage->labels.at(labelIndex);
+            if (!labelEquals(currentLabel, addedLabel)) {
+                return;
+            }
 
-        targetImage->labels.removeAt(labelIndex);
-        if (m_imageSelectionCleared) {
-            m_imageSelectionCleared(imageIndex);
-        }
-        markDirty();
-    });
+            targetImage->labels.removeAt(labelIndex);
+            if (m_imageSelectionCleared) {
+                m_imageSelectionCleared(imageIndex);
+            }
+            markDirty();
+        },
+        [this, imageIndex, labelIndex, addedLabel]() {
+            labelminus::core::ImageEntry* targetImage = imageAt(imageIndex);
+            if (targetImage == nullptr || labelIndex < 0 || labelIndex > targetImage->labels.size()) {
+                return;
+            }
+
+            targetImage->labels.insert(labelIndex, addedLabel);
+            if (m_labelSelected) {
+                m_labelSelected(imageIndex, labelIndex);
+            }
+            markDirty();
+        });
 
     markDirty();
     return {true, labelIndex, {}, {labelIndex}};
@@ -95,10 +109,14 @@ LabelEditResult LabelEditController::deleteLabels(int imageIndex, const QVector<
         return {};
     }
 
-    m_undoStack.push(m_commandTexts.deleteLabels,
-                     [this, imageIndex, labelIndexes = changedIndexes, oldDeleted = std::move(oldDeleted)]() mutable {
-                         applyBatchLabelDeleted(imageIndex, std::move(labelIndexes), std::move(oldDeleted));
-                     });
+    m_undoStack.push(
+        m_commandTexts.deleteLabels,
+        [this, imageIndex, labelIndexes = changedIndexes, oldDeleted]() {
+            applyBatchLabelDeleted(imageIndex, labelIndexes, oldDeleted);
+        },
+        [this, imageIndex, labelIndexes = changedIndexes]() {
+            applyBatchLabelDeleted(imageIndex, labelIndexes, QVector<bool>(labelIndexes.size(), true));
+        });
     markDirty();
     return {true, -1, {}, changedIndexes};
 }
@@ -130,10 +148,14 @@ LabelEditResult LabelEditController::changeLabelsGroup(int imageIndex, const QVe
         return {};
     }
 
-    m_undoStack.push(m_commandTexts.changeLabelGroup,
-                     [this, imageIndex, labelIndexes = changedIndexes, oldGroups = std::move(oldGroups)]() mutable {
-                         applyBatchLabelGroups(imageIndex, std::move(labelIndexes), std::move(oldGroups));
-                     });
+    m_undoStack.push(
+        m_commandTexts.changeLabelGroup,
+        [this, imageIndex, labelIndexes = changedIndexes, oldGroups]() {
+            applyBatchLabelGroups(imageIndex, labelIndexes, oldGroups);
+        },
+        [this, imageIndex, labelIndexes = changedIndexes, newGroups]() {
+            applyBatchLabelGroups(imageIndex, labelIndexes, newGroups);
+        });
     markDirty();
     return {true, changedIndexes.last(), {}, changedIndexes};
 }
@@ -220,9 +242,12 @@ LabelEditResult LabelEditController::reorderLabels(int imageIndex, QVector<int> 
     }
 
     image->labels = newLabels;
-    m_undoStack.push(m_commandTexts.reorderLabels, [this, imageIndex, oldLabels, sourceIndexes]() mutable {
-        applyLabelOrder(imageIndex, std::move(oldLabels), std::move(sourceIndexes));
-    });
+    m_undoStack.push(
+        m_commandTexts.reorderLabels,
+        [this, imageIndex, oldLabels, sourceIndexes]() { applyLabelOrder(imageIndex, oldLabels, sourceIndexes); },
+        [this, imageIndex, newLabels, newSelectedIndexes]() {
+            applyLabelOrder(imageIndex, newLabels, newSelectedIndexes);
+        });
     markDirty();
     return {true, -1, newSelectedIndexes, newSelectedIndexes};
 }
@@ -285,9 +310,10 @@ LabelEditResult LabelEditController::setLabelPosition(int imageIndex, int labelI
     }
 
     if (registerUndo) {
-        m_undoStack.push(m_commandTexts.moveLabel, [this, imageIndex, labelIndex, oldPosition]() {
-            applyLabelPosition(imageIndex, labelIndex, oldPosition);
-        });
+        m_undoStack.push(
+            m_commandTexts.moveLabel,
+            [this, imageIndex, labelIndex, oldPosition]() { applyLabelPosition(imageIndex, labelIndex, oldPosition); },
+            [this, imageIndex, labelIndex, newPosition]() { applyLabelPosition(imageIndex, labelIndex, newPosition); });
     }
     markDirty();
     return {true, labelIndex, {}, {labelIndex}};
@@ -300,8 +326,10 @@ void LabelEditController::registerLabelTextUndo(int imageIndex, int labelIndex, 
         return;
     }
 
-    m_undoStack.push(m_commandTexts.editLabelText,
-                     [this, imageIndex, labelIndex, oldText]() { applyLabelText(imageIndex, labelIndex, oldText); });
+    m_undoStack.push(
+        m_commandTexts.editLabelText,
+        [this, imageIndex, labelIndex, oldText]() { applyLabelText(imageIndex, labelIndex, oldText); },
+        [this, imageIndex, labelIndex, newText]() { applyLabelText(imageIndex, labelIndex, newText); });
 }
 
 void LabelEditController::registerLabelGroupUndo(int imageIndex, int labelIndex, const QString& oldGroup,
@@ -311,8 +339,10 @@ void LabelEditController::registerLabelGroupUndo(int imageIndex, int labelIndex,
         return;
     }
 
-    m_undoStack.push(m_commandTexts.changeLabelGroup,
-                     [this, imageIndex, labelIndex, oldGroup]() { applyLabelGroup(imageIndex, labelIndex, oldGroup); });
+    m_undoStack.push(
+        m_commandTexts.changeLabelGroup,
+        [this, imageIndex, labelIndex, oldGroup]() { applyLabelGroup(imageIndex, labelIndex, oldGroup); },
+        [this, imageIndex, labelIndex, newGroup]() { applyLabelGroup(imageIndex, labelIndex, newGroup); });
 }
 
 void LabelEditController::applyLabelText(int imageIndex, int labelIndex, const QString& text)

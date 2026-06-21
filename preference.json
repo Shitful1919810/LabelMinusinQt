@@ -25,7 +25,9 @@
         }
     ],
     "input": {
-        "moveLabelModifier": "ctrl"
+        "moveLabelModifier": "ctrl",
+        "redoShortcut": "Ctrl+Shift+Z",
+        "undoShortcut": "Ctrl+Z"
     },
     "labelMarker": {
         "diameter": 20,

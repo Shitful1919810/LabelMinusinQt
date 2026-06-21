@@ -68,6 +68,8 @@ private:
     void updateLabelFromTable(int sourceIndex, int column, QVariant oldValue, QVariant newValue);
     void moveLabel(int index, QPointF normalizedPosition);
     void undoLastOperation();
+    void redoLastOperation();
+    void updateEditShortcuts();
     QVector<int> selectedLabelIndexes() const;
     void selectLabelIndexes(const QVector<int>& sourceIndexes);
     void refreshProjectUi();
@@ -123,6 +125,8 @@ private:
     QAction* m_newProjectAction{nullptr};
     QAction* m_saveProjectAction{nullptr};
     QAction* m_saveProjectAsAction{nullptr};
+    QAction* m_undoAction{nullptr};
+    QAction* m_redoAction{nullptr};
     QAction* m_preferencesAction{nullptr};
     QAction* m_quitAction{nullptr};
     QPushButton* m_previousButton{nullptr};
@@ -134,9 +138,6 @@ private:
     int m_currentImageIndex{-1};
     int m_currentLabelIndex{-1};
     bool m_isUpdatingUi{false};
-    int m_textEditUndoImageIndex{-1};
-    int m_textEditUndoLabelIndex{-1};
-    QString m_textEditUndoOriginalText;
     int m_labelTableMaxTextRows{3};
     QFont m_defaultLabelTableFont;
     QFont m_defaultTextEditFont;

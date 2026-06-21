@@ -122,6 +122,12 @@ void MainWindow::createActions()
     m_saveProjectAsAction->setShortcut(QKeySequence::SaveAs);
     connect(m_saveProjectAsAction, &QAction::triggered, this, &MainWindow::saveProjectAs);
 
+    m_undoAction = new QAction(tr("&Undo"), this);
+    connect(m_undoAction, &QAction::triggered, this, &MainWindow::undoLastOperation);
+
+    m_redoAction = new QAction(tr("&Redo"), this);
+    connect(m_redoAction, &QAction::triggered, this, &MainWindow::redoLastOperation);
+
     m_preferencesAction = new QAction(tr("&Preferences..."), this);
     m_preferencesAction->setShortcut(QKeySequence::Preferences);
     connect(m_preferencesAction, &QAction::triggered, this, &MainWindow::openPreferences);
@@ -129,6 +135,8 @@ void MainWindow::createActions()
     m_quitAction = new QAction(tr("&Quit"), this);
     m_quitAction->setShortcut(QKeySequence::Quit);
     connect(m_quitAction, &QAction::triggered, this, &QWidget::close);
+
+    updateEditShortcuts();
 }
 
 void MainWindow::createMenus()
@@ -143,6 +151,10 @@ void MainWindow::createMenus()
     fileMenu->addAction(m_preferencesAction);
     fileMenu->addSeparator();
     fileMenu->addAction(m_quitAction);
+
+    QMenu* editMenu = menuBar()->addMenu(tr("&Edit"));
+    editMenu->addAction(m_undoAction);
+    editMenu->addAction(m_redoAction);
 }
 
 void MainWindow::createCentralWidget()
@@ -280,7 +292,6 @@ void MainWindow::createCentralWidget()
     connect(m_canvas, &ImageCanvas::labelCreateRequested, this, &MainWindow::addLabel);
     connect(m_canvas, &ImageCanvas::labelMoveRequested, this, &MainWindow::moveLabel);
     connect(m_canvas, &ImageCanvas::labelSelected, this, &MainWindow::selectLabel);
-    connect(m_canvas, &ImageCanvas::undoRequested, this, &MainWindow::undoLastOperation);
     connect(m_canvas, &ImageCanvas::zoomPercentChanged, m_zoomSlider, &QSlider::setValue);
     connect(m_zoomSlider, &QSlider::valueChanged, m_canvas, &ImageCanvas::setZoomPercent);
     connect(m_imageComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::selectImage);
@@ -549,9 +560,6 @@ void MainWindow::selectLabel(int index)
     m_currentLabelIndex = index;
     m_canvas->setSelectedLabel(index);
     m_textEdit->setPlainText(image->labels.at(index).text());
-    m_textEditUndoImageIndex = m_currentImageIndex;
-    m_textEditUndoLabelIndex = index;
-    m_textEditUndoOriginalText = image->labels.at(index).text();
     m_labelGroupComboBox->setCurrentText(image->labels.at(index).group());
     const int visibleRow = m_labelModel->rowForSourceIndex(index);
     if (visibleRow >= 0) {
@@ -723,16 +731,8 @@ void MainWindow::updateCurrentLabelText()
         return;
     }
 
-    if (m_textEditUndoImageIndex == m_currentImageIndex && m_textEditUndoLabelIndex == m_currentLabelIndex &&
-        m_labelEditController != nullptr) {
-        m_labelEditController->registerLabelTextUndo(m_currentImageIndex, m_currentLabelIndex,
-                                                     m_textEditUndoOriginalText, newText);
-        m_textEditUndoImageIndex = -1;
-        m_textEditUndoLabelIndex = -1;
-    }
-
     if (m_labelEditController != nullptr) {
-        m_labelEditController->setLabelText(m_currentImageIndex, m_currentLabelIndex, newText, false);
+        m_labelEditController->setLabelText(m_currentImageIndex, m_currentLabelIndex, newText);
     }
     refreshCanvasLabels();
     m_labelModel->labelChanged(m_currentLabelIndex);
@@ -824,6 +824,21 @@ void MainWindow::undoLastOperation()
     m_undoStack.undo();
 }
 
+void MainWindow::redoLastOperation()
+{
+    m_undoStack.redo();
+}
+
+void MainWindow::updateEditShortcuts()
+{
+    if (m_undoAction != nullptr) {
+        m_undoAction->setShortcut(m_preferences.undoShortcut());
+    }
+    if (m_redoAction != nullptr) {
+        m_redoAction->setShortcut(m_preferences.redoShortcut());
+    }
+}
+
 QVector<int> MainWindow::selectedLabelIndexes() const
 {
     QVector<int> labelIndexes;
@@ -884,9 +899,6 @@ void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes)
     m_currentLabelIndex = primarySourceIndex;
     m_canvas->setSelectedLabel(primarySourceIndex);
     m_textEdit->setPlainText(primaryLabel.text());
-    m_textEditUndoImageIndex = m_currentImageIndex;
-    m_textEditUndoLabelIndex = primarySourceIndex;
-    m_textEditUndoOriginalText = primaryLabel.text();
     m_labelGroupComboBox->setCurrentText(primaryLabel.group());
     setEditorEnabled(true);
 
@@ -1277,6 +1289,7 @@ void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult res
     refreshCurrentLabelUi();
     applyLabelTableFont();
     applyTextEditorFont();
+    updateEditShortcuts();
     configureBackupTimer();
     showPreferenceWarnings();
     statusBar()->showMessage(tr("Preferences applied"), 4000);
@@ -1339,6 +1352,9 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("input must be a JSON object; using default input preferences.");
     case AppPreferenceWarningType::MoveLabelModifierInvalid:
         return tr("%1 must be a modifier name or modifier combination; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::UndoShortcutInvalid:
+    case AppPreferenceWarningType::RedoShortcutInvalid:
+        return tr("%1 must be a valid key sequence; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::BackupPathWrongType:
         return tr("%1 must be a non-empty string; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::BackupIntervalWrongType:

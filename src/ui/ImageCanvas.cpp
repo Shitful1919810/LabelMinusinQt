@@ -3,7 +3,6 @@
 #include <QApplication>
 #include <QBrush>
 #include <QGraphicsPixmapItem>
-#include <QKeyEvent>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
@@ -197,17 +196,6 @@ void ImageCanvas::restoreView(int zoomPercent, QPointF normalizedCenter)
     normalizedCenter.setY(std::clamp(normalizedCenter.y(), 0.0, 1.0));
     const QRectF rect = m_pixmapItem->boundingRect();
     centerOn(rect.left() + normalizedCenter.x() * rect.width(), rect.top() + normalizedCenter.y() * rect.height());
-}
-
-void ImageCanvas::keyPressEvent(QKeyEvent* event)
-{
-    if (event->matches(QKeySequence::Undo)) {
-        emit undoRequested();
-        event->accept();
-        return;
-    }
-
-    QGraphicsView::keyPressEvent(event);
 }
 
 void ImageCanvas::mousePressEvent(QMouseEvent* event)

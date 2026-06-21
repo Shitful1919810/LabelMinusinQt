@@ -56,6 +56,14 @@
         <translation>另存为(&amp;A)...</translation>
     </message>
     <message>
+        <source>&amp;Undo</source>
+        <translation>撤销(&amp;U)</translation>
+    </message>
+    <message>
+        <source>&amp;Redo</source>
+        <translation>重做(&amp;R)</translation>
+    </message>
+    <message>
         <source>&amp;Preferences...</source>
         <translation>偏好设置(&amp;P)...</translation>
     </message>
@@ -66,6 +74,10 @@
     <message>
         <source>&amp;File</source>
         <translation>文件(&amp;F)</translation>
+    </message>
+    <message>
+        <source>&amp;Edit</source>
+        <translation>编辑(&amp;E)</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -312,6 +324,10 @@
         <translation>%1 必须是修饰键名称或修饰键组合；将使用默认值。</translation>
     </message>
     <message>
+        <source>%1 must be a valid key sequence; using the default value.</source>
+        <translation>%1 必须是有效快捷键；将使用默认值。</translation>
+    </message>
+    <message>
         <source>%1 must be a non-empty string; using the default value.</source>
         <translation>%1 必须是非空字符串；将使用默认值。</translation>
     </message>
@@ -385,6 +401,18 @@
     <message>
         <source>Move-label modifier</source>
         <translation>移动标签修饰键</translation>
+    </message>
+    <message>
+        <source>Undo shortcut</source>
+        <translation>撤销快捷键</translation>
+    </message>
+    <message>
+        <source>Redo shortcut</source>
+        <translation>重做快捷键</translation>
+    </message>
+    <message>
+        <source>Key mappings</source>
+        <translation>按键映射</translation>
     </message>
     <message>
         <source>Backup path</source>

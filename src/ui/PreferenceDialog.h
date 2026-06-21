@@ -9,6 +9,7 @@
 
 class QComboBox;
 class QDoubleSpinBox;
+class QKeySequenceEdit;
 class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
@@ -58,6 +59,8 @@ private:
     QPushButton* m_chooseTextEditorFontButton{nullptr};
     QPushButton* m_resetTextEditorFontButton{nullptr};
     QComboBox* m_moveModifierComboBox{nullptr};
+    QKeySequenceEdit* m_undoShortcutEdit{nullptr};
+    QKeySequenceEdit* m_redoShortcutEdit{nullptr};
     QLineEdit* m_backupPathEdit{nullptr};
     QSpinBox* m_backupIntervalSpinBox{nullptr};
     QTableWidget* m_groupStyleTable{nullptr};

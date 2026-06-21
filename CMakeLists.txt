@@ -13,6 +13,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Generate compile_commands.json 
 
 option(LABELMINUS_ENABLE_TESTS "Build tests" ON)
 option(LABELMINUS_REQUIRE_LIBARCHIVE "Fail configure when libarchive is unavailable" OFF)
+option(LABELMINUS_ENABLE_STATIC_QT_EXPERIMENT
+    "Enable the experimental Windows-only static Qt single-exe target for local builds. Do not use for official releases without Qt license review."
+    OFF
+)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 

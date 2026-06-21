@@ -28,6 +28,7 @@ See `docs/architecture.md` for more detail.
 - Current runtime Qt dependencies should stay limited to `Qt6::Core`, `Qt6::Gui` and `Qt6::Widgets` unless a new module is reviewed.
 - Do not introduce Qt GPL-only modules without documenting the license impact and getting an explicit project decision.
 - Prefer dynamic linking for Qt in release packaging.
+- The Windows `LabelMinusStatic` target is experimental and local-only. Do not publish static Qt binaries without a Qt license review.
 - Do not commit Qt source code, Qt SDK files or bundled Qt binaries into this repository.
 - Binary releases must include Qt license notices, Qt module/version information and third-party dependency notices.
 - When adding a third-party dependency, document its license and keep it compatible with the intended project license.
@@ -62,11 +63,12 @@ cmake --build --preset linux-debug --target release_translations
 
 ## Undo
 
-- New reversible project edits must use `UndoStack`.
-- When adding a feature that changes labels, groups, pages or project data, add the undo command in the same change.
+- New reversible project edits must use the Qt-backed `UndoStack` wrapper, which is implemented with `QUndoCommand` and `QUndoStack`.
+- When adding a feature that changes labels, groups, pages or project data, add undo and redo behavior in the same change.
 - Avoid adding one-off undo state in UI code.
 - Label edits should go through `LabelEditController` so normal edits and undo replay use the same apply helpers.
 - Prefer small undo callbacks that call shared apply helpers, so table edits, canvas edits and future batch tools keep the same behavior.
+- User-configurable shortcuts, including undo/redo shortcuts, should go through `AppPreferences`, `preference.json` and the preference dialog.
 
 ## Session And Local State
 

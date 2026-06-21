@@ -57,6 +57,14 @@
         <translation>Save &amp;As...</translation>
     </message>
     <message>
+        <source>&amp;Undo</source>
+        <translation>&amp;Undo</translation>
+    </message>
+    <message>
+        <source>&amp;Redo</source>
+        <translation>&amp;Redo</translation>
+    </message>
+    <message>
         <source>&amp;Preferences...</source>
         <translation>&amp;Preferences...</translation>
     </message>
@@ -67,6 +75,10 @@
     <message>
         <source>&amp;File</source>
         <translation>&amp;File</translation>
+    </message>
+    <message>
+        <source>&amp;Edit</source>
+        <translation>&amp;Edit</translation>
     </message>
     <message>
         <source>Zoom</source>
@@ -313,6 +325,10 @@
         <translation>%1 must be a modifier name or modifier combination; using the default value.</translation>
     </message>
     <message>
+        <source>%1 must be a valid key sequence; using the default value.</source>
+        <translation>%1 must be a valid key sequence; using the default value.</translation>
+    </message>
+    <message>
         <source>%1 must be a non-empty string; using the default value.</source>
         <translation>%1 must be a non-empty string; using the default value.</translation>
     </message>
@@ -386,6 +402,18 @@
     <message>
         <source>Move-label modifier</source>
         <translation>Move-label modifier</translation>
+    </message>
+    <message>
+        <source>Undo shortcut</source>
+        <translation>Undo shortcut</translation>
+    </message>
+    <message>
+        <source>Redo shortcut</source>
+        <translation>Redo shortcut</translation>
+    </message>
+    <message>
+        <source>Key mappings</source>
+        <translation>Key mappings</translation>
     </message>
     <message>
         <source>Backup path</source>

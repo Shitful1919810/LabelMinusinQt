@@ -71,6 +71,21 @@
       }
     },
     {
+      "name": "windows-static-release",
+      "displayName": "Windows Static Release (Experimental)",
+      "inherits": "release-base",
+      "binaryDir": "${sourceDir}/build/windows/static-release",
+      "cacheVariables": {
+        "LABELMINUS_ENABLE_STATIC_QT_EXPERIMENT": "ON",
+        "LABELMINUS_ENABLE_TESTS": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
       "name": "windows-vs-debug",
       "displayName": "Windows Debug (Visual Studio)",
       "generator": "Visual Studio 17 2022",
@@ -141,6 +156,13 @@
     {
       "name": "windows-release",
       "configurePreset": "windows-release"
+    },
+    {
+      "name": "windows-static-release",
+      "configurePreset": "windows-static-release",
+      "targets": [
+        "LabelMinusStatic"
+      ]
     },
     {
       "name": "windows-vs-debug",

@@ -11,7 +11,7 @@ Core code should not depend on widgets. It contains:
 - `Project`, `ImageEntry`, `Label`: project data model.
 - `LabelPlusDocument`: LabelPlus text parsing and serialization.
 - `AppPreferences`: typed access to `preference.json`.
-- `UndoStack`: command-based undo infrastructure.
+- `UndoStack`: thin wrapper around Qt `QUndoCommand` / `QUndoStack` for undo and redo infrastructure.
 
 Keep LabelPlus file-format details here, not in UI code.
 
@@ -67,8 +67,10 @@ Before adding any Qt module, check the official Qt licensing documentation. Do n
 project explicitly accepts the resulting GPL-oriented distribution requirements. Examples of modules that require extra
 care include Qt Graphs, Qt GRPC, Qt HTTP Server, Qt MQTT, Qt Virtual Keyboard and Qt Wayland Compositor.
 
-Release packaging should prefer dynamic linking to Qt. Source repositories should not vendor Qt SDK files, Qt source code
-or Qt runtime binaries. Binary releases need third-party notices covering Qt and any other bundled dependencies.
+Release packaging should prefer dynamic linking to Qt. The optional Windows `LabelMinusStatic` target is for local
+experiments with a static Qt build only; it is not the default release path. Do not publish static Qt binaries without a
+Qt license review. Source repositories should not vendor Qt SDK files, Qt source code or Qt runtime binaries. Binary
+releases need third-party notices covering Qt and any other bundled dependencies.
 
 ## Preferences
 
@@ -85,6 +87,8 @@ Current preferences:
 - `labelTextEditor.fontFamily`: optional bottom text editor font family; an empty value keeps the Qt/system default.
 - `labelTextEditor.fontPointSize`: optional bottom text editor font point size; `0` keeps the Qt/system default.
 - `input.moveLabelModifier`: modifier key or key combination used to drag label markers.
+- `input.undoShortcut`: undo shortcut in Qt portable key sequence text format.
+- `input.redoShortcut`: redo shortcut in Qt portable key sequence text format.
 - `backupPath`: auto-backup directory; relative paths are resolved from the open project file directory.
 - `backupIntervalSeconds`: auto-backup check interval.
 - `groupStyles`: per-group marker and text color styles assigned by group index.
@@ -136,9 +140,10 @@ Run `scripts/check_translations.sh` after changing UI text.
 
 ## Undo
 
-Use `UndoStack` for every reversible project edit. Current covered commands include adding labels, moving labels,
-editing label text, changing label groups, deleting labels, reordering labels and bulk group changes. Future operations
-such as OCR writes should be added as commands instead of separate ad hoc state.
+Use the Qt-backed `UndoStack` wrapper for every reversible project edit. It stores commands as `QUndoCommand` instances
+inside a `QUndoStack`, so new edit commands must provide both undo and redo behavior. Current covered commands include
+adding labels, moving labels, editing label text, changing label groups, deleting labels, reordering labels and bulk
+group changes. Future operations such as OCR writes should be added as commands instead of separate ad hoc state.
 
 Undo commands should be registered close to the code that performs the edit. Label edits should go through
 `LabelEditController`, which routes normal edits and undo replay through shared apply functions. Future non-label

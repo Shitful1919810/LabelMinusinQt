@@ -4,6 +4,7 @@
 
 #include <QDir>
 #include <QFile>
+#include <QKeySequence>
 #include <QTextStream>
 #include <QtTest/QtTest>
 
@@ -78,7 +79,9 @@ private slots:
                << "    \"fontPointSize\": 12.5\n"
                << "  },\n"
                << "  \"input\": {\n"
-               << "    \"moveLabelModifier\": \"ctrl+shift\"\n"
+               << "    \"moveLabelModifier\": \"ctrl+shift\",\n"
+               << "    \"undoShortcut\": \"Ctrl+Z\",\n"
+               << "    \"redoShortcut\": \"Ctrl+Shift+Z\"\n"
                << "  },\n"
                << "  \"backupPath\": \"custom-bak\",\n"
                << "  \"backupIntervalSeconds\": 30,\n"
@@ -111,6 +114,9 @@ private slots:
         QCOMPARE(result.preferences.labelTextEditorFontPointSize(), 12.5);
         QCOMPARE(result.preferences.applicationStyle(), QStringLiteral("Fusion"));
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier | Qt::ShiftModifier);
+        QCOMPARE(result.preferences.undoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Z"));
+        QCOMPARE(result.preferences.redoShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Ctrl+Shift+Z"));
         QCOMPARE(result.preferences.backupPath(), QStringLiteral("custom-bak"));
         QCOMPARE(result.preferences.backupIntervalSeconds(), 30);
         QCOMPARE(result.preferences.groupStyles().size(), 2);
@@ -143,6 +149,8 @@ private slots:
         QCOMPARE(result.preferences.labelTextEditorFontPointSize(), 0.0);
         QCOMPARE(result.preferences.applicationStyle(), QString());
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier);
+        QCOMPARE(result.preferences.undoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Z"));
+        QCOMPARE(result.preferences.redoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Y"));
         QCOMPARE(result.preferences.backupPath(), QStringLiteral("bak"));
         QCOMPARE(result.preferences.backupIntervalSeconds(), 60);
     }

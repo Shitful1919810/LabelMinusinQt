@@ -12,6 +12,8 @@
 #include <QHeaderView>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QKeySequence>
+#include <QKeySequenceEdit>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPlainTextEdit>
@@ -130,21 +132,28 @@ void PreferenceDialog::createUi()
     m_backupIntervalSpinBox->setRange(1, 86400);
     m_backupIntervalSpinBox->setValue(60);
 
-    m_moveModifierComboBox = new QComboBox(generalPage);
-    m_moveModifierComboBox->setEditable(true);
-    m_moveModifierComboBox->addItems({QStringLiteral("ctrl"), QStringLiteral("shift"), QStringLiteral("alt"),
-                                      QStringLiteral("meta"), QStringLiteral("ctrl+shift"), QStringLiteral("none")});
-
     generalLayout->addRow(tr("Default marker diameter"), m_markerDiameterSpinBox);
     generalLayout->addRow(tr("Default marker font size"), m_markerFontSpinBox);
     generalLayout->addRow(tr("Application style"), m_applicationStyleComboBox);
     generalLayout->addRow(tr("Maximum label table text rows"), m_tableMaxRowsSpinBox);
     generalLayout->addRow(tr("Label table font"), labelTableFontWidget);
     generalLayout->addRow(tr("Text editor font"), textEditorFontWidget);
-    generalLayout->addRow(tr("Move-label modifier"), m_moveModifierComboBox);
     generalLayout->addRow(tr("Backup path"), m_backupPathEdit);
     generalLayout->addRow(tr("Backup interval seconds"), m_backupIntervalSpinBox);
     tabWidget->addTab(generalPage, tr("General"));
+
+    auto* keyMappingPage = new QWidget(tabWidget);
+    auto* keyMappingLayout = new QFormLayout(keyMappingPage);
+    m_moveModifierComboBox = new QComboBox(keyMappingPage);
+    m_moveModifierComboBox->setEditable(true);
+    m_moveModifierComboBox->addItems({QStringLiteral("ctrl"), QStringLiteral("shift"), QStringLiteral("alt"),
+                                      QStringLiteral("meta"), QStringLiteral("ctrl+shift"), QStringLiteral("none")});
+    m_undoShortcutEdit = new QKeySequenceEdit(QKeySequence(QStringLiteral("Ctrl+Z")), keyMappingPage);
+    m_redoShortcutEdit = new QKeySequenceEdit(QKeySequence(QStringLiteral("Ctrl+Y")), keyMappingPage);
+    keyMappingLayout->addRow(tr("Move-label modifier"), m_moveModifierComboBox);
+    keyMappingLayout->addRow(tr("Undo shortcut"), m_undoShortcutEdit);
+    keyMappingLayout->addRow(tr("Redo shortcut"), m_redoShortcutEdit);
+    tabWidget->addTab(keyMappingPage, tr("Key mappings"));
 
     auto* groupPage = new QWidget(tabWidget);
     auto* groupLayout = new QVBoxLayout(groupPage);
@@ -213,6 +222,8 @@ void PreferenceDialog::createUi()
     connect(m_chooseTextEditorFontButton, &QPushButton::clicked, this, &PreferenceDialog::chooseTextEditorFont);
     connect(m_resetTextEditorFontButton, &QPushButton::clicked, this, &PreferenceDialog::resetTextEditorFont);
     connect(m_moveModifierComboBox, &QComboBox::currentTextChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_undoShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_redoShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_backupPathEdit, &QLineEdit::textChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_backupIntervalSpinBox, &QSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
 }
@@ -282,6 +293,12 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     updateTextEditorFontSummary();
     m_moveModifierComboBox->setCurrentText(
         input.value(QStringLiteral("moveLabelModifier")).toString(QStringLiteral("ctrl")));
+    const QKeySequence undoShortcut = QKeySequence::fromString(
+        input.value(QStringLiteral("undoShortcut")).toString(QStringLiteral("Ctrl+Z")), QKeySequence::PortableText);
+    const QKeySequence redoShortcut = QKeySequence::fromString(
+        input.value(QStringLiteral("redoShortcut")).toString(QStringLiteral("Ctrl+Y")), QKeySequence::PortableText);
+    m_undoShortcutEdit->setKeySequence(undoShortcut.isEmpty() ? QKeySequence(QStringLiteral("Ctrl+Z")) : undoShortcut);
+    m_redoShortcutEdit->setKeySequence(redoShortcut.isEmpty() ? QKeySequence(QStringLiteral("Ctrl+Y")) : redoShortcut);
     m_backupPathEdit->setText(root.value(QStringLiteral("backupPath")).toString(QStringLiteral("bak")));
     m_backupIntervalSpinBox->setValue(root.value(QStringLiteral("backupIntervalSeconds")).toInt(60));
 
@@ -318,6 +335,10 @@ QJsonDocument PreferenceDialog::documentFromUi() const
 
     QJsonObject input;
     input.insert(QStringLiteral("moveLabelModifier"), m_moveModifierComboBox->currentText().trimmed());
+    input.insert(QStringLiteral("undoShortcut"),
+                 m_undoShortcutEdit->keySequence().toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("redoShortcut"),
+                 m_redoShortcutEdit->keySequence().toString(QKeySequence::PortableText));
 
     QJsonArray groupStyles;
     for (int row = 0; row < m_groupStyleTable->rowCount(); ++row) {

@@ -36,6 +36,10 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 二进制文件；发布二进制包时，应优先采用动态链接 Qt 的方式，并随包提供 Qt 使用声明、Qt 许可证文本、
 Qt 模块与版本信息，以及其他第三方依赖的许可证说明。
 
+仓库提供一个默认关闭的 Windows 静态链接实验目标，仅用于本地构建验证。官方发布版本仍应优先采用
+动态链接 Qt 的方式。任何人如果要分发静态链接 Qt 的单 exe 产物，必须自行确认并满足 Qt LGPL、
+GPL 或商业授权要求。
+
 除非项目明确决定切换到 GPL 兼容的发布策略，否则不要引入 Qt 的 GPL-only 模块，例如 Qt Graphs、
 Qt GRPC、Qt HTTP Server、Qt MQTT、Qt Virtual Keyboard、Qt Wayland Compositor 等。新增 Qt
 模块前请先核对 Qt 官方许可文档。
@@ -101,6 +105,16 @@ cmake --preset windows-vs-release
 cmake --build --preset windows-vs-release
 cmake --build --preset windows-vs-release --target deploy_windows
 ```
+
+实验性 Windows 静态单 exe 构建：
+
+```powershell
+cmake --preset windows-static-release
+cmake --build --preset windows-static-release
+```
+
+该 preset 只启用 `LabelMinusStatic` 目标，并要求当前 CMake 能找到静态构建的 Qt。使用普通动态 Qt
+安装包时，它通常不能生成真正的单 exe。该目标仅供本地实验，不作为官方 release 推荐路径。
 
 ### macOS
 
@@ -199,7 +213,9 @@ cmake --build --preset windows-vs-release --target deploy_windows
     "fontPointSize": 0.0
   },
   "input": {
-    "moveLabelModifier": "ctrl"
+    "moveLabelModifier": "ctrl",
+    "undoShortcut": "Ctrl+Z",
+    "redoShortcut": "Ctrl+Y"
   },
   "groupStyles": [
     {
@@ -235,6 +251,8 @@ cmake --build --preset windows-vs-release --target deploy_windows
 - `labelTextEditor.fontFamily`：右下角大文本编辑框字体。为空时使用系统默认字体。
 - `labelTextEditor.fontPointSize`：右下角大文本编辑框字号。为 `0` 时使用系统默认字号。
 - `input.moveLabelModifier`：拖动图像 marker 时需要按住的修饰键，默认 `ctrl`。
+- `input.undoShortcut`：撤销快捷键，使用 Qt portable key sequence 文本格式，默认 `Ctrl+Z`。
+- `input.redoShortcut`：重做快捷键，使用 Qt portable key sequence 文本格式，默认 `Ctrl+Y`，可改为 `Ctrl+Shift+Z` 等组合键。
 - `backupPath`：自动备份目录，默认 `bak`。相对路径会解析到当前工程文件所在目录下，绝对路径会直接使用。
 - `backupIntervalSeconds`：自动备份检查间隔，单位为秒，默认 60。
 - `groupStyles`：按分组顺序应用的分组样式数组。

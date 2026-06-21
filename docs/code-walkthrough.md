@@ -109,10 +109,13 @@ translations  Qt Linguist .ts 翻译源文件
 
 文件：`src/core/UndoStack.h`、`src/core/UndoStack.cpp`
 
-这是一个轻量命令式撤销栈。每个命令包含：
+这是一个围绕 Qt `QUndoStack` / `QUndoCommand` 的轻量包装层。外部调用仍通过项目自己的 `UndoStack`，这样业务代码不需要直接依赖 Qt 的命令子类细节。每个命令包含：
 
 - `text`：命令名称。
 - `undo`：撤销函数。
+- `redo`：重做函数。
+
+当前代码里，编辑动作通常已经先修改了工程数据，再把命令压入栈。因此内部的回调命令会跳过 `QUndoStack::push()` 触发的第一次 `redo()`，后续用户手动 Redo 时才真正调用 redo 回调。
 
 当前只实现撤销，没有 redo。标签编辑由 `LabelEditController` 负责把对应命令压栈。
 
@@ -223,14 +226,12 @@ translations  Qt Linguist .ts 翻译源文件
 - 鼠标点击请求新增标签。
 - 按偏好中的修饰键拖动 marker 坐标。
 - 鼠标悬停 marker 时显示标签文本提示。
-- 在焦点位于画布时触发 undo 请求。
 
 注意：`ImageCanvas` 不直接修改 `Project`。它持有当前页标签的绘制快照，通过信号告诉 `MainWindow` 用户想做什么：
 
 - `labelCreateRequested`
 - `labelMoveRequested`
 - `labelSelected`
-- `undoRequested`
 - `zoomPercentChanged`
 
 这种设计让画布只处理交互和绘制，真实工程数据仍由 `ProjectController` 持有，并由主窗口协调更新。当前页标签变化时，主窗口通过 `refreshCanvasLabels()` 更新画布快照；整页切换时才重新载入图片。
@@ -373,6 +374,6 @@ translations  Qt Linguist .ts 翻译源文件
 - 新增可配置行为：改 `AppPreferences`、`preference.json`、`PreferenceDialog`、README、测试。
 - 新增画布交互：改 `ImageCanvas` 发信号，再由 `MainWindow` 改数据。
 - 新增标签表格行为：改 `LabelTableModel`、必要时改 `LabelEditDelegates`。
-- 新增标签编辑操作：优先走 `LabelEditController`，并确保注册 `UndoStack` 命令。
-- 新增其他会修改工程的操作：必须 `markDirty()`，并注册 `UndoStack` 命令。
+- 新增标签编辑操作：优先走 `LabelEditController`，并确保注册带 undo/redo 的 `UndoStack` 命令。
+- 新增其他会修改工程的操作：必须 `markDirty()`，并注册带 undo/redo 的 `UndoStack` 命令。
 - 新增 UI 文本：必须 `tr()`，并同步中英文翻译。

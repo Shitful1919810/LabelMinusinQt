@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QJsonValue>
+#include <QKeySequence>
 #include <QStringList>
 
 #include <algorithm>
@@ -173,6 +174,28 @@ Qt::KeyboardModifiers modifiersFromString(const QString& text, Qt::KeyboardModif
 
     return modifiers;
 }
+
+QKeySequence keySequenceFromJsonValue(const QJsonValue& value, const QString& key, const QKeySequence& fallback,
+                                      AppPreferenceWarningType invalidType, QVector<AppPreferenceWarning>& warnings)
+{
+    if (value.isUndefined()) {
+        return fallback;
+    }
+
+    if (!value.isString()) {
+        warnings.append(makeWarning(invalidType, key));
+        return fallback;
+    }
+
+    const QString text = value.toString().trimmed();
+    const QKeySequence sequence = QKeySequence::fromString(text, QKeySequence::PortableText);
+    if (sequence.isEmpty()) {
+        warnings.append(makeWarning(invalidType, key));
+        return fallback;
+    }
+
+    return sequence;
+}
 } // namespace
 
 AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& document,
@@ -303,6 +326,14 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
                                                 QStringLiteral("input.moveLabelModifier")));
                 }
             }
+
+            const QJsonObject input = inputValue.toObject();
+            preferences.m_undoShortcut = keySequenceFromJsonValue(
+                input.value(QStringLiteral("undoShortcut")), QStringLiteral("input.undoShortcut"),
+                preferences.m_undoShortcut, AppPreferenceWarningType::UndoShortcutInvalid, warnings);
+            preferences.m_redoShortcut = keySequenceFromJsonValue(
+                input.value(QStringLiteral("redoShortcut")), QStringLiteral("input.redoShortcut"),
+                preferences.m_redoShortcut, AppPreferenceWarningType::RedoShortcutInvalid, warnings);
         }
     }
 
@@ -468,6 +499,16 @@ QString AppPreferences::applicationStyle() const
 Qt::KeyboardModifiers AppPreferences::moveLabelModifiers() const noexcept
 {
     return m_moveLabelModifiers;
+}
+
+QKeySequence AppPreferences::undoShortcut() const
+{
+    return m_undoShortcut;
+}
+
+QKeySequence AppPreferences::redoShortcut() const
+{
+    return m_redoShortcut;
 }
 
 QString AppPreferences::backupPath() const

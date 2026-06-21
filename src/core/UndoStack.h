@@ -1,9 +1,9 @@
 #pragma once
 
 #include <QString>
+#include <QUndoStack>
 
 #include <functional>
-#include <vector>
 
 namespace labelminus::core {
 
@@ -16,12 +16,15 @@ public:
 
     void push(Command command);
     void push(QString text, std::function<void()> undo);
+    void push(QString text, std::function<void()> undo, std::function<void()> redo);
     bool canUndo() const noexcept;
+    bool canRedo() const noexcept;
     void undo();
+    void redo();
     void clear();
 
 private:
-    std::vector<Command> m_commands;
+    QUndoStack m_stack;
 };
 
 } // namespace labelminus::core

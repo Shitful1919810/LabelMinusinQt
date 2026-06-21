@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QColor>
+#include <QKeySequence>
 #include <QString>
 #include <QVector>
 #include <Qt>
@@ -35,6 +36,8 @@ enum class AppPreferenceWarningType {
     GroupStyleMarkerStyleInvalid,
     InputNotObject,
     MoveLabelModifierInvalid,
+    UndoShortcutInvalid,
+    RedoShortcutInvalid,
     BackupPathWrongType,
     BackupIntervalWrongType,
     BackupIntervalOutOfRange,
@@ -80,6 +83,8 @@ public:
     double labelTextEditorFontPointSize() const noexcept;
     QString applicationStyle() const;
     Qt::KeyboardModifiers moveLabelModifiers() const noexcept;
+    QKeySequence undoShortcut() const;
+    QKeySequence redoShortcut() const;
     QString backupPath() const;
     int backupIntervalSeconds() const noexcept;
     const QVector<LabelGroupStyle>& groupStyles() const noexcept;
@@ -96,6 +101,8 @@ private:
     double m_labelTextEditorFontPointSize{0.0};
     QString m_applicationStyle;
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
+    QKeySequence m_undoShortcut{QStringLiteral("Ctrl+Z")};
+    QKeySequence m_redoShortcut{QStringLiteral("Ctrl+Y")};
     QString m_backupPath{QStringLiteral("bak")};
     int m_backupIntervalSeconds{60};
     QVector<LabelGroupStyle> m_groupStyles;
