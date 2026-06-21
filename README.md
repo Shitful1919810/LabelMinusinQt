@@ -228,11 +228,14 @@ cmake --build --preset windows-vs-release --target deploy_windows
   },
   "markerTextBubble": {
     "fontFamily": "",
-    "fontPointSize": 0.0
+    "fontPointSize": 0.0,
+    "opacity": 1.0
   },
   "input": {
     "moveLabelModifier": "ctrl",
     "nextLabelShortcut": "Tab",
+    "previousPageShortcut": "Alt+Left",
+    "nextPageShortcut": "Alt+Right",
     "editLabelTextShortcut": "Return",
     "commitLabelTextShortcut": "Ctrl+Return",
     "undoShortcut": "Ctrl+Z",
@@ -274,8 +277,11 @@ cmake --build --preset windows-vs-release --target deploy_windows
 - `labelTextEditor.fontPointSize`：右下角大文本编辑框字号。为 `0` 时使用系统默认字号。
 - `markerTextBubble.fontFamily`：图像 marker 文本气泡字体。为空时使用系统默认字体。
 - `markerTextBubble.fontPointSize`：图像 marker 文本气泡字号。为 `0` 时使用系统默认字号。
+- `markerTextBubble.opacity`：图像 marker 文本气泡不透明度，范围 `0.0` 到 `1.0`，默认 `1.0`。
 - `input.moveLabelModifier`：拖动图像 marker 时需要按住的修饰键，默认 `ctrl`。
 - `input.nextLabelShortcut`：焦点位于右侧标签列表时切换到下一个可见标签的快捷键，默认 `Tab`。
+- `input.previousPageShortcut`：切换到上一页的快捷键，默认 `Alt+Left`。
+- `input.nextPageShortcut`：切换到下一页的快捷键，默认 `Alt+Right`。
 - `input.editLabelTextShortcut`：焦点位于右侧标签列表时进入当前标签文本原地编辑的快捷键，默认 `Return`。
 - `input.commitLabelTextShortcut`：焦点位于标签文本原地编辑器时提交并退出编辑的快捷键，默认 `Ctrl+Return`。
 - `input.undoShortcut`：撤销快捷键，使用 Qt portable key sequence 文本格式，默认 `Ctrl+Z`。

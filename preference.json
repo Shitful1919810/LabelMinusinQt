@@ -30,6 +30,8 @@
         "editLabelTextShortcut": "Return",
         "moveLabelModifier": "ctrl",
         "nextLabelShortcut": "Tab",
+        "nextPageShortcut": "Alt+Right",
+        "previousPageShortcut": "Alt+Left",
         "redoShortcut": "Ctrl+Shift+Z",
         "undoShortcut": "Ctrl+Z"
     },

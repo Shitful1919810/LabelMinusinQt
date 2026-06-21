@@ -108,6 +108,14 @@
         <translation>Next</translation>
     </message>
     <message>
+        <source>Previous page</source>
+        <translation>Previous page</translation>
+    </message>
+    <message>
+        <source>Next page</source>
+        <translation>Next page</translation>
+    </message>
+    <message>
         <source>+</source>
         <translation>+</translation>
     </message>
@@ -485,6 +493,14 @@
     <message>
         <source>Next label shortcut</source>
         <translation>Next label shortcut</translation>
+    </message>
+    <message>
+        <source>Previous page shortcut</source>
+        <translation>Previous page shortcut</translation>
+    </message>
+    <message>
+        <source>Next page shortcut</source>
+        <translation>Next page shortcut</translation>
     </message>
     <message>
         <source>Edit label text shortcut</source>

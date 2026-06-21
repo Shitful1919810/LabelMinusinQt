@@ -45,6 +45,8 @@ enum class AppPreferenceWarningType {
     UndoShortcutInvalid,
     RedoShortcutInvalid,
     NextLabelShortcutInvalid,
+    PreviousPageShortcutInvalid,
+    NextPageShortcutInvalid,
     EditLabelTextShortcutInvalid,
     CommitLabelTextShortcutInvalid,
     BackupPathWrongType,
@@ -100,6 +102,8 @@ public:
     QKeySequence undoShortcut() const;
     QKeySequence redoShortcut() const;
     QKeySequence nextLabelShortcut() const;
+    QKeySequence previousPageShortcut() const;
+    QKeySequence nextPageShortcut() const;
     QKeySequence editLabelTextShortcut() const;
     QKeySequence commitLabelTextShortcut() const;
     QString backupPath() const;
@@ -125,6 +129,8 @@ private:
     QKeySequence m_undoShortcut{QStringLiteral("Ctrl+Z")};
     QKeySequence m_redoShortcut{QStringLiteral("Ctrl+Y")};
     QKeySequence m_nextLabelShortcut{QStringLiteral("Tab")};
+    QKeySequence m_previousPageShortcut{QStringLiteral("Alt+Left")};
+    QKeySequence m_nextPageShortcut{QStringLiteral("Alt+Right")};
     QKeySequence m_editLabelTextShortcut{QStringLiteral("Return")};
     QKeySequence m_commitLabelTextShortcut{QStringLiteral("Ctrl+Return")};
     QString m_backupPath{QStringLiteral("bak")};

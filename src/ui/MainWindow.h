@@ -76,6 +76,8 @@ private:
     void undoLastOperation();
     void redoLastOperation();
     void updateEditShortcuts();
+    void selectPreviousPage();
+    void selectNextPage();
     bool handleLabelViewShortcut(QEvent* event);
     void selectNextVisibleLabel();
     void editCurrentLabelText();
@@ -139,6 +141,8 @@ private:
     QAction* m_saveProjectAsAction{nullptr};
     QAction* m_undoAction{nullptr};
     QAction* m_redoAction{nullptr};
+    QAction* m_previousPageAction{nullptr};
+    QAction* m_nextPageAction{nullptr};
     QAction* m_preferencesAction{nullptr};
     QAction* m_quitAction{nullptr};
     QPushButton* m_previousButton{nullptr};

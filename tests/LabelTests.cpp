@@ -86,6 +86,8 @@ private slots:
                << "  \"input\": {\n"
                << "    \"moveLabelModifier\": \"ctrl+shift\",\n"
                << "    \"nextLabelShortcut\": \"Tab\",\n"
+               << "    \"previousPageShortcut\": \"Alt+Left\",\n"
+               << "    \"nextPageShortcut\": \"Alt+Right\",\n"
                << "    \"editLabelTextShortcut\": \"Return\",\n"
                << "    \"commitLabelTextShortcut\": \"Ctrl+Return\",\n"
                << "    \"undoShortcut\": \"Ctrl+Z\",\n"
@@ -129,6 +131,10 @@ private slots:
         QCOMPARE(result.preferences.redoShortcut().toString(QKeySequence::PortableText),
                  QStringLiteral("Ctrl+Shift+Z"));
         QCOMPARE(result.preferences.nextLabelShortcut().toString(QKeySequence::PortableText), QStringLiteral("Tab"));
+        QCOMPARE(result.preferences.previousPageShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Alt+Left"));
+        QCOMPARE(result.preferences.nextPageShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Alt+Right"));
         QCOMPARE(result.preferences.editLabelTextShortcut().toString(QKeySequence::PortableText),
                  QStringLiteral("Return"));
         QCOMPARE(result.preferences.commitLabelTextShortcut().toString(QKeySequence::PortableText),
@@ -171,6 +177,10 @@ private slots:
         QCOMPARE(result.preferences.undoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Z"));
         QCOMPARE(result.preferences.redoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Y"));
         QCOMPARE(result.preferences.nextLabelShortcut().toString(QKeySequence::PortableText), QStringLiteral("Tab"));
+        QCOMPARE(result.preferences.previousPageShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Alt+Left"));
+        QCOMPARE(result.preferences.nextPageShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Alt+Right"));
         QCOMPARE(result.preferences.editLabelTextShortcut().toString(QKeySequence::PortableText),
                  QStringLiteral("Return"));
         QCOMPARE(result.preferences.commitLabelTextShortcut().toString(QKeySequence::PortableText),

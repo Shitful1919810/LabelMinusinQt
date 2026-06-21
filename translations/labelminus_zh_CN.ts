@@ -107,6 +107,14 @@
         <translation>下一页</translation>
     </message>
     <message>
+        <source>Previous page</source>
+        <translation>上一页</translation>
+    </message>
+    <message>
+        <source>Next page</source>
+        <translation>下一页</translation>
+    </message>
+    <message>
         <source>+</source>
         <translation>+</translation>
     </message>
@@ -484,6 +492,14 @@
     <message>
         <source>Next label shortcut</source>
         <translation>下一个标签快捷键</translation>
+    </message>
+    <message>
+        <source>Previous page shortcut</source>
+        <translation>上一页快捷键</translation>
+    </message>
+    <message>
+        <source>Next page shortcut</source>
+        <translation>下一页快捷键</translation>
     </message>
     <message>
         <source>Edit label text shortcut</source>

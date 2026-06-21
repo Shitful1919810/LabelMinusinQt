@@ -152,6 +152,16 @@ void MainWindow::createActions()
     m_redoAction = new QAction(tr("&Redo"), this);
     connect(m_redoAction, &QAction::triggered, this, &MainWindow::redoLastOperation);
 
+    m_previousPageAction = new QAction(tr("Previous page"), this);
+    m_previousPageAction->setShortcutContext(Qt::WindowShortcut);
+    connect(m_previousPageAction, &QAction::triggered, this, &MainWindow::selectPreviousPage);
+    addAction(m_previousPageAction);
+
+    m_nextPageAction = new QAction(tr("Next page"), this);
+    m_nextPageAction->setShortcutContext(Qt::WindowShortcut);
+    connect(m_nextPageAction, &QAction::triggered, this, &MainWindow::selectNextPage);
+    addAction(m_nextPageAction);
+
     m_preferencesAction = new QAction(tr("&Preferences..."), this);
     m_preferencesAction->setShortcut(QKeySequence::Preferences);
     connect(m_preferencesAction, &QAction::triggered, this, &MainWindow::openPreferences);
@@ -322,12 +332,8 @@ void MainWindow::createCentralWidget()
     connect(m_canvas, &ImageCanvas::zoomPercentChanged, m_zoomSlider, &QSlider::setValue);
     connect(m_zoomSlider, &QSlider::valueChanged, m_canvas, &ImageCanvas::setZoomPercent);
     connect(m_imageComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::selectImage);
-    connect(m_previousButton, &QPushButton::clicked, this,
-            [this]() { selectImage(std::max(0, m_currentImageIndex - 1)); });
-    connect(m_nextButton, &QPushButton::clicked, this, [this]() {
-        const int lastIndex = static_cast<int>(project().images().size()) - 1;
-        selectImage(std::min(lastIndex, m_currentImageIndex + 1));
-    });
+    connect(m_previousButton, &QPushButton::clicked, this, &MainWindow::selectPreviousPage);
+    connect(m_nextButton, &QPushButton::clicked, this, &MainWindow::selectNextPage);
     connect(m_labelView->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
             [this](const QModelIndex& current) {
                 if (current.isValid()) {
@@ -977,6 +983,30 @@ void MainWindow::updateEditShortcuts()
     if (m_redoAction != nullptr) {
         m_redoAction->setShortcut(m_preferences.redoShortcut());
     }
+    if (m_previousPageAction != nullptr) {
+        m_previousPageAction->setShortcut(m_preferences.previousPageShortcut());
+    }
+    if (m_nextPageAction != nullptr) {
+        m_nextPageAction->setShortcut(m_preferences.nextPageShortcut());
+    }
+}
+
+void MainWindow::selectPreviousPage()
+{
+    if (m_currentImageIndex <= 0) {
+        return;
+    }
+
+    selectImage(m_currentImageIndex - 1);
+}
+
+void MainWindow::selectNextPage()
+{
+    if (m_currentImageIndex < 0 || m_currentImageIndex >= project().images().size() - 1) {
+        return;
+    }
+
+    selectImage(m_currentImageIndex + 1);
 }
 
 bool MainWindow::handleLabelViewShortcut(QEvent* event)
@@ -1638,6 +1668,8 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
     case AppPreferenceWarningType::UndoShortcutInvalid:
     case AppPreferenceWarningType::RedoShortcutInvalid:
     case AppPreferenceWarningType::NextLabelShortcutInvalid:
+    case AppPreferenceWarningType::PreviousPageShortcutInvalid:
+    case AppPreferenceWarningType::NextPageShortcutInvalid:
     case AppPreferenceWarningType::EditLabelTextShortcutInvalid:
     case AppPreferenceWarningType::CommitLabelTextShortcutInvalid:
         return tr("%1 must be a valid key sequence; using the default value.").arg(warning.key);

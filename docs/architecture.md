@@ -102,8 +102,11 @@ Current preferences:
 - `labelTextEditor.fontPointSize`: optional bottom text editor font point size; `0` keeps the Qt/system default.
 - `markerTextBubble.fontFamily`: optional marker text bubble font family; an empty value keeps the Qt/system default.
 - `markerTextBubble.fontPointSize`: optional marker text bubble font point size; `0` keeps the Qt/system default.
+- `markerTextBubble.opacity`: marker text bubble opacity from `0.0` to `1.0`.
 - `input.moveLabelModifier`: modifier key or key combination used to drag label markers.
 - `input.nextLabelShortcut`: shortcut used in the label table to select the next visible label.
+- `input.previousPageShortcut`: shortcut used to move to the previous image page.
+- `input.nextPageShortcut`: shortcut used to move to the next image page.
 - `input.editLabelTextShortcut`: shortcut used in the label table to edit the current label text.
 - `input.commitLabelTextShortcut`: shortcut used in the label text editor delegate to commit and close inline editing.
 - `input.undoShortcut`: undo shortcut in Qt portable key sequence text format.
