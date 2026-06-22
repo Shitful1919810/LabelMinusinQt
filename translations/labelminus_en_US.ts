@@ -435,14 +435,6 @@
         <translation>Breeze Light</translation>
     </message>
     <message>
-        <source>Breeze Dark Blue</source>
-        <translation>Breeze Dark Blue</translation>
-    </message>
-    <message>
-        <source>Breeze Light Blue</source>
-        <translation>Breeze Light Blue</translation>
-    </message>
-    <message>
         <source>Application theme</source>
         <translation>Application theme</translation>
     </message>

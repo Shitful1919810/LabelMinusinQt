@@ -269,7 +269,7 @@ cmake --build --preset windows-vs-release --target deploy_windows
 字段说明：
 
 - `appearance.style`：启动时强制使用的 Qt 控件风格名称，例如 `Fusion`。为空时不强制设置，使用系统默认风格。可选值由当前 Qt 环境的 `QStyleFactory::keys()` 决定，偏好设置窗口会自动列出可用 style。
-- `appearance.theme`：应用内置 Breeze QSS 样式表主题。为空时不使用样式表；当前支持 `breezeDark`、`breezeLight`、`breezeDarkBlue`、`breezeLightBlue`。该字段与 `appearance.style` 可同时使用，程序会先设置 Qt style，再叠加 Breeze QSS。
+- `appearance.theme`：应用内置 Breeze QSS 样式表主题。为空时不使用样式表；当前支持 `breezeDark`、`breezeLight`。该字段与 `appearance.style` 可同时使用，程序会先设置 Qt style，再叠加 Breeze QSS。
 - `labelMarker.diameter`：默认 marker 直径，单位为屏幕像素，支持浮点数。
 - `labelMarker.fontPointSize`：默认 marker 内部序号字号，使用 Qt 字号单位，支持浮点数。
 - `labelTable.maxTextRows`：右侧标签列表文本列自动换行后的最大显示行数。

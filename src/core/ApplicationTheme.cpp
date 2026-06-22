@@ -7,8 +7,6 @@ const QVector<ApplicationTheme>& builtInApplicationThemes()
     static const QVector<ApplicationTheme> themes{
         {QStringLiteral("breezeDark"), QStringLiteral(":/dark/stylesheet.qss")},
         {QStringLiteral("breezeLight"), QStringLiteral(":/light/stylesheet.qss")},
-        {QStringLiteral("breezeDarkBlue"), QStringLiteral(":/dark-blue/stylesheet.qss")},
-        {QStringLiteral("breezeLightBlue"), QStringLiteral(":/light-blue/stylesheet.qss")},
     };
     return themes;
 }

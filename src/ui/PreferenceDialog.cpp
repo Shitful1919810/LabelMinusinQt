@@ -129,12 +129,6 @@ QString themeDisplayName(const QString& themeName)
     if (themeName == QStringLiteral("breezeLight")) {
         return PreferenceDialog::tr("Breeze Light");
     }
-    if (themeName == QStringLiteral("breezeDarkBlue")) {
-        return PreferenceDialog::tr("Breeze Dark Blue");
-    }
-    if (themeName == QStringLiteral("breezeLightBlue")) {
-        return PreferenceDialog::tr("Breeze Light Blue");
-    }
     return themeName;
 }
 

@@ -434,14 +434,6 @@
         <translation>Breeze 浅色</translation>
     </message>
     <message>
-        <source>Breeze Dark Blue</source>
-        <translation>Breeze 深蓝色</translation>
-    </message>
-    <message>
-        <source>Breeze Light Blue</source>
-        <translation>Breeze 浅蓝色</translation>
-    </message>
-    <message>
         <source>Application theme</source>
         <translation>应用程序主题</translation>
     </message>

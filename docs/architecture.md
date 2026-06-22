@@ -93,7 +93,7 @@ Runtime UI tuning lives in `preference.json` and is read through `AppPreferences
 Current preferences:
 
 - `appearance.style`: optional Qt widget style name. Empty means the platform/system default is used. Available values are discovered with `QStyleFactory::keys()` at runtime.
-- `appearance.theme`: optional built-in Breeze stylesheet theme. Empty means no application stylesheet. Current built-in values are `breezeDark`, `breezeLight`, `breezeDarkBlue` and `breezeLightBlue`. This is layered on top of `appearance.style`, so Qt styles and Breeze QSS themes coexist.
+- `appearance.theme`: optional built-in Breeze stylesheet theme. Empty means no application stylesheet. Current built-in values are `breezeDark` and `breezeLight`. This is layered on top of `appearance.style`, so Qt styles and Breeze QSS themes coexist.
 - `labelMarker.diameter`: marker diameter in screen pixels; floating-point values are accepted.
 - `labelMarker.fontPointSize`: marker number size as a Qt font point size; floating-point values are accepted.
 - `labelTable.maxTextRows`: maximum visible wrapped text lines for each label table row.
