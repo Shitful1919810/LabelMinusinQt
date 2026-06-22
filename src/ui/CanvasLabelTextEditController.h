@@ -3,6 +3,7 @@
 #include <QKeySequence>
 #include <QObject>
 #include <QPoint>
+#include <QPointer>
 #include <QString>
 
 class CanvasLabelTextEditor;
@@ -38,7 +39,7 @@ signals:
     void closed(int labelIndex);
 
 private:
-    CanvasLabelTextEditor* m_editor{nullptr};
+    QPointer<CanvasLabelTextEditor> m_editor;
     QKeySequence m_commitShortcut{QStringLiteral("Ctrl+Return")};
     int m_imageIndex{-1};
     int m_labelIndex{-1};

@@ -25,6 +25,8 @@ constexpr QLatin1StringView sessionViewCenterYKey{"viewCenterY"};
 constexpr QLatin1StringView sessionSelectedLabelIndexKey{"selectedLabelIndex"};
 constexpr QLatin1StringView recentProjectsGroup{"recentProjects"};
 constexpr QLatin1StringView recentProjectPathsKey{"paths"};
+constexpr QLatin1StringView fileDialogsGroup{"fileDialogs"};
+constexpr QLatin1StringView lastDirectoryKey{"lastDirectory"};
 } // namespace
 
 WindowLayoutState SessionStateStore::loadWindowLayout() const
@@ -141,6 +143,36 @@ void SessionStateStore::removeRecentProjectPath(const QString& projectPath) cons
     QSettings settings;
     settings.beginGroup(recentProjectsGroup);
     settings.setValue(recentProjectPathsKey, paths);
+}
+
+QString SessionStateStore::lastFileDialogDirectory() const
+{
+    QSettings settings;
+    settings.beginGroup(fileDialogsGroup);
+    const QString path = settings.value(lastDirectoryKey).toString();
+    if (path.isEmpty()) {
+        return {};
+    }
+
+    const QFileInfo fileInfo(path);
+    return fileInfo.isDir() ? fileInfo.absoluteFilePath() : fileInfo.absolutePath();
+}
+
+void SessionStateStore::saveLastFileDialogPath(const QString& path) const
+{
+    if (path.isEmpty()) {
+        return;
+    }
+
+    const QFileInfo fileInfo(path);
+    const QString directory = fileInfo.isDir() ? fileInfo.absoluteFilePath() : fileInfo.absolutePath();
+    if (directory.isEmpty()) {
+        return;
+    }
+
+    QSettings settings;
+    settings.beginGroup(fileDialogsGroup);
+    settings.setValue(lastDirectoryKey, directory);
 }
 
 QString SessionStateStore::canonicalSessionPath(const QString& path)

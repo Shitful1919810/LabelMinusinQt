@@ -3,6 +3,7 @@
 #include "core/LabelPlusDocument.h"
 #include "core/Project.h"
 #include "services/LabelNavigator.h"
+#include "services/ProjectMergeService.h"
 
 #include <QDir>
 #include <QFile>
@@ -99,6 +100,71 @@ private slots:
         QVERIFY(previous.isValid());
         QCOMPARE(previous.imageIndex, 0);
         QCOMPARE(previous.labelIndex, 1);
+    }
+
+    void projectMergeUsesSingleInvolvedPageAutomatically()
+    {
+        const QString dirPath = QDir::temp().filePath("labelminus_merge_single_test");
+        QDir().mkpath(dirPath);
+
+        labelminus::core::Project firstProject;
+        firstProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        firstProject.images().last().labels.append(Label(QStringLiteral("second"), QStringLiteral("框外"), {}));
+        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        firstProject.images().last().labels.append(Label(QStringLiteral("first"), QStringLiteral("框内"), {}));
+
+        labelminus::core::Project secondProject;
+        secondProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        secondProject.images().append(labelminus::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
+        secondProject.images().last().labels.append(Label(QStringLiteral("third"), QStringLiteral("框外"), {}));
+
+        const QString firstPath = QDir(dirPath).filePath("first.txt");
+        const QString secondPath = QDir(dirPath).filePath("second.txt");
+        LabelPlusDocument::saveToFile(firstProject, firstPath);
+        LabelPlusDocument::saveToFile(secondProject, secondPath);
+
+        const auto plan = labelminus::services::ProjectMergeService::createPlan({firstPath, secondPath});
+
+        QVERIFY(plan.conflicts.isEmpty());
+        QCOMPARE(plan.mergedProject.images().size(), 3);
+        QCOMPARE(plan.mergedProject.images().at(0).name, QStringLiteral("001.png"));
+        QCOMPARE(plan.mergedProject.images().at(1).name, QStringLiteral("002.png"));
+        QCOMPARE(plan.mergedProject.images().at(2).name, QStringLiteral("003.png"));
+        QCOMPARE(plan.mergedProject.images().at(0).labels.first().text(), QStringLiteral("first"));
+        QCOMPARE(plan.mergedProject.images().at(1).labels.first().text(), QStringLiteral("second"));
+        QCOMPARE(plan.mergedProject.images().at(2).labels.first().text(), QStringLiteral("third"));
+    }
+
+    void projectMergeCreatesConflictForMultipleInvolvedProjects()
+    {
+        const QString dirPath = QDir::temp().filePath("labelminus_merge_conflict_test");
+        QDir().mkpath(dirPath);
+
+        labelminus::core::Project firstProject;
+        firstProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        firstProject.images().last().labels.append(Label(QStringLiteral("first"), QStringLiteral("框内"), {}));
+
+        labelminus::core::Project secondProject;
+        secondProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        secondProject.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        secondProject.images().last().labels.append(Label(QStringLiteral("second"), QStringLiteral("框外"), {}));
+
+        const QString firstPath = QDir(dirPath).filePath("first.txt");
+        const QString secondPath = QDir(dirPath).filePath("second.txt");
+        LabelPlusDocument::saveToFile(firstProject, firstPath);
+        LabelPlusDocument::saveToFile(secondProject, secondPath);
+
+        const auto plan = labelminus::services::ProjectMergeService::createPlan({firstPath, secondPath});
+
+        QCOMPARE(plan.conflicts.size(), 1);
+        QCOMPARE(plan.conflicts.first().candidates.size(), 2);
+
+        const labelminus::core::Project merged =
+            labelminus::services::ProjectMergeService::mergedProjectWithSelections(plan, {1});
+        QCOMPARE(merged.images().size(), 1);
+        QCOMPARE(merged.images().first().labels.first().text(), QStringLiteral("second"));
     }
 
     void preferencesReadMarkerFloatingPointSizes()

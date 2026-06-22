@@ -26,6 +26,7 @@ Qt Widgets classes live here:
   does not mutate project data or widgets directly.
 - `CanvasLabelTextEditController`: lifecycle controller for marker-adjacent label text editing on the image canvas.
 - `CanvasLabelTextEditor`: temporary marker-adjacent text editor widget for canvas-side label text edits.
+- `ProjectMergeDialog`: conflict-resolution dialog for offline page-based LabelPlus project merges.
 - `LabelTableModel`: table model for current image labels.
 - `GroupFilterComboBox`: multi-select group filtering widget.
 - `ThemeManager`: application-level Qt stylesheet theme loading.
@@ -36,6 +37,12 @@ signals, calling services and reflecting service results in widgets.
 
 Reusable or stateful widget fragments, such as floating editors and custom controls, should live in their own UI classes
 instead of being built inline in `MainWindow`.
+
+Qt ownership is allowed and expected, but cached pointers need clear lifetime boundaries. Composite widgets that connect
+signals from child/internal widgets should disconnect those connections before destruction starts tearing down owned
+objects. If a class caches raw pointers owned by a Qt container or parent object, such as `QGraphicsScene` items, clear
+or null the cache before the owner clears/destructs. For cached `QObject`/`QWidget` references used from callbacks,
+queued events or delayed deletion paths, prefer `QPointer` so the pointer becomes null when the object is destroyed.
 
 Global shortcut matching should stay in `MainWindowShortcutController`. `MainWindow` may provide callbacks that preserve
 editing state before/after navigation, but it should not grow another parallel shortcut parser.
@@ -50,6 +57,7 @@ Application services belong here. They can use QtCore services such as file IO, 
 Qt Widgets. Current services include:
 
 - `ProjectController`: owns the open `Project`, project dirty state, file load/save and auto-backup writes.
+- `ProjectMergeService`: loads multiple LabelPlus text projects and prepares page-based merge plans.
 - `LabelEditController`: applies label/group edits and registers undo commands without depending on widgets.
 - `LabelNavigator`: finds previous/next visible labels across pages using project data and the active group filter.
 - `SessionStateStore`: persists local window layout and per-project session state through `QSettings`.

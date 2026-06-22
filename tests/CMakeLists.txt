@@ -8,6 +8,7 @@ qt_add_executable(LabelMinusTests
     ../src/core/Label.cpp
     ../src/core/Project.cpp
     ../src/services/LabelNavigator.cpp
+    ../src/services/ProjectMergeService.cpp
 )
 
 target_include_directories(LabelMinusTests

@@ -19,6 +19,7 @@ class ImageCanvas final : public QGraphicsView {
 
 public:
     explicit ImageCanvas(QWidget* parent = nullptr);
+    ~ImageCanvas() override;
 
     void setPreferences(const labelminus::core::AppPreferences& preferences);
     void setImage(const QString& path, const QVector<labelminus::core::Label>& labels);
@@ -42,6 +43,7 @@ signals:
     void labelSelected(int index);
     void labelTextEditRequested(int index, QPoint globalPosition);
     void zoomPercentChanged(int percent);
+    void viewportStateChanged(int zoomPercent, QPointF normalizedCenter);
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
@@ -53,10 +55,12 @@ protected:
     void leaveEvent(QEvent* event) override;
 
 private:
+    void clearSceneItems();
     void rebuildLabelItems();
     void applyZoom();
     void updateScenePadding();
     void setZoomPercentAt(int percent, QPoint viewportAnchor);
+    void notifyViewportStateChanged();
     bool isLabelVisible(const labelminus::core::Label& label) const;
     bool hasMoveLabelModifiers(Qt::KeyboardModifiers modifiers) const;
     QString displayTextForLabel(int index) const;
@@ -83,6 +87,7 @@ private:
     QSet<QString> m_visibleGroups;
     QVector<labelminus::core::LabelGroupStyle> m_groupStyles;
     bool m_hasUserZoom{false};
+    bool m_isDestroying{false};
     bool m_pendingLabelCreate{false};
     bool m_pendingLabelSelect{false};
     bool m_isMovingLabel{false};

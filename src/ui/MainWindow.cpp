@@ -1,11 +1,14 @@
 #include "ui/MainWindow.h"
 
+#include "core/LabelPlusDocument.h"
 #include "services/LabelNavigator.h"
+#include "services/ProjectMergeService.h"
 #include "services/SessionStateStore.h"
 #include "ui/CanvasLabelTextEditController.h"
 #include "ui/LabelEditDelegates.h"
 #include "ui/MainWindowShortcutController.h"
 #include "ui/PreferenceDialog.h"
+#include "ui/ProjectMergeDialog.h"
 #include "ui/ThemeManager.h"
 
 #include <QAbstractItemDelegate>
@@ -14,6 +17,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFontMetrics>
@@ -167,6 +171,22 @@ MainWindow::MainWindow(QWidget* parent)
     configureBackupTimer();
 }
 
+MainWindow::~MainWindow()
+{
+    if (qApp != nullptr) {
+        qApp->removeEventFilter(this);
+    }
+    if (m_labelView != nullptr) {
+        m_labelView->removeEventFilter(this);
+        if (m_labelView->viewport() != nullptr) {
+            m_labelView->viewport()->removeEventFilter(this);
+        }
+    }
+    if (m_textEdit != nullptr) {
+        m_textEdit->removeEventFilter(this);
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent* event)
 {
     commitActiveTextInput();
@@ -208,6 +228,9 @@ void MainWindow::createActions()
     m_openProjectAction->setShortcut(QKeySequence::Open);
     connect(m_openProjectAction, &QAction::triggered, this, &MainWindow::openProject);
 
+    m_mergeProjectsAction = new QAction(tr("&Merge Projects..."), this);
+    connect(m_mergeProjectsAction, &QAction::triggered, this, &MainWindow::mergeProjects);
+
     m_saveProjectAction = new QAction(tr("&Save"), this);
     m_saveProjectAction->setShortcut(QKeySequence::Save);
     connect(m_saveProjectAction, &QAction::triggered, this, &MainWindow::saveProject);
@@ -248,6 +271,7 @@ void MainWindow::createMenus()
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     fileMenu->addAction(m_newProjectAction);
     fileMenu->addAction(m_openProjectAction);
+    fileMenu->addAction(m_mergeProjectsAction);
     m_recentProjectsMenu = fileMenu->addMenu(tr("Recent Projects"));
     updateRecentProjectsMenu();
     fileMenu->addSeparator();
@@ -467,11 +491,12 @@ void MainWindow::newProject()
     }
     saveProjectSessionState();
 
-    const QString directoryPath =
-        QFileDialog::getExistingDirectory(this, tr("Select image folder"), QString(), QFileDialog::ShowDirsOnly);
+    const QString directoryPath = QFileDialog::getExistingDirectory(
+        this, tr("Select image folder"), m_sessionStateStore.lastFileDialogDirectory(), QFileDialog::ShowDirsOnly);
     if (directoryPath.isEmpty()) {
         return;
     }
+    m_sessionStateStore.saveLastFileDialogPath(directoryPath);
 
     const QString projectBaseName = tr("New Translation");
     labelminus::services::NewProjectResult result = m_projectController.createProjectFromImageDirectory(
@@ -514,14 +539,81 @@ void MainWindow::openProject()
     }
     saveProjectSessionState();
 
-    const QString path = QFileDialog::getOpenFileName(this, tr("Open LabelPlus text"), QString(),
-                                                      tr("LabelPlus text (*.txt);;All files (*)"));
+    const QString path =
+        QFileDialog::getOpenFileName(this, tr("Open LabelPlus text"), m_sessionStateStore.lastFileDialogDirectory(),
+                                     tr("LabelPlus text (*.txt);;All files (*)"));
 
     if (path.isEmpty()) {
         return;
     }
 
+    m_sessionStateStore.saveLastFileDialogPath(path);
     openProjectFile(path);
+}
+
+void MainWindow::mergeProjects()
+{
+    const QStringList paths = QFileDialog::getOpenFileNames(this, tr("Select LabelPlus projects to merge"),
+                                                            m_sessionStateStore.lastFileDialogDirectory(),
+                                                            tr("LabelPlus text (*.txt);;All files (*)"));
+    if (paths.isEmpty()) {
+        return;
+    }
+    m_sessionStateStore.saveLastFileDialogPath(paths.first());
+
+    labelminus::services::ProjectMergePlan mergePlan;
+    try {
+        mergePlan = labelminus::services::ProjectMergeService::createPlan(paths);
+    }
+    catch (const std::exception& error) {
+        QMessageBox::critical(this, tr("Merge failed"), QString::fromUtf8(error.what()));
+        return;
+    }
+
+    if (mergePlan.mergedProject.images().isEmpty()) {
+        QMessageBox::warning(this, tr("Merge Projects"), tr("No image pages were found in the selected projects."));
+        return;
+    }
+
+    labelminus::core::Project mergedProject;
+    if (mergePlan.conflicts.isEmpty()) {
+        QMessageBox::information(this, tr("Merge Projects"),
+                                 tr("No page conflicts were found. The selected projects can be merged directly."));
+        mergedProject = std::move(mergePlan.mergedProject);
+    }
+    else {
+        ProjectMergeDialog dialog(std::move(mergePlan), m_preferences, this);
+        dialog.showMaximized();
+        if (dialog.exec() != QDialog::Accepted) {
+            return;
+        }
+        mergedProject = dialog.mergedProject();
+    }
+
+    const QString savePath = QFileDialog::getSaveFileName(this, tr("Save merged LabelPlus text"),
+                                                          m_sessionStateStore.lastFileDialogDirectory(),
+                                                          tr("LabelPlus text (*.txt);;All files (*)"));
+    if (savePath.isEmpty()) {
+        return;
+    }
+    m_sessionStateStore.saveLastFileDialogPath(savePath);
+
+    if (!promptToSaveIfDirty()) {
+        return;
+    }
+    saveProjectSessionState();
+
+    try {
+        labelminus::core::LabelPlusDocument::saveToFile(mergedProject, savePath);
+    }
+    catch (const std::exception& error) {
+        QMessageBox::critical(this, tr("Merge failed"), QString::fromUtf8(error.what()));
+        return;
+    }
+
+    if (!openProjectFile(savePath)) {
+        statusBar()->showMessage(tr("Merged project saved to %1").arg(savePath), 4000);
+    }
 }
 
 bool MainWindow::openProjectFile(const QString& path)
@@ -634,11 +726,19 @@ bool MainWindow::saveProjectAs()
 
     commitActiveTextInput();
 
-    const QString path = QFileDialog::getSaveFileName(this, tr("Save LabelPlus text"), project().filePath(),
+    QString defaultSavePath = project().filePath();
+    const QString lastDialogDirectory = m_sessionStateStore.lastFileDialogDirectory();
+    if (!lastDialogDirectory.isEmpty()) {
+        const QString fileName = QFileInfo(project().filePath()).fileName();
+        defaultSavePath = fileName.isEmpty() ? lastDialogDirectory : QDir(lastDialogDirectory).filePath(fileName);
+    }
+
+    const QString path = QFileDialog::getSaveFileName(this, tr("Save LabelPlus text"), defaultSavePath,
                                                       tr("LabelPlus text (*.txt);;All files (*)"));
     if (path.isEmpty()) {
         return false;
     }
+    m_sessionStateStore.saveLastFileDialogPath(path);
 
     const QString oldPath = project().filePath();
     try {

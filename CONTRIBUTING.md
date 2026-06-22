@@ -9,6 +9,8 @@ This branch is a C++/Qt 6 port of LabelMinus. Keep changes aligned with the curr
 - Functions use `camelCase`.
 - Member variables use the `m_` prefix.
 - Prefer small classes and explicit ownership through Qt parent/child relationships.
+- For composite Qt widgets, disconnect signals from child/internal widgets before destruction if those signals can fire while owned objects are tearing down.
+- When caching raw pointers owned by Qt containers or parent objects, clear or null the cache before the owner clears/destructs. Prefer `QPointer` for cached `QObject`/`QWidget` references used across callbacks, queued events or delayed deletion.
 - Run `clang-format` with the repository `.clang-format` before committing substantial C++ changes.
 - Do not introduce WPF, .NET or Windows-only dependencies on this branch.
 

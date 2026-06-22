@@ -12,6 +12,7 @@ set(LABELMINUS_SERVICE_SOURCES
     services/LabelEditController.cpp
     services/LabelNavigator.cpp
     services/OcrProcess.cpp
+    services/ProjectMergeService.cpp
     services/ProjectController.cpp
     services/SessionStateStore.cpp
 )
@@ -26,6 +27,7 @@ set(LABELMINUS_UI_SOURCES
     ui/MainWindow.cpp
     ui/MainWindowShortcutController.cpp
     ui/PreferenceDialog.cpp
+    ui/ProjectMergeDialog.cpp
     ui/ThemeManager.cpp
 )
 

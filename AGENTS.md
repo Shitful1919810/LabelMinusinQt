@@ -44,6 +44,8 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - Label edits should go through `LabelEditController` rather than adding new label mutation paths in `MainWindow`.
 - Keep `MainWindow` focused on UI orchestration; put project workflow, session state and mutation logic in services.
 - Current-page label changes should update table/marker state in place and must not reload the image unless the current image actually changes.
+- Composite Qt widgets that connect signals from child/internal widgets must disconnect those internal signal connections during destruction before owned child objects start tearing down.
+- If code caches raw pointers owned by Qt containers or parent objects, such as `QGraphicsScene` items or child widgets, clear or null those cached pointers before the owner clears/destructs. Use `QPointer` for cached `QObject`/`QWidget` references whose lifetime may end outside the current synchronous scope.
 - New Qt modules and third-party dependencies must be checked for license compatibility and documented.
 - User-configurable shortcuts should go through `AppPreferences`, `preference.json` and the preference dialog.
 - The Windows `LabelMinusStatic` target is experimental and local-only; do not make it an official release artifact without Qt license review.

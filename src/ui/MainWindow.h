@@ -41,6 +41,7 @@ class MainWindow final : public QMainWindow {
 
 public:
     explicit MainWindow(QWidget* parent = nullptr);
+    ~MainWindow() override;
 
     bool openProjectFile(const QString& path);
     bool openMostRecentProject();
@@ -62,6 +63,7 @@ private:
     void createCentralWidget();
     void newProject();
     void openProject();
+    void mergeProjects();
     void openRecentProjectFromAction();
     void openPreferences();
     bool saveProject();
@@ -166,6 +168,7 @@ private:
     QTimer* m_backupTimer{nullptr};
     QAction* m_openProjectAction{nullptr};
     QAction* m_newProjectAction{nullptr};
+    QAction* m_mergeProjectsAction{nullptr};
     QAction* m_saveProjectAction{nullptr};
     QAction* m_saveProjectAsAction{nullptr};
     QMenu* m_recentProjectsMenu{nullptr};

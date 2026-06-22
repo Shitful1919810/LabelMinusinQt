@@ -34,6 +34,8 @@ public:
     QString mostRecentProjectPath() const;
     void addRecentProjectPath(const QString& projectPath, int maximumCount = 10) const;
     void removeRecentProjectPath(const QString& projectPath) const;
+    QString lastFileDialogDirectory() const;
+    void saveLastFileDialogPath(const QString& path) const;
 
 private:
     static QString canonicalSessionPath(const QString& path);

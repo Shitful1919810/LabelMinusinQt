@@ -60,6 +60,10 @@
         <translation>&amp;Open LabelPlus Text...</translation>
     </message>
     <message>
+        <source>&amp;Merge Projects...</source>
+        <translation>&amp;Merge Projects...</translation>
+    </message>
+    <message>
         <source>&amp;Save</source>
         <translation>&amp;Save</translation>
     </message>
@@ -160,6 +164,34 @@
     <message>
         <source>Open LabelPlus text</source>
         <translation>Open LabelPlus text</translation>
+    </message>
+    <message>
+        <source>Select LabelPlus projects to merge</source>
+        <translation>Select LabelPlus projects to merge</translation>
+    </message>
+    <message>
+        <source>Merge failed</source>
+        <translation>Merge failed</translation>
+    </message>
+    <message>
+        <source>Merge Projects</source>
+        <translation>Merge Projects</translation>
+    </message>
+    <message>
+        <source>No image pages were found in the selected projects.</source>
+        <translation>No image pages were found in the selected projects.</translation>
+    </message>
+    <message>
+        <source>No page conflicts were found. The selected projects can be merged directly.</source>
+        <translation>No page conflicts were found. The selected projects can be merged directly.</translation>
+    </message>
+    <message>
+        <source>Save merged LabelPlus text</source>
+        <translation>Save merged LabelPlus text</translation>
+    </message>
+    <message>
+        <source>Merged project saved to %1</source>
+        <translation>Merged project saved to %1</translation>
     </message>
     <message>
         <source>LabelPlus text (*.txt);;All files (*)</source>
@@ -396,6 +428,35 @@
     <message>
         <source>Unknown preference warning.</source>
         <translation>Unknown preference warning.</translation>
+    </message>
+</context>
+<context>
+    <name>ProjectMergeDialog</name>
+    <message>
+        <source>Merge Projects</source>
+        <translation>Merge Projects</translation>
+    </message>
+    <message numerus="yes">
+        <source>%1 (%n candidate(s))</source>
+        <translation>
+            <numerusform>%1 (%n candidate(s))</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Choose the project to use for %1.</source>
+        <translation>Choose the project to use for %1.</translation>
+    </message>
+    <message numerus="yes">
+        <source>%1 - %n label(s)</source>
+        <translation>
+            <numerusform>%1 - %n label(s)</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>Loaded %n page(s). %1 page(s) need a source selection.</source>
+        <translation>
+            <numerusform>Loaded %n page(s). %1 page(s) need a source selection.</numerusform>
+        </translation>
     </message>
 </context>
 <context>

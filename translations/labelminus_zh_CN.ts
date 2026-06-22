@@ -59,6 +59,10 @@
         <translation>打开 LabelPlus 文本(&amp;O)...</translation>
     </message>
     <message>
+        <source>&amp;Merge Projects...</source>
+        <translation>合并工程(&amp;M)...</translation>
+    </message>
+    <message>
         <source>&amp;Save</source>
         <translation>保存(&amp;S)</translation>
     </message>
@@ -159,6 +163,34 @@
     <message>
         <source>Open LabelPlus text</source>
         <translation>打开 LabelPlus 文本</translation>
+    </message>
+    <message>
+        <source>Select LabelPlus projects to merge</source>
+        <translation>选择要合并的 LabelPlus 工程</translation>
+    </message>
+    <message>
+        <source>Merge failed</source>
+        <translation>合并失败</translation>
+    </message>
+    <message>
+        <source>Merge Projects</source>
+        <translation>合并工程</translation>
+    </message>
+    <message>
+        <source>No image pages were found in the selected projects.</source>
+        <translation>选中的工程中没有找到图片页面。</translation>
+    </message>
+    <message>
+        <source>No page conflicts were found. The selected projects can be merged directly.</source>
+        <translation>没有发现页面冲突。选中的工程可以直接合并。</translation>
+    </message>
+    <message>
+        <source>Save merged LabelPlus text</source>
+        <translation>保存合并后的 LabelPlus 文本</translation>
+    </message>
+    <message>
+        <source>Merged project saved to %1</source>
+        <translation>合并后的工程已保存到 %1</translation>
     </message>
     <message>
         <source>LabelPlus text (*.txt);;All files (*)</source>
@@ -395,6 +427,35 @@
     <message>
         <source>Unknown preference warning.</source>
         <translation>未知偏好设置警告。</translation>
+    </message>
+</context>
+<context>
+    <name>ProjectMergeDialog</name>
+    <message>
+        <source>Merge Projects</source>
+        <translation>合并工程</translation>
+    </message>
+    <message numerus="yes">
+        <source>%1 (%n candidate(s))</source>
+        <translation>
+            <numerusform>%1（%n 个候选）</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Choose the project to use for %1.</source>
+        <translation>选择 %1 要采用的工程。</translation>
+    </message>
+    <message numerus="yes">
+        <source>%1 - %n label(s)</source>
+        <translation>
+            <numerusform>%1 - %n 条 label</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <source>Loaded %n page(s). %1 page(s) need a source selection.</source>
+        <translation>
+            <numerusform>已加载 %n 页。%1 页需要选择来源。</numerusform>
+        </translation>
     </message>
 </context>
 <context>

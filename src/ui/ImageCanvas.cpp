@@ -158,6 +158,8 @@ ImageCanvas::ImageCanvas(QWidget* parent) : QGraphicsView(parent)
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
     viewport()->setMouseTracking(true);
+    connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, &ImageCanvas::notifyViewportStateChanged);
+    connect(verticalScrollBar(), &QScrollBar::valueChanged, this, &ImageCanvas::notifyViewportStateChanged);
 
     m_hoverToolTip = new QLabel(this, Qt::ToolTip);
     m_hoverToolTip->setAttribute(Qt::WA_ShowWithoutActivating);
@@ -171,6 +173,16 @@ ImageCanvas::ImageCanvas(QWidget* parent) : QGraphicsView(parent)
                                                  "border-radius: 3px;"
                                                  "}"));
     m_hoverToolTip->hide();
+}
+
+ImageCanvas::~ImageCanvas()
+{
+    m_isDestroying = true;
+    disconnect(horizontalScrollBar(), nullptr, this, nullptr);
+    disconnect(verticalScrollBar(), nullptr, this, nullptr);
+    hideHoveredLabelToolTip();
+    clearSceneItems();
+    setScene(nullptr);
 }
 
 void ImageCanvas::setPreferences(const labelminus::core::AppPreferences& preferences)
@@ -199,8 +211,7 @@ void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::
     m_labelTextPreviews.clear();
 
     QPixmap pixmap(path);
-    m_scene.clear();
-    m_labelItems.clear();
+    clearSceneItems();
     m_pixmapItem = m_scene.addPixmap(pixmap);
     m_scene.setSceneRect(m_pixmapItem->boundingRect());
     rebuildLabelItems();
@@ -212,6 +223,13 @@ void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::
     else {
         applyZoom();
     }
+}
+
+void ImageCanvas::clearSceneItems()
+{
+    m_pixmapItem = nullptr;
+    m_labelItems.clear();
+    m_scene.clear();
 }
 
 void ImageCanvas::setLabels(const QVector<labelminus::core::Label>& labels)
@@ -323,6 +341,7 @@ void ImageCanvas::setZoomPercent(int percent)
     m_hasUserZoom = true;
     m_zoomPercent = std::clamp(percent, 10, 400);
     applyZoom();
+    notifyViewportStateChanged();
 }
 
 int ImageCanvas::zoomPercent() const noexcept
@@ -353,6 +372,7 @@ void ImageCanvas::restoreView(int zoomPercent, QPointF normalizedCenter)
     normalizedCenter.setY(std::clamp(normalizedCenter.y(), 0.0, 1.0));
     const QRectF rect = m_pixmapItem->boundingRect();
     centerOn(rect.left() + normalizedCenter.x() * rect.width(), rect.top() + normalizedCenter.y() * rect.height());
+    notifyViewportStateChanged();
 }
 
 void ImageCanvas::mousePressEvent(QMouseEvent* event)
@@ -583,6 +603,15 @@ void ImageCanvas::setZoomPercentAt(int percent, QPoint viewportAnchor)
     const QPoint delta = viewportAnchorAfter - viewportAnchor;
     horizontalScrollBar()->setValue(horizontalScrollBar()->value() + delta.x());
     verticalScrollBar()->setValue(verticalScrollBar()->value() + delta.y());
+    notifyViewportStateChanged();
+}
+
+void ImageCanvas::notifyViewportStateChanged()
+{
+    if (m_isDestroying || m_pixmapItem == nullptr) {
+        return;
+    }
+    emit viewportStateChanged(m_zoomPercent, normalizedViewCenter());
 }
 
 bool ImageCanvas::isLabelVisible(const labelminus::core::Label& label) const
