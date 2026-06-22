@@ -74,6 +74,11 @@ QKeyCombination withModifiers(QKeyCombination combination, Qt::KeyboardModifiers
     }
     return QKeyCombination(combination.keyboardModifiers() | modifiers, combination.key());
 }
+
+bool hasSameKeyIgnoringModifiers(QKeyCombination lhs, QKeyCombination rhs)
+{
+    return lhs.key() != Qt::Key_unknown && lhs.key() == rhs.key();
+}
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -1126,6 +1131,11 @@ bool MainWindow::handleLabelViewShortcut(QEvent* event)
         if (!isShortcutOverride) {
             selectNextVisibleLabel();
         }
+        event->accept();
+        return true;
+    }
+
+    if (hasSameKeyIgnoringModifiers(pressedKey, nextLabelKey)) {
         event->accept();
         return true;
     }
