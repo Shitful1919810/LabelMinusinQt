@@ -135,6 +135,12 @@
         <source>Remove group</source>
         <translation>Remove group</translation>
     </message>
+    <message numerus="yes">
+        <source>Do you want to remove the %1 group? %n label(s) in this group will be moved to %2.</source>
+        <translation>
+            <numerusform>Do you want to remove the %1 group? %n label(s) in this group will be moved to %2.</numerusform>
+        </translation>
+    </message>
     <message>
         <source>Remove selected group</source>
         <translation>Remove selected group</translation>

@@ -134,6 +134,12 @@
         <source>Remove group</source>
         <translation>删除分组</translation>
     </message>
+    <message numerus="yes">
+        <source>Do you want to remove the %1 group? %n label(s) in this group will be moved to %2.</source>
+        <translation>
+            <numerusform>是否要删除 %1 类别？此类别下的 %n 条 label 将移动到 %2。</numerusform>
+        </translation>
+    </message>
     <message>
         <source>Remove selected group</source>
         <translation>删除当前分组</translation>

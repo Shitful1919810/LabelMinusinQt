@@ -76,18 +76,8 @@ MainWindow::MainWindow(QWidget* parent)
     m_shortcutController = new MainWindowShortcutController(this, this);
     m_shortcutController->setPreferences(m_preferences);
     m_shortcutController->setCallbacks({
-        [this]() {
-            const ActiveTextInputMode textInputMode = activeTextInputMode();
-            commitActiveTextInput();
-            selectPreviousVisibleLabel();
-            restoreTextInputModeAfterLabelNavigation(textInputMode);
-        },
-        [this]() {
-            const ActiveTextInputMode textInputMode = activeTextInputMode();
-            commitActiveTextInput();
-            selectNextVisibleLabel();
-            restoreTextInputModeAfterLabelNavigation(textInputMode);
-        },
+        [this]() { selectAdjacentVisibleLabelFromShortcut(true); },
+        [this]() { selectAdjacentVisibleLabelFromShortcut(false); },
         [this]() {
             commitActiveTextInput();
             selectPreviousPage();
@@ -709,6 +699,31 @@ void MainWindow::removeGroup()
         return;
     }
 
+    const int labelCount = labelCountForGroup(group);
+    if (labelCount > 0) {
+        const QColor groupColor = colorForGroup(group);
+        const QString coloredGroup = groupColor.isValid()
+                                         ? QStringLiteral("<span style=\"color:%1; font-weight:600;\">%2</span>")
+                                               .arg(groupColor.name(), group.toHtmlEscaped())
+                                         : group.toHtmlEscaped();
+        const QString coloredFallback = colorForGroup(fallback).isValid()
+                                            ? QStringLiteral("<span style=\"color:%1; font-weight:600;\">%2</span>")
+                                                  .arg(colorForGroup(fallback).name(), fallback.toHtmlEscaped())
+                                            : fallback.toHtmlEscaped();
+        QMessageBox confirmBox(this);
+        confirmBox.setWindowTitle(tr("Remove group"));
+        confirmBox.setTextFormat(Qt::RichText);
+        confirmBox.setIcon(QMessageBox::Warning);
+        confirmBox.setText(tr("Do you want to remove the %1 group? %n label(s) in this group will be moved to %2.",
+                              nullptr, labelCount)
+                               .arg(coloredGroup, coloredFallback));
+        confirmBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        confirmBox.setDefaultButton(QMessageBox::No);
+        if (confirmBox.exec() != QMessageBox::Yes) {
+            return;
+        }
+    }
+
     const labelminus::services::LabelEditResult result = m_labelEditController->removeGroup(group, fallback);
     if (!result.changed) {
         return;
@@ -1141,7 +1156,12 @@ void MainWindow::updateLabelFromTable(int sourceIndex, int column, QVariant newV
         refreshLabelViews();
     }
 
-    selectLabel(sourceIndex);
+    if (m_suppressNextTableCommitSelection) {
+        m_suppressNextTableCommitSelection = false;
+    }
+    else {
+        selectLabel(sourceIndex);
+    }
 }
 
 void MainWindow::previewLabelTextFromTableEditor(QPersistentModelIndex index, const QString& text)
@@ -1285,18 +1305,28 @@ void MainWindow::selectNextPage()
 
 void MainWindow::selectNextVisibleLabel()
 {
+    selectNextVisibleLabelFrom(m_currentImageIndex, m_currentLabelIndex);
+}
+
+void MainWindow::selectPreviousVisibleLabel()
+{
+    selectPreviousVisibleLabelFrom(m_currentImageIndex, m_currentLabelIndex);
+}
+
+void MainWindow::selectNextVisibleLabelFrom(int imageIndex, int labelIndex)
+{
     if (project().isEmpty() || m_groupFilterComboBox == nullptr) {
         return;
     }
 
     const labelminus::services::LabelNavigationTarget target = labelminus::services::LabelNavigator::nextVisibleLabel(
-        project(), {m_currentImageIndex, m_currentLabelIndex, m_groupFilterComboBox->selectedGroups()});
+        project(), {imageIndex, labelIndex, m_groupFilterComboBox->selectedGroups()});
     if (target.isValid()) {
         selectLabelAndCenter(target.imageIndex, target.labelIndex);
     }
 }
 
-void MainWindow::selectPreviousVisibleLabel()
+void MainWindow::selectPreviousVisibleLabelFrom(int imageIndex, int labelIndex)
 {
     if (project().isEmpty() || m_groupFilterComboBox == nullptr) {
         return;
@@ -1304,9 +1334,32 @@ void MainWindow::selectPreviousVisibleLabel()
 
     const labelminus::services::LabelNavigationTarget target =
         labelminus::services::LabelNavigator::previousVisibleLabel(
-            project(), {m_currentImageIndex, m_currentLabelIndex, m_groupFilterComboBox->selectedGroups()});
+            project(), {imageIndex, labelIndex, m_groupFilterComboBox->selectedGroups()});
     if (target.isValid()) {
         selectLabelAndCenter(target.imageIndex, target.labelIndex);
+    }
+}
+
+void MainWindow::selectAdjacentVisibleLabelFromShortcut(bool previous)
+{
+    const ActiveTextInputMode textInputMode = activeTextInputMode();
+    const int navigationImageIndex = m_currentImageIndex;
+    const int navigationLabelIndex = m_currentLabelIndex;
+    const bool suppressTableCommitSelection = textInputMode == ActiveTextInputMode::TableTextEditor;
+
+    if (suppressTableCommitSelection) {
+        m_suppressNextTableCommitSelection = true;
+    }
+    commitActiveTextInput();
+    if (previous) {
+        selectPreviousVisibleLabelFrom(navigationImageIndex, navigationLabelIndex);
+    }
+    else {
+        selectNextVisibleLabelFrom(navigationImageIndex, navigationLabelIndex);
+    }
+    restoreTextInputModeAfterLabelNavigation(textInputMode);
+    if (suppressTableCommitSelection) {
+        QTimer::singleShot(0, this, [this]() { m_suppressNextTableCommitSelection = false; });
     }
 }
 
@@ -2020,6 +2073,19 @@ QColor MainWindow::colorForGroup(const QString& group) const
         return {};
     }
     return m_preferences.groupStyles().at(index).groupColor;
+}
+
+int MainWindow::labelCountForGroup(const QString& group) const
+{
+    int count = 0;
+    for (const labelminus::core::ImageEntry& image : project().images()) {
+        for (const labelminus::core::Label& label : image.labels) {
+            if (!label.isDeleted() && label.group() == group) {
+                ++count;
+            }
+        }
+    }
+    return count;
 }
 
 void MainWindow::setEditorEnabled(bool enabled)

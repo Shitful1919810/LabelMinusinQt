@@ -101,6 +101,9 @@ private:
     void selectNextPage();
     void selectNextVisibleLabel();
     void selectPreviousVisibleLabel();
+    void selectNextVisibleLabelFrom(int imageIndex, int labelIndex);
+    void selectPreviousVisibleLabelFrom(int imageIndex, int labelIndex);
+    void selectAdjacentVisibleLabelFromShortcut(bool previous);
     void editCurrentLabelText();
     void openCanvasLabelTextEditorForCurrentLabel();
     void selectLabelAndCenter(int imageIndex, int labelIndex);
@@ -137,6 +140,7 @@ private:
     void applyGroupStylesToCombo(QComboBox* comboBox);
     void updateInsertGroupTextColor();
     QColor colorForGroup(const QString& group) const;
+    int labelCountForGroup(const QString& group) const;
     void setEditorEnabled(bool enabled);
     labelminus::core::Project& project() noexcept;
     const labelminus::core::Project& project() const noexcept;
@@ -180,6 +184,7 @@ private:
     int m_currentImageIndex{-1};
     int m_currentLabelIndex{-1};
     bool m_isUpdatingUi{false};
+    bool m_suppressNextTableCommitSelection{false};
     int m_pendingTextEditImageIndex{-1};
     int m_pendingTextEditLabelIndex{-1};
     QString m_pendingTextEditOldText;
