@@ -80,6 +80,8 @@ private:
     QKeySequenceEdit* m_undoShortcutEdit{nullptr};
     QKeySequenceEdit* m_redoShortcutEdit{nullptr};
     QKeySequenceEdit* m_nextLabelShortcutEdit{nullptr};
+    QKeySequenceEdit* m_alternatePreviousLabelShortcutEdit{nullptr};
+    QKeySequenceEdit* m_alternateNextLabelShortcutEdit{nullptr};
     QKeySequenceEdit* m_previousPageShortcutEdit{nullptr};
     QKeySequenceEdit* m_nextPageShortcutEdit{nullptr};
     QKeySequenceEdit* m_editLabelTextShortcutEdit{nullptr};

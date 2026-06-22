@@ -22,6 +22,10 @@ Qt Widgets classes live here:
 
 - `MainWindow`: top-level layout and UI wiring.
 - `ImageCanvas`: image preview, marker drawing, click-to-label and view interaction.
+- `MainWindowShortcutController`: main-window keyboard shortcut routing. It maps configured shortcuts to callbacks but
+  does not mutate project data or widgets directly.
+- `CanvasLabelTextEditController`: lifecycle controller for marker-adjacent label text editing on the image canvas.
+- `CanvasLabelTextEditor`: temporary marker-adjacent text editor widget for canvas-side label text edits.
 - `LabelTableModel`: table model for current image labels.
 - `GroupFilterComboBox`: multi-select group filtering widget.
 - `ThemeManager`: application-level Qt stylesheet theme loading.
@@ -29,6 +33,12 @@ Qt Widgets classes live here:
 UI classes may coordinate core objects, but should avoid embedding file-format parsing, project workflow, label mutation
 rules or platform-service code. `MainWindow` should stay close to UI orchestration: creating controls, connecting
 signals, calling services and reflecting service results in widgets.
+
+Reusable or stateful widget fragments, such as floating editors and custom controls, should live in their own UI classes
+instead of being built inline in `MainWindow`.
+
+Global shortcut matching should stay in `MainWindowShortcutController`. `MainWindow` may provide callbacks that preserve
+editing state before/after navigation, but it should not grow another parallel shortcut parser.
 
 `LabelTableModel` is a view model: it may validate edits and emit edit requests, but it must not mutate `Label` objects
 directly. Route label and group mutations through `LabelEditController` so undo, dirty state and UI refresh stay
@@ -106,9 +116,11 @@ Current preferences:
 - `markerTextBubble.opacity`: marker text bubble opacity from `0.0` to `1.0`.
 - `input.moveLabelModifier`: modifier key or key combination used to drag label markers.
 - `input.previousLabelModifier`: modifier key or key combination used with `input.nextLabelShortcut` to select the previous visible label.
-- `input.nextLabelShortcut`: shortcut used in the label table to select the next visible label.
-- `input.previousPageShortcut`: shortcut used to move to the previous image page.
-- `input.nextPageShortcut`: shortcut used to move to the next image page.
+- `input.nextLabelShortcut`: main-window shortcut used to select the next visible label.
+- `input.alternatePreviousLabelShortcut`: additional main-window shortcut used to select the previous visible label.
+- `input.alternateNextLabelShortcut`: additional main-window shortcut used to select the next visible label.
+- `input.previousPageShortcut`: main-window shortcut used to move to the previous image page.
+- `input.nextPageShortcut`: main-window shortcut used to move to the next image page.
 - `input.editLabelTextShortcut`: shortcut used in the label table to edit the current label text.
 - `input.commitLabelTextShortcut`: shortcut used in the label text editor delegate to commit and close inline editing.
 - `input.undoShortcut`: undo shortcut in Qt portable key sequence text format.

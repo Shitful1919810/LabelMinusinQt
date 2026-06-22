@@ -17,11 +17,14 @@ set(LABELMINUS_SERVICE_SOURCES
 )
 
 set(LABELMINUS_UI_SOURCES
+    ui/CanvasLabelTextEditController.cpp
+    ui/CanvasLabelTextEditor.cpp
     ui/GroupFilterComboBox.cpp
     ui/ImageCanvas.cpp
     ui/LabelEditDelegates.cpp
     ui/LabelTableModel.cpp
     ui/MainWindow.cpp
+    ui/MainWindowShortcutController.cpp
     ui/PreferenceDialog.cpp
     ui/ThemeManager.cpp
 )

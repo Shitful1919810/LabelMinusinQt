@@ -499,32 +499,40 @@
         <translation>Previous label modifier</translation>
     </message>
     <message>
-        <source>Undo shortcut</source>
-        <translation>Undo shortcut</translation>
+        <source>Undo</source>
+        <translation>Undo</translation>
     </message>
     <message>
-        <source>Redo shortcut</source>
-        <translation>Redo shortcut</translation>
+        <source>Redo</source>
+        <translation>Redo</translation>
     </message>
     <message>
-        <source>Next label shortcut</source>
-        <translation>Next label shortcut</translation>
+        <source>Switch label</source>
+        <translation>Switch label</translation>
     </message>
     <message>
-        <source>Previous page shortcut</source>
-        <translation>Previous page shortcut</translation>
+        <source>Previous label</source>
+        <translation>Previous label</translation>
     </message>
     <message>
-        <source>Next page shortcut</source>
-        <translation>Next page shortcut</translation>
+        <source>Next label</source>
+        <translation>Next label</translation>
     </message>
     <message>
-        <source>Edit label text shortcut</source>
-        <translation>Edit label text shortcut</translation>
+        <source>Previous page</source>
+        <translation>Previous page</translation>
     </message>
     <message>
-        <source>Commit label text shortcut</source>
-        <translation>Commit label text shortcut</translation>
+        <source>Next page</source>
+        <translation>Next page</translation>
+    </message>
+    <message>
+        <source>Edit label text</source>
+        <translation>Edit label text</translation>
+    </message>
+    <message>
+        <source>Commit label text</source>
+        <translation>Commit label text</translation>
     </message>
     <message>
         <source>Key mappings</source>

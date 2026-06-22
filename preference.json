@@ -8,19 +8,19 @@
     "groupStyles": [
         {
             "fontPointSize": 10,
-            "groupColor": "#EF4444",
+            "groupColor": "#ef4444",
             "markerDiameter": 20,
             "markerStyle": "circle"
         },
         {
             "fontPointSize": 10,
-            "groupColor": "#2563EB",
+            "groupColor": "#2563eb",
             "markerDiameter": 20,
             "markerStyle": "square"
         },
         {
             "fontPointSize": 10,
-            "groupColor": "#10B981",
+            "groupColor": "#10b981",
             "markerDiameter": 20,
             "markerStyle": "circle"
         }
@@ -29,10 +29,12 @@
         "commitLabelTextShortcut": "Ctrl+Return",
         "editLabelTextShortcut": "Return",
         "moveLabelModifier": "ctrl",
+        "alternateNextLabelShortcut": "Ctrl+Down",
+        "alternatePreviousLabelShortcut": "Ctrl+Up",
         "nextLabelShortcut": "Tab",
-        "nextPageShortcut": "Alt+Right",
+        "nextPageShortcut": "Ctrl+Right",
         "previousLabelModifier": "ctrl",
-        "previousPageShortcut": "Alt+Left",
+        "previousPageShortcut": "Ctrl+Left",
         "redoShortcut": "Ctrl+Shift+Z",
         "undoShortcut": "Ctrl+Z"
     },

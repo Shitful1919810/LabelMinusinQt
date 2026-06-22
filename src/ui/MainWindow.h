@@ -31,8 +31,10 @@ class QSplitter;
 class QTableView;
 class QTimer;
 class QToolButton;
+class CanvasLabelTextEditController;
 class LabelGroupDelegate;
 class LabelTextDelegate;
+class MainWindowShortcutController;
 
 class MainWindow final : public QMainWindow {
     Q_OBJECT
@@ -48,6 +50,13 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
+    enum class ActiveTextInputMode {
+        None,
+        BottomEditor,
+        TableTextEditor,
+        CanvasTextEditor,
+    };
+
     void createActions();
     void createMenus();
     void createCentralWidget();
@@ -68,22 +77,32 @@ private:
     void showLabelContextMenu(const QPoint& position);
     void reorderLabels(QVector<int> sourceIndexes, int visibleDropRow);
     void updateCurrentLabelText();
+    ActiveTextInputMode activeTextInputMode() const;
+    void commitActiveTextInput();
+    void restoreTextInputModeAfterLabelNavigation(ActiveTextInputMode mode);
     void commitPendingTextEdit();
     void resetPendingTextEdit();
+    void refreshLabelTableView();
+    void refreshLabelViews();
+    void clearCurrentLabelSelection();
     void updateCurrentLabelGroup(int index);
     void updateLabelFromTable(int sourceIndex, int column, QVariant newValue);
     void previewLabelTextFromTableEditor(QPersistentModelIndex index, const QString& text);
     void clearLabelTextPreviewFromTableEditor(QPersistentModelIndex index);
+    void openCanvasLabelTextEditor(int index, QPoint globalPosition);
+    void commitCanvasLabelTextEditor();
+    void cancelCanvasLabelTextEditor();
+    void closeCanvasLabelTextEditor();
     void moveLabel(int index, QPointF normalizedPosition);
     void undoLastOperation();
     void redoLastOperation();
     void updateEditShortcuts();
     void selectPreviousPage();
     void selectNextPage();
-    bool handleLabelViewShortcut(QEvent* event);
     void selectNextVisibleLabel();
     void selectPreviousVisibleLabel();
     void editCurrentLabelText();
+    void openCanvasLabelTextEditorForCurrentLabel();
     void selectLabelAndCenter(int imageIndex, int labelIndex);
     bool isLabelVisibleByGroupFilter(const labelminus::core::Label& label) const;
     QVector<int> selectedLabelIndexes() const;
@@ -130,6 +149,8 @@ private:
     LabelGroupDelegate* m_labelGroupDelegate{nullptr};
     QTableView* m_labelView{nullptr};
     QPlainTextEdit* m_textEdit{nullptr};
+    CanvasLabelTextEditController* m_canvasTextEditController{nullptr};
+    MainWindowShortcutController* m_shortcutController{nullptr};
     QComboBox* m_imageComboBox{nullptr};
     QComboBox* m_insertGroupComboBox{nullptr};
     GroupFilterComboBox* m_groupFilterComboBox{nullptr};

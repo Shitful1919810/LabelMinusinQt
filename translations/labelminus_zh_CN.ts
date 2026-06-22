@@ -498,32 +498,40 @@
         <translation>上一个标签修饰键</translation>
     </message>
     <message>
-        <source>Undo shortcut</source>
-        <translation>撤销快捷键</translation>
+        <source>Undo</source>
+        <translation>撤销</translation>
     </message>
     <message>
-        <source>Redo shortcut</source>
-        <translation>重做快捷键</translation>
+        <source>Redo</source>
+        <translation>重做</translation>
     </message>
     <message>
-        <source>Next label shortcut</source>
-        <translation>下一个标签快捷键</translation>
+        <source>Switch label</source>
+        <translation>切换标签</translation>
     </message>
     <message>
-        <source>Previous page shortcut</source>
-        <translation>上一页快捷键</translation>
+        <source>Previous label</source>
+        <translation>上一个标签</translation>
     </message>
     <message>
-        <source>Next page shortcut</source>
-        <translation>下一页快捷键</translation>
+        <source>Next label</source>
+        <translation>下一个标签</translation>
     </message>
     <message>
-        <source>Edit label text shortcut</source>
-        <translation>编辑标签文本快捷键</translation>
+        <source>Previous page</source>
+        <translation>上一页</translation>
     </message>
     <message>
-        <source>Commit label text shortcut</source>
-        <translation>提交标签文本快捷键</translation>
+        <source>Next page</source>
+        <translation>下一页</translation>
+    </message>
+    <message>
+        <source>Edit label text</source>
+        <translation>编辑标签文本</translation>
+    </message>
+    <message>
+        <source>Commit label text</source>
+        <translation>提交标签文本</translation>
     </message>
     <message>
         <source>Key mappings</source>

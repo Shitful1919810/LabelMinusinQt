@@ -49,6 +49,7 @@ QWidget* LabelTextDelegate::createEditor(QWidget* parent, const QStyleOptionView
 {
     auto* editor = new QPlainTextEdit(parent);
     editor->setFrameShape(QFrame::NoFrame);
+    editor->setTabChangesFocus(true);
     editor->installEventFilter(const_cast<LabelTextDelegate*>(this));
     connect(editor, &QPlainTextEdit::textChanged, this,
             [delegate = const_cast<LabelTextDelegate*>(this), guardedEditor = QPointer<QPlainTextEdit>(editor),

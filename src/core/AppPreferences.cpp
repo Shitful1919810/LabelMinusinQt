@@ -423,6 +423,14 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
             preferences.m_nextLabelShortcut = keySequenceFromJsonValue(
                 input.value(QStringLiteral("nextLabelShortcut")), QStringLiteral("input.nextLabelShortcut"),
                 preferences.m_nextLabelShortcut, AppPreferenceWarningType::NextLabelShortcutInvalid, warnings);
+            preferences.m_alternatePreviousLabelShortcut = keySequenceFromJsonValue(
+                input.value(QStringLiteral("alternatePreviousLabelShortcut")),
+                QStringLiteral("input.alternatePreviousLabelShortcut"), preferences.m_alternatePreviousLabelShortcut,
+                AppPreferenceWarningType::AlternatePreviousLabelShortcutInvalid, warnings);
+            preferences.m_alternateNextLabelShortcut = keySequenceFromJsonValue(
+                input.value(QStringLiteral("alternateNextLabelShortcut")),
+                QStringLiteral("input.alternateNextLabelShortcut"), preferences.m_alternateNextLabelShortcut,
+                AppPreferenceWarningType::AlternateNextLabelShortcutInvalid, warnings);
             preferences.m_previousPageShortcut = keySequenceFromJsonValue(
                 input.value(QStringLiteral("previousPageShortcut")), QStringLiteral("input.previousPageShortcut"),
                 preferences.m_previousPageShortcut, AppPreferenceWarningType::PreviousPageShortcutInvalid, warnings);
@@ -641,6 +649,16 @@ QKeySequence AppPreferences::redoShortcut() const
 QKeySequence AppPreferences::nextLabelShortcut() const
 {
     return m_nextLabelShortcut;
+}
+
+QKeySequence AppPreferences::alternatePreviousLabelShortcut() const
+{
+    return m_alternatePreviousLabelShortcut;
+}
+
+QKeySequence AppPreferences::alternateNextLabelShortcut() const
+{
+    return m_alternateNextLabelShortcut;
 }
 
 QKeySequence AppPreferences::previousPageShortcut() const

@@ -1,0 +1,154 @@
+#include "ui/CanvasLabelTextEditController.h"
+
+#include "ui/CanvasLabelTextEditor.h"
+
+#include <QApplication>
+#include <QEvent>
+#include <QKeyEvent>
+#include <QPlainTextEdit>
+#include <QTimer>
+
+#include <utility>
+
+namespace {
+constexpr Qt::KeyboardModifiers shortcutModifiers =
+    Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier;
+
+QKeyCombination normalizedKeyCombination(const QKeyEvent& event)
+{
+    Qt::Key key = static_cast<Qt::Key>(event.key());
+    Qt::KeyboardModifiers modifiers = event.modifiers() & shortcutModifiers;
+    if (key == Qt::Key_Backtab) {
+        key = Qt::Key_Tab;
+        modifiers |= Qt::ShiftModifier;
+    }
+    return QKeyCombination(modifiers, key);
+}
+} // namespace
+
+CanvasLabelTextEditController::CanvasLabelTextEditController(QObject* parent) : QObject(parent) {}
+
+void CanvasLabelTextEditController::setCommitShortcut(QKeySequence shortcut)
+{
+    if (!shortcut.isEmpty()) {
+        m_commitShortcut = std::move(shortcut);
+    }
+}
+
+bool CanvasLabelTextEditController::isEditing() const noexcept
+{
+    return m_editor != nullptr;
+}
+
+bool CanvasLabelTextEditController::isEditorObject(QObject* object) const noexcept
+{
+    return m_editor != nullptr && object == m_editor->editor();
+}
+
+bool CanvasLabelTextEditController::hasEditorFocus() const noexcept
+{
+    return m_editor != nullptr && m_editor->editor() == QApplication::focusWidget();
+}
+
+int CanvasLabelTextEditController::imageIndex() const noexcept
+{
+    return m_imageIndex;
+}
+
+int CanvasLabelTextEditController::labelIndex() const noexcept
+{
+    return m_labelIndex;
+}
+
+void CanvasLabelTextEditController::open(QWidget* parent, int imageIndex, int labelIndex, const QString& text,
+                                         const QFont& font, const QPoint& globalPosition)
+{
+    close();
+
+    auto* editor = new CanvasLabelTextEditor(parent);
+    editor->setEditorFont(font);
+    editor->setText(text);
+    editor->editor()->installEventFilter(this);
+
+    m_editor = editor;
+    m_imageIndex = imageIndex;
+    m_labelIndex = labelIndex;
+
+    connect(editor, &CanvasLabelTextEditor::textChanged, this, [this](const QString& changedText) {
+        if (m_editor != nullptr) {
+            emit previewTextChanged(m_labelIndex, changedText);
+        }
+    });
+
+    editor->moveNearGlobalPosition(globalPosition);
+    editor->show();
+    editor->raise();
+    editor->editor()->setFocus(Qt::MouseFocusReason);
+}
+
+void CanvasLabelTextEditController::commit()
+{
+    if (m_editor == nullptr) {
+        close();
+        return;
+    }
+
+    const int imageIndex = m_imageIndex;
+    const int labelIndex = m_labelIndex;
+    const QString text = m_editor->text();
+    close();
+    emit textCommitted(imageIndex, labelIndex, text);
+}
+
+void CanvasLabelTextEditController::cancel()
+{
+    close();
+}
+
+void CanvasLabelTextEditController::close()
+{
+    const int labelIndex = m_labelIndex;
+
+    if (m_editor != nullptr) {
+        m_editor->editor()->removeEventFilter(this);
+        m_editor->deleteLater();
+    }
+
+    m_editor = nullptr;
+    m_imageIndex = -1;
+    m_labelIndex = -1;
+
+    if (labelIndex >= 0) {
+        emit closed(labelIndex);
+    }
+}
+
+bool CanvasLabelTextEditController::eventFilter(QObject* watched, QEvent* event)
+{
+    if (!isEditorObject(watched)) {
+        return QObject::eventFilter(watched, event);
+    }
+
+    if (event->type() == QEvent::KeyPress) {
+        const auto* keyEvent = static_cast<QKeyEvent*>(event);
+        const QKeySequence keySequence(normalizedKeyCombination(*keyEvent));
+        if (keySequence.matches(m_commitShortcut) == QKeySequence::ExactMatch) {
+            commit();
+            return true;
+        }
+        if (keyEvent->key() == Qt::Key_Escape) {
+            cancel();
+            return true;
+        }
+    }
+
+    if (event->type() == QEvent::FocusOut) {
+        QTimer::singleShot(0, this, [this]() {
+            if (m_editor != nullptr && !m_editor->isAncestorOf(QApplication::focusWidget())) {
+                commit();
+            }
+        });
+    }
+
+    return QObject::eventFilter(watched, event);
+}

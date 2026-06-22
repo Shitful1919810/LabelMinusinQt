@@ -305,6 +305,19 @@ void ImageCanvas::centerOnLabel(int index)
     centerOn(rect.left() + position.x() * rect.width(), rect.top() + position.y() * rect.height());
 }
 
+QPoint ImageCanvas::globalPositionForLabel(int index) const
+{
+    if (m_pixmapItem == nullptr || index < 0 || index >= m_labels.size()) {
+        return viewport()->mapToGlobal(viewport()->rect().center());
+    }
+
+    const QRectF rect = m_pixmapItem->boundingRect();
+    const QPointF position = m_labels.at(index).position();
+    const QPoint viewportPosition =
+        mapFromScene(rect.left() + position.x() * rect.width(), rect.top() + position.y() * rect.height());
+    return viewport()->mapToGlobal(viewportPosition);
+}
+
 void ImageCanvas::setZoomPercent(int percent)
 {
     m_hasUserZoom = true;
@@ -347,11 +360,15 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
     if (event->button() == Qt::LeftButton) {
         setFocus();
         m_pendingLabelCreate = false;
+        m_pendingLabelSelect = false;
+        m_pendingLabelSelectIndex = -1;
+        bool pressedMarker = false;
 
         QGraphicsItem* item = itemAt(event->pos());
         while (item != nullptr) {
             if (item->type() == markerType) {
                 auto* marker = static_cast<LabelMarkerItem*>(item);
+                pressedMarker = true;
                 if (hasMoveLabelModifiers(event->modifiers())) {
                     m_isMovingLabel = true;
                     m_movingLabelIndex = marker->labelIndex();
@@ -361,14 +378,15 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
                     event->accept();
                     return;
                 }
-                emit labelSelected(marker->labelIndex());
-                event->accept();
-                return;
+                m_pendingLabelSelect = true;
+                m_pendingLabelSelectIndex = marker->labelIndex();
+                m_labelSelectPressPosition = event->pos();
+                break;
             }
             item = item->parentItem();
         }
 
-        if (m_pixmapItem != nullptr) {
+        if (!pressedMarker && m_pixmapItem != nullptr) {
             const QPointF scenePosition = mapToScene(event->pos());
             if (m_pixmapItem->contains(scenePosition)) {
                 m_pendingLabelCreate = true;
@@ -378,6 +396,30 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
     }
 
     QGraphicsView::mousePressEvent(event);
+}
+
+void ImageCanvas::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton) {
+        setFocus();
+        m_pendingLabelCreate = false;
+
+        QGraphicsItem* item = itemAt(event->pos());
+        while (item != nullptr) {
+            if (item->type() == markerType) {
+                auto* marker = static_cast<LabelMarkerItem*>(item);
+                const int labelIndex = marker->labelIndex();
+                emit labelSelected(labelIndex);
+                emit labelTextEditRequested(labelIndex, event->globalPosition().toPoint());
+                hideHoveredLabelToolTip();
+                event->accept();
+                return;
+            }
+            item = item->parentItem();
+        }
+    }
+
+    QGraphicsView::mouseDoubleClickEvent(event);
 }
 
 void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
@@ -392,6 +434,11 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
     if (m_pendingLabelCreate &&
         (event->pos() - m_labelCreatePressPosition).manhattanLength() >= QApplication::startDragDistance()) {
         m_pendingLabelCreate = false;
+    }
+    if (m_pendingLabelSelect &&
+        (event->pos() - m_labelSelectPressPosition).manhattanLength() >= QApplication::startDragDistance()) {
+        m_pendingLabelSelect = false;
+        m_pendingLabelSelectIndex = -1;
     }
 
     QGraphicsView::mouseMoveEvent(event);
@@ -423,13 +470,22 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
         event->button() == Qt::LeftButton && m_pendingLabelCreate &&
         (event->pos() - m_labelCreatePressPosition).manhattanLength() < QApplication::startDragDistance() &&
         m_pixmapItem != nullptr && m_pixmapItem->contains(mapToScene(event->pos()));
+    const bool shouldSelectLabel =
+        event->button() == Qt::LeftButton && m_pendingLabelSelect &&
+        (event->pos() - m_labelSelectPressPosition).manhattanLength() < QApplication::startDragDistance() &&
+        m_pendingLabelSelectIndex >= 0 && m_pendingLabelSelectIndex < m_labels.size();
 
     m_pendingLabelCreate = false;
+    m_pendingLabelSelect = false;
     QGraphicsView::mouseReleaseEvent(event);
 
     if (shouldCreateLabel) {
         emit labelCreateRequested(normalizedPositionFromScene(mapToScene(event->pos())));
     }
+    if (shouldSelectLabel) {
+        emit labelSelected(m_pendingLabelSelectIndex);
+    }
+    m_pendingLabelSelectIndex = -1;
 }
 
 void ImageCanvas::wheelEvent(QWheelEvent* event)

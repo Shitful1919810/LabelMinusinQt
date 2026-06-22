@@ -258,26 +258,41 @@ QWidget* PreferenceDialog::createGeneralPage(QTabWidget* tabWidget)
 QWidget* PreferenceDialog::createKeyMappingPage(QTabWidget* tabWidget)
 {
     auto* keyMappingPage = new QWidget(tabWidget);
-    auto* keyMappingLayout = new QFormLayout(keyMappingPage);
+    auto* keyMappingLayout = new QHBoxLayout(keyMappingPage);
+    auto* leftColumn = new QWidget(keyMappingPage);
+    auto* leftLayout = new QFormLayout(leftColumn);
+    auto* rightColumn = new QWidget(keyMappingPage);
+    auto* rightLayout = new QFormLayout(rightColumn);
+    keyMappingLayout->addWidget(leftColumn, 1);
+    keyMappingLayout->addWidget(rightColumn, 1);
+
     m_moveModifierComboBox = makeModifierComboBox(keyMappingPage);
     m_previousLabelModifierComboBox = makeModifierComboBox(keyMappingPage);
     m_undoShortcutEdit = new QKeySequenceEdit(defaultPreferences().undoShortcut(), keyMappingPage);
     m_redoShortcutEdit = new QKeySequenceEdit(defaultPreferences().redoShortcut(), keyMappingPage);
     m_nextLabelShortcutEdit = new QKeySequenceEdit(defaultPreferences().nextLabelShortcut(), keyMappingPage);
+    m_alternatePreviousLabelShortcutEdit =
+        new QKeySequenceEdit(defaultPreferences().alternatePreviousLabelShortcut(), keyMappingPage);
+    m_alternateNextLabelShortcutEdit =
+        new QKeySequenceEdit(defaultPreferences().alternateNextLabelShortcut(), keyMappingPage);
     m_previousPageShortcutEdit = new QKeySequenceEdit(defaultPreferences().previousPageShortcut(), keyMappingPage);
     m_nextPageShortcutEdit = new QKeySequenceEdit(defaultPreferences().nextPageShortcut(), keyMappingPage);
     m_editLabelTextShortcutEdit = new QKeySequenceEdit(defaultPreferences().editLabelTextShortcut(), keyMappingPage);
     m_commitLabelTextShortcutEdit =
         new QKeySequenceEdit(defaultPreferences().commitLabelTextShortcut(), keyMappingPage);
-    keyMappingLayout->addRow(tr("Move-label modifier"), m_moveModifierComboBox);
-    keyMappingLayout->addRow(tr("Previous label modifier"), m_previousLabelModifierComboBox);
-    keyMappingLayout->addRow(tr("Undo shortcut"), m_undoShortcutEdit);
-    keyMappingLayout->addRow(tr("Redo shortcut"), m_redoShortcutEdit);
-    keyMappingLayout->addRow(tr("Next label shortcut"), m_nextLabelShortcutEdit);
-    keyMappingLayout->addRow(tr("Previous page shortcut"), m_previousPageShortcutEdit);
-    keyMappingLayout->addRow(tr("Next page shortcut"), m_nextPageShortcutEdit);
-    keyMappingLayout->addRow(tr("Edit label text shortcut"), m_editLabelTextShortcutEdit);
-    keyMappingLayout->addRow(tr("Commit label text shortcut"), m_commitLabelTextShortcutEdit);
+
+    leftLayout->addRow(tr("Move-label modifier"), m_moveModifierComboBox);
+    leftLayout->addRow(tr("Previous label modifier"), m_previousLabelModifierComboBox);
+    leftLayout->addRow(tr("Undo"), m_undoShortcutEdit);
+    leftLayout->addRow(tr("Redo"), m_redoShortcutEdit);
+    leftLayout->addRow(tr("Edit label text"), m_editLabelTextShortcutEdit);
+    leftLayout->addRow(tr("Commit label text"), m_commitLabelTextShortcutEdit);
+
+    rightLayout->addRow(tr("Switch label"), m_nextLabelShortcutEdit);
+    rightLayout->addRow(tr("Previous label"), m_alternatePreviousLabelShortcutEdit);
+    rightLayout->addRow(tr("Next label"), m_alternateNextLabelShortcutEdit);
+    rightLayout->addRow(tr("Previous page"), m_previousPageShortcutEdit);
+    rightLayout->addRow(tr("Next page"), m_nextPageShortcutEdit);
     return keyMappingPage;
 }
 
@@ -350,6 +365,10 @@ void PreferenceDialog::connectPreferenceChangeSignals()
     connect(m_undoShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_redoShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_nextLabelShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_alternatePreviousLabelShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this,
+            &PreferenceDialog::updateJsonPreview);
+    connect(m_alternateNextLabelShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this,
+            &PreferenceDialog::updateJsonPreview);
     connect(m_previousPageShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this,
             &PreferenceDialog::updateJsonPreview);
     connect(m_nextPageShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
@@ -468,6 +487,14 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
         input.value(QStringLiteral("nextLabelShortcut"))
             .toString(defaultPreferences().nextLabelShortcut().toString(QKeySequence::PortableText)),
         QKeySequence::PortableText);
+    const QKeySequence alternatePreviousLabelShortcut = QKeySequence::fromString(
+        input.value(QStringLiteral("alternatePreviousLabelShortcut"))
+            .toString(defaultPreferences().alternatePreviousLabelShortcut().toString(QKeySequence::PortableText)),
+        QKeySequence::PortableText);
+    const QKeySequence alternateNextLabelShortcut = QKeySequence::fromString(
+        input.value(QStringLiteral("alternateNextLabelShortcut"))
+            .toString(defaultPreferences().alternateNextLabelShortcut().toString(QKeySequence::PortableText)),
+        QKeySequence::PortableText);
     const QKeySequence previousPageShortcut = QKeySequence::fromString(
         input.value(QStringLiteral("previousPageShortcut"))
             .toString(defaultPreferences().previousPageShortcut().toString(QKeySequence::PortableText)),
@@ -488,6 +515,12 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     m_redoShortcutEdit->setKeySequence(redoShortcut.isEmpty() ? defaultPreferences().redoShortcut() : redoShortcut);
     m_nextLabelShortcutEdit->setKeySequence(nextLabelShortcut.isEmpty() ? defaultPreferences().nextLabelShortcut()
                                                                         : nextLabelShortcut);
+    m_alternatePreviousLabelShortcutEdit->setKeySequence(alternatePreviousLabelShortcut.isEmpty()
+                                                             ? defaultPreferences().alternatePreviousLabelShortcut()
+                                                             : alternatePreviousLabelShortcut);
+    m_alternateNextLabelShortcutEdit->setKeySequence(alternateNextLabelShortcut.isEmpty()
+                                                         ? defaultPreferences().alternateNextLabelShortcut()
+                                                         : alternateNextLabelShortcut);
     m_previousPageShortcutEdit->setKeySequence(
         previousPageShortcut.isEmpty() ? defaultPreferences().previousPageShortcut() : previousPageShortcut);
     m_nextPageShortcutEdit->setKeySequence(nextPageShortcut.isEmpty() ? defaultPreferences().nextPageShortcut()
@@ -549,6 +582,10 @@ QJsonDocument PreferenceDialog::documentFromUi() const
                  m_redoShortcutEdit->keySequence().toString(QKeySequence::PortableText));
     input.insert(QStringLiteral("nextLabelShortcut"),
                  m_nextLabelShortcutEdit->keySequence().toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("alternatePreviousLabelShortcut"),
+                 m_alternatePreviousLabelShortcutEdit->keySequence().toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("alternateNextLabelShortcut"),
+                 m_alternateNextLabelShortcutEdit->keySequence().toString(QKeySequence::PortableText));
     input.insert(QStringLiteral("previousPageShortcut"),
                  m_previousPageShortcutEdit->keySequence().toString(QKeySequence::PortableText));
     input.insert(QStringLiteral("nextPageShortcut"),

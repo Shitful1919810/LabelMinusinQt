@@ -30,6 +30,7 @@ public:
     void setLabelTextPreview(int index, const QString& text);
     void clearLabelTextPreview(int index);
     void centerOnLabel(int index);
+    QPoint globalPositionForLabel(int index) const;
     void setZoomPercent(int percent);
     int zoomPercent() const noexcept;
     QPointF normalizedViewCenter() const;
@@ -39,10 +40,12 @@ signals:
     void labelCreateRequested(QPointF normalizedPosition);
     void labelMoveRequested(int index, QPointF normalizedPosition);
     void labelSelected(int index);
+    void labelTextEditRequested(int index, QPoint globalPosition);
     void zoomPercentChanged(int percent);
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
@@ -81,7 +84,10 @@ private:
     QVector<labelminus::core::LabelGroupStyle> m_groupStyles;
     bool m_hasUserZoom{false};
     bool m_pendingLabelCreate{false};
+    bool m_pendingLabelSelect{false};
     bool m_isMovingLabel{false};
+    int m_pendingLabelSelectIndex{-1};
     int m_movingLabelIndex{-1};
     QPoint m_labelCreatePressPosition;
+    QPoint m_labelSelectPressPosition;
 };

@@ -46,6 +46,8 @@ enum class AppPreferenceWarningType {
     UndoShortcutInvalid,
     RedoShortcutInvalid,
     NextLabelShortcutInvalid,
+    AlternatePreviousLabelShortcutInvalid,
+    AlternateNextLabelShortcutInvalid,
     PreviousPageShortcutInvalid,
     NextPageShortcutInvalid,
     EditLabelTextShortcutInvalid,
@@ -104,6 +106,8 @@ public:
     QKeySequence undoShortcut() const;
     QKeySequence redoShortcut() const;
     QKeySequence nextLabelShortcut() const;
+    QKeySequence alternatePreviousLabelShortcut() const;
+    QKeySequence alternateNextLabelShortcut() const;
     QKeySequence previousPageShortcut() const;
     QKeySequence nextPageShortcut() const;
     QKeySequence editLabelTextShortcut() const;
@@ -132,6 +136,8 @@ private:
     QKeySequence m_undoShortcut{QStringLiteral("Ctrl+Z")};
     QKeySequence m_redoShortcut{QStringLiteral("Ctrl+Y")};
     QKeySequence m_nextLabelShortcut{QStringLiteral("Tab")};
+    QKeySequence m_alternatePreviousLabelShortcut{QStringLiteral("Ctrl+Up")};
+    QKeySequence m_alternateNextLabelShortcut{QStringLiteral("Ctrl+Down")};
     QKeySequence m_previousPageShortcut{QStringLiteral("Alt+Left")};
     QKeySequence m_nextPageShortcut{QStringLiteral("Alt+Right")};
     QKeySequence m_editLabelTextShortcut{QStringLiteral("Return")};
