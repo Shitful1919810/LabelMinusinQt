@@ -195,18 +195,26 @@ void LabelGroupDelegate::setModelData(QWidget* editor, QAbstractItemModel* model
 
 void LabelGroupDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
-    QStyleOptionViewItem coloredOption(option);
-    initStyleOption(&coloredOption, index);
+    QStyleOptionViewItem itemOption(option);
+    initStyleOption(&itemOption, index);
+    const QString text = itemOption.text;
+    itemOption.text.clear();
 
-    const QColor color = colorForGroup(index.data(Qt::DisplayRole).toString());
-    if (color.isValid()) {
-        coloredOption.palette.setColor(QPalette::Text, color);
-        coloredOption.palette.setColor(QPalette::HighlightedText, color);
-    }
-
-    const QWidget* widget = option.widget;
+    const QWidget* widget = itemOption.widget;
     QStyle* style = widget != nullptr ? widget->style() : QApplication::style();
-    style->drawControl(QStyle::CE_ItemViewItem, &coloredOption, painter, widget);
+    style->drawControl(QStyle::CE_ItemViewItem, &itemOption, painter, widget);
+
+    const QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &itemOption, widget);
+    const QString elidedText = itemOption.fontMetrics.elidedText(text, itemOption.textElideMode, textRect.width());
+    const QColor groupColor = colorForGroup(index.data(Qt::DisplayRole).toString());
+    const QPalette::ColorRole fallbackRole =
+        itemOption.state.testFlag(QStyle::State_Selected) ? QPalette::HighlightedText : QPalette::Text;
+
+    painter->save();
+    painter->setFont(itemOption.font);
+    painter->setPen(groupColor.isValid() ? groupColor : itemOption.palette.color(fallbackRole));
+    painter->drawText(textRect, static_cast<int>(itemOption.displayAlignment), elidedText);
+    painter->restore();
 }
 
 QColor LabelGroupDelegate::colorForGroup(const QString& group) const
