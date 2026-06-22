@@ -1,5 +1,6 @@
 #include "ui/MainWindow.h"
 
+#include "services/LabelNavigator.h"
 #include "services/SessionStateStore.h"
 #include "ui/LabelEditDelegates.h"
 #include "ui/PreferenceDialog.h"
@@ -45,6 +46,35 @@
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
+
+namespace {
+constexpr Qt::KeyboardModifiers shortcutModifiers =
+    Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier;
+
+QKeyCombination normalizedKeyCombination(const QKeyEvent& event)
+{
+    Qt::Key key = static_cast<Qt::Key>(event.key());
+    Qt::KeyboardModifiers modifiers = event.modifiers() & shortcutModifiers;
+    if (key == Qt::Key_Backtab) {
+        key = Qt::Key_Tab;
+        modifiers |= Qt::ShiftModifier;
+    }
+    return QKeyCombination(modifiers, key);
+}
+
+QKeyCombination firstKeyCombination(const QKeySequence& sequence)
+{
+    return sequence.isEmpty() ? QKeyCombination() : sequence[0];
+}
+
+QKeyCombination withModifiers(QKeyCombination combination, Qt::KeyboardModifiers modifiers)
+{
+    if (combination.key() == Qt::Key_unknown) {
+        return {};
+    }
+    return QKeyCombination(combination.keyboardModifiers() | modifiers, combination.key());
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), m_labelModel(new LabelTableModel(this)), m_labelTextDelegate(new LabelTextDelegate(this)),
@@ -178,6 +208,8 @@ void MainWindow::createMenus()
     QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
     fileMenu->addAction(m_newProjectAction);
     fileMenu->addAction(m_openProjectAction);
+    m_recentProjectsMenu = fileMenu->addMenu(tr("Recent Projects"));
+    updateRecentProjectsMenu();
     fileMenu->addSeparator();
     fileMenu->addAction(m_saveProjectAction);
     fileMenu->addAction(m_saveProjectAsAction);
@@ -450,18 +482,70 @@ void MainWindow::openProject()
 
 bool MainWindow::openProjectFile(const QString& path)
 {
+    return loadProjectFile(path, true, tr("Loaded %1").arg(path));
+}
+
+bool MainWindow::openMostRecentProject()
+{
+    const QString path = m_sessionStateStore.mostRecentProjectPath();
+    if (path.isEmpty() || !QFileInfo::exists(path)) {
+        if (!path.isEmpty()) {
+            m_sessionStateStore.removeRecentProjectPath(path);
+            updateRecentProjectsMenu();
+        }
+        return false;
+    }
+
+    return loadProjectFile(path, false, tr("Loaded recent project: %1").arg(path));
+}
+
+bool MainWindow::loadProjectFile(const QString& path, bool showErrors, const QString& successMessage)
+{
     try {
         m_projectController.loadFromFile(path);
         m_undoStack.clear();
         refreshProjectUi();
         restoreProjectSessionState();
-        statusBar()->showMessage(tr("Loaded %1").arg(path), 4000);
+        m_sessionStateStore.addRecentProjectPath(project().filePath());
+        updateRecentProjectsMenu();
+        statusBar()->showMessage(successMessage, 6000);
         return true;
     }
     catch (const std::exception& error) {
-        QMessageBox::critical(this, tr("Open failed"), QString::fromUtf8(error.what()));
+        m_sessionStateStore.removeRecentProjectPath(path);
+        updateRecentProjectsMenu();
+        if (showErrors) {
+            QMessageBox::critical(this, tr("Open failed"), QString::fromUtf8(error.what()));
+        }
         return false;
     }
+}
+
+void MainWindow::openRecentProjectFromAction()
+{
+    const auto* action = qobject_cast<const QAction*>(sender());
+    if (action == nullptr) {
+        return;
+    }
+
+    if (!promptToSaveIfDirty()) {
+        return;
+    }
+    saveProjectSessionState();
+
+    const QString path = action->data().toString();
+    if (path.isEmpty()) {
+        return;
+    }
+
+    if (!QFileInfo::exists(path)) {
+        m_sessionStateStore.removeRecentProjectPath(path);
+        updateRecentProjectsMenu();
+        QMessageBox::warning(this, tr("Open failed"), tr("%1 does not exist.").arg(path));
+        return;
+    }
+
+    openProjectFile(path);
 }
 
 void MainWindow::openPreferences()
@@ -515,6 +599,8 @@ bool MainWindow::saveProjectAs()
     const QString oldPath = project().filePath();
     try {
         m_projectController.saveAs(path);
+        m_sessionStateStore.addRecentProjectPath(project().filePath());
+        updateRecentProjectsMenu();
         updateWindowTitle();
         statusBar()->showMessage(tr("Saved %1").arg(project().filePath()), 4000);
         return true;
@@ -632,16 +718,20 @@ void MainWindow::selectLabel(int index)
     const int visibleRow = m_labelModel->rowForSourceIndex(index);
     if (visibleRow >= 0) {
         const QModelIndex rowIndex = m_labelModel->index(visibleRow, LabelTableModel::NumberColumn);
-        if (!m_labelView->selectionModel()->isSelected(rowIndex)) {
-            m_labelView->selectRow(visibleRow);
+        if (m_labelView->selectionModel() != nullptr) {
+            m_labelView->selectionModel()->select(rowIndex,
+                                                  QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+            m_labelView->selectionModel()->setCurrentIndex(rowIndex,
+                                                           QItemSelectionModel::Current | QItemSelectionModel::Rows);
         }
+        m_labelView->scrollTo(rowIndex, QAbstractItemView::EnsureVisible);
         m_labelView->resizeRowToContents(visibleRow);
         capLabelRowHeight(visibleRow);
     }
     else {
         m_labelView->clearSelection();
     }
-    m_canvas->setSelectedLabels(selectedLabelIndexes());
+    m_canvas->setSelectedLabels({index});
     setEditorEnabled(true);
     m_isUpdatingUi = false;
 }
@@ -1011,23 +1101,42 @@ void MainWindow::selectNextPage()
 
 bool MainWindow::handleLabelViewShortcut(QEvent* event)
 {
-    if (event->type() != QEvent::KeyPress) {
+    const bool isShortcutOverride = event->type() == QEvent::ShortcutOverride;
+    if (event->type() != QEvent::KeyPress && !isShortcutOverride) {
         return false;
     }
 
     const auto* keyEvent = static_cast<QKeyEvent*>(event);
-    if (keyEvent->key() == Qt::Key_unknown || keyEvent->isAutoRepeat()) {
+    if (keyEvent->key() == Qt::Key_unknown) {
         return false;
     }
 
-    const QKeySequence pressedKey(keyEvent->keyCombination());
-    if (pressedKey.matches(m_preferences.editLabelTextShortcut()) == QKeySequence::ExactMatch) {
-        editCurrentLabelText();
+    const QKeyCombination pressedKey = normalizedKeyCombination(*keyEvent);
+    const QKeyCombination nextLabelKey = firstKeyCombination(m_preferences.nextLabelShortcut());
+    const QKeyCombination previousLabelKey = withModifiers(nextLabelKey, m_preferences.previousLabelModifiers());
+    if (pressedKey == previousLabelKey && previousLabelKey != nextLabelKey) {
+        if (!isShortcutOverride) {
+            selectPreviousVisibleLabel();
+        }
+        event->accept();
         return true;
     }
 
-    if (pressedKey.matches(m_preferences.nextLabelShortcut()) == QKeySequence::ExactMatch) {
-        selectNextVisibleLabel();
+    if (pressedKey == nextLabelKey) {
+        if (!isShortcutOverride) {
+            selectNextVisibleLabel();
+        }
+        event->accept();
+        return true;
+    }
+
+    if (isShortcutOverride || keyEvent->isAutoRepeat()) {
+        return false;
+    }
+
+    const QKeySequence keySequence(pressedKey);
+    if (keySequence.matches(m_preferences.editLabelTextShortcut()) == QKeySequence::ExactMatch) {
+        editCurrentLabelText();
         return true;
     }
 
@@ -1036,34 +1145,28 @@ bool MainWindow::handleLabelViewShortcut(QEvent* event)
 
 void MainWindow::selectNextVisibleLabel()
 {
-    if (project().isEmpty() || currentImage() == nullptr || m_labelModel == nullptr) {
+    if (project().isEmpty() || m_groupFilterComboBox == nullptr) {
         return;
     }
 
-    int currentVisibleRow = -1;
-    if (m_labelView != nullptr && m_labelView->currentIndex().isValid()) {
-        currentVisibleRow = m_labelView->currentIndex().row();
+    const labelminus::services::LabelNavigationTarget target = labelminus::services::LabelNavigator::nextVisibleLabel(
+        project(), {m_currentImageIndex, m_currentLabelIndex, m_groupFilterComboBox->selectedGroups()});
+    if (target.isValid()) {
+        selectLabelAndCenter(target.imageIndex, target.labelIndex);
     }
-    if (currentVisibleRow < 0 && m_currentLabelIndex >= 0) {
-        currentVisibleRow = m_labelModel->rowForSourceIndex(m_currentLabelIndex);
-    }
+}
 
-    if (currentVisibleRow < 0 && m_labelModel->rowCount() > 0) {
-        selectLabelAndCenter(m_currentImageIndex, m_labelModel->sourceIndexForRow(0));
+void MainWindow::selectPreviousVisibleLabel()
+{
+    if (project().isEmpty() || m_groupFilterComboBox == nullptr) {
         return;
     }
 
-    if (currentVisibleRow >= 0 && currentVisibleRow + 1 < m_labelModel->rowCount()) {
-        selectLabelAndCenter(m_currentImageIndex, m_labelModel->sourceIndexForRow(currentVisibleRow + 1));
-        return;
-    }
-
-    for (int imageIndex = m_currentImageIndex + 1; imageIndex < project().images().size(); ++imageIndex) {
-        const int labelIndex = firstVisibleLabelIndex(imageIndex);
-        if (labelIndex >= 0) {
-            selectLabelAndCenter(imageIndex, labelIndex);
-            return;
-        }
+    const labelminus::services::LabelNavigationTarget target =
+        labelminus::services::LabelNavigator::previousVisibleLabel(
+            project(), {m_currentImageIndex, m_currentLabelIndex, m_groupFilterComboBox->selectedGroups()});
+    if (target.isValid()) {
+        selectLabelAndCenter(target.imageIndex, target.labelIndex);
     }
 }
 
@@ -1104,21 +1207,6 @@ void MainWindow::selectLabelAndCenter(int imageIndex, int labelIndex)
     if (m_canvas != nullptr) {
         m_canvas->centerOnLabel(labelIndex);
     }
-}
-
-int MainWindow::firstVisibleLabelIndex(int imageIndex) const
-{
-    if (imageIndex < 0 || imageIndex >= project().images().size()) {
-        return -1;
-    }
-
-    const QVector<labelminus::core::Label>& labels = project().images().at(imageIndex).labels;
-    for (int labelIndex = 0; labelIndex < labels.size(); ++labelIndex) {
-        if (isLabelVisibleByGroupFilter(labels.at(labelIndex))) {
-            return labelIndex;
-        }
-    }
-    return -1;
 }
 
 bool MainWindow::isLabelVisibleByGroupFilter(const labelminus::core::Label& label) const
@@ -1664,6 +1752,7 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
     case AppPreferenceWarningType::InputNotObject:
         return tr("input must be a JSON object; using default input preferences.");
     case AppPreferenceWarningType::MoveLabelModifierInvalid:
+    case AppPreferenceWarningType::PreviousLabelModifierInvalid:
         return tr("%1 must be a modifier name or modifier combination; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::UndoShortcutInvalid:
     case AppPreferenceWarningType::RedoShortcutInvalid:
@@ -1733,6 +1822,32 @@ void MainWindow::updateWindowTitle()
         title += QStringLiteral(" *");
     }
     setWindowTitle(title);
+}
+
+void MainWindow::updateRecentProjectsMenu()
+{
+    if (m_recentProjectsMenu == nullptr) {
+        return;
+    }
+
+    m_recentProjectsMenu->clear();
+    const QStringList paths = m_sessionStateStore.recentProjectPaths();
+    if (paths.isEmpty()) {
+        QAction* emptyAction = m_recentProjectsMenu->addAction(tr("No recent projects"));
+        emptyAction->setEnabled(false);
+        return;
+    }
+
+    for (const QString& path : paths) {
+        const QFileInfo fileInfo(path);
+        QAction* action = m_recentProjectsMenu->addAction(fileInfo.fileName().isEmpty() ? path : fileInfo.fileName());
+        action->setData(path);
+        action->setToolTip(path);
+        if (!fileInfo.exists()) {
+            action->setText(tr("%1 (missing)").arg(action->text()));
+        }
+        connect(action, &QAction::triggered, this, &MainWindow::openRecentProjectFromAction);
+    }
 }
 
 void MainWindow::applyGroupStylesToCombo(QComboBox* comboBox)

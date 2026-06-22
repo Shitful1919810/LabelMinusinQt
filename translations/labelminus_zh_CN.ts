@@ -91,6 +91,10 @@
         <translation>编辑(&amp;E)</translation>
     </message>
     <message>
+        <source>Recent Projects</source>
+        <translation>最近打开的工程</translation>
+    </message>
+    <message>
         <source>Zoom</source>
         <translation>缩放</translation>
     </message>
@@ -195,8 +199,24 @@
         <translation>已加载 %1</translation>
     </message>
     <message>
+        <source>Loaded recent project: %1</source>
+        <translation>已加载最近一次工程：%1</translation>
+    </message>
+    <message>
         <source>Open failed</source>
         <translation>打开失败</translation>
+    </message>
+    <message>
+        <source>%1 does not exist.</source>
+        <translation>%1 不存在。</translation>
+    </message>
+    <message>
+        <source>No recent projects</source>
+        <translation>无最近工程</translation>
+    </message>
+    <message>
+        <source>%1 (missing)</source>
+        <translation>%1（缺失）</translation>
     </message>
     <message>
         <source>Saved %1</source>
@@ -480,6 +500,10 @@
     <message>
         <source>Move-label modifier</source>
         <translation>移动标签修饰键</translation>
+    </message>
+    <message>
+        <source>Previous label modifier</source>
+        <translation>上一个标签修饰键</translation>
     </message>
     <message>
         <source>Undo shortcut</source>

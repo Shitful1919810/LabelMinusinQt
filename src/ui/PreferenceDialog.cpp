@@ -99,6 +99,15 @@ QWidget* makePercentScrollBarWidget(QWidget* parent, QScrollBar*& scrollBar, QLa
     return widget;
 }
 
+QComboBox* makeModifierComboBox(QWidget* parent)
+{
+    auto* comboBox = new QComboBox(parent);
+    comboBox->setEditable(true);
+    comboBox->addItems({QStringLiteral("ctrl"), QStringLiteral("shift"), QStringLiteral("alt"), QStringLiteral("meta"),
+                        QStringLiteral("ctrl+shift"), QStringLiteral("none")});
+    return comboBox;
+}
+
 QString comboBoxDataOrText(const QComboBox* comboBox)
 {
     if (comboBox == nullptr) {
@@ -256,10 +265,8 @@ QWidget* PreferenceDialog::createKeyMappingPage(QTabWidget* tabWidget)
 {
     auto* keyMappingPage = new QWidget(tabWidget);
     auto* keyMappingLayout = new QFormLayout(keyMappingPage);
-    m_moveModifierComboBox = new QComboBox(keyMappingPage);
-    m_moveModifierComboBox->setEditable(true);
-    m_moveModifierComboBox->addItems({QStringLiteral("ctrl"), QStringLiteral("shift"), QStringLiteral("alt"),
-                                      QStringLiteral("meta"), QStringLiteral("ctrl+shift"), QStringLiteral("none")});
+    m_moveModifierComboBox = makeModifierComboBox(keyMappingPage);
+    m_previousLabelModifierComboBox = makeModifierComboBox(keyMappingPage);
     m_undoShortcutEdit = new QKeySequenceEdit(defaultPreferences().undoShortcut(), keyMappingPage);
     m_redoShortcutEdit = new QKeySequenceEdit(defaultPreferences().redoShortcut(), keyMappingPage);
     m_nextLabelShortcutEdit = new QKeySequenceEdit(defaultPreferences().nextLabelShortcut(), keyMappingPage);
@@ -269,6 +276,7 @@ QWidget* PreferenceDialog::createKeyMappingPage(QTabWidget* tabWidget)
     m_commitLabelTextShortcutEdit =
         new QKeySequenceEdit(defaultPreferences().commitLabelTextShortcut(), keyMappingPage);
     keyMappingLayout->addRow(tr("Move-label modifier"), m_moveModifierComboBox);
+    keyMappingLayout->addRow(tr("Previous label modifier"), m_previousLabelModifierComboBox);
     keyMappingLayout->addRow(tr("Undo shortcut"), m_undoShortcutEdit);
     keyMappingLayout->addRow(tr("Redo shortcut"), m_redoShortcutEdit);
     keyMappingLayout->addRow(tr("Next label shortcut"), m_nextLabelShortcutEdit);
@@ -343,6 +351,8 @@ void PreferenceDialog::connectPreferenceChangeSignals()
         updateJsonPreview();
     });
     connect(m_moveModifierComboBox, &QComboBox::currentTextChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_previousLabelModifierComboBox, &QComboBox::currentTextChanged, this,
+            &PreferenceDialog::updateJsonPreview);
     connect(m_undoShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_redoShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_nextLabelShortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
@@ -450,6 +460,8 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
 
     m_moveModifierComboBox->setCurrentText(
         input.value(QStringLiteral("moveLabelModifier")).toString(QStringLiteral("ctrl")));
+    m_previousLabelModifierComboBox->setCurrentText(
+        input.value(QStringLiteral("previousLabelModifier")).toString(QStringLiteral("ctrl")));
     const QKeySequence undoShortcut = QKeySequence::fromString(
         input.value(QStringLiteral("undoShortcut"))
             .toString(defaultPreferences().undoShortcut().toString(QKeySequence::PortableText)),
@@ -536,6 +548,7 @@ QJsonDocument PreferenceDialog::documentFromUi() const
 
     QJsonObject input;
     input.insert(QStringLiteral("moveLabelModifier"), m_moveModifierComboBox->currentText().trimmed());
+    input.insert(QStringLiteral("previousLabelModifier"), m_previousLabelModifierComboBox->currentText().trimmed());
     input.insert(QStringLiteral("undoShortcut"),
                  m_undoShortcutEdit->keySequence().toString(QKeySequence::PortableText));
     input.insert(QStringLiteral("redoShortcut"),

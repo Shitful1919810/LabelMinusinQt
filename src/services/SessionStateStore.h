@@ -3,6 +3,7 @@
 #include <QByteArray>
 #include <QPointF>
 #include <QString>
+#include <QStringList>
 
 namespace labelminus::services {
 
@@ -29,6 +30,10 @@ public:
 
     ProjectSessionState loadProjectSession(const QString& projectPath) const;
     void saveProjectSession(const QString& projectPath, const ProjectSessionState& state) const;
+    QStringList recentProjectPaths(int maximumCount = 10) const;
+    QString mostRecentProjectPath() const;
+    void addRecentProjectPath(const QString& projectPath, int maximumCount = 10) const;
+    void removeRecentProjectPath(const QString& projectPath) const;
 
 private:
     static QString canonicalSessionPath(const QString& path);

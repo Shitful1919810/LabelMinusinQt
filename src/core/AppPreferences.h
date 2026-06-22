@@ -42,6 +42,7 @@ enum class AppPreferenceWarningType {
     GroupStyleMarkerStyleInvalid,
     InputNotObject,
     MoveLabelModifierInvalid,
+    PreviousLabelModifierInvalid,
     UndoShortcutInvalid,
     RedoShortcutInvalid,
     NextLabelShortcutInvalid,
@@ -99,6 +100,7 @@ public:
     QString applicationStyle() const;
     QString applicationTheme() const;
     Qt::KeyboardModifiers moveLabelModifiers() const noexcept;
+    Qt::KeyboardModifiers previousLabelModifiers() const noexcept;
     QKeySequence undoShortcut() const;
     QKeySequence redoShortcut() const;
     QKeySequence nextLabelShortcut() const;
@@ -126,6 +128,7 @@ private:
     QString m_applicationStyle;
     QString m_applicationTheme;
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
+    Qt::KeyboardModifiers m_previousLabelModifiers{Qt::ControlModifier};
     QKeySequence m_undoShortcut{QStringLiteral("Ctrl+Z")};
     QKeySequence m_redoShortcut{QStringLiteral("Ctrl+Y")};
     QKeySequence m_nextLabelShortcut{QStringLiteral("Tab")};

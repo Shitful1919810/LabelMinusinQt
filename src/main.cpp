@@ -65,6 +65,9 @@ int main(int argc, char* argv[])
     if (!positionalArguments.isEmpty()) {
         window.openProjectFile(QFileInfo(positionalArguments.first()).absoluteFilePath());
     }
+    else {
+        window.openMostRecentProject();
+    }
 
     return QApplication::exec();
 }

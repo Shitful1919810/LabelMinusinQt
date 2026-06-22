@@ -76,6 +76,7 @@ private:
     QScrollBar* m_markerTextBubbleOpacityScrollBar{nullptr};
     QLabel* m_markerTextBubbleOpacityLabel{nullptr};
     QComboBox* m_moveModifierComboBox{nullptr};
+    QComboBox* m_previousLabelModifierComboBox{nullptr};
     QKeySequenceEdit* m_undoShortcutEdit{nullptr};
     QKeySequenceEdit* m_redoShortcutEdit{nullptr};
     QKeySequenceEdit* m_nextLabelShortcutEdit{nullptr};

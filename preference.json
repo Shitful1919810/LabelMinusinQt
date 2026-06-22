@@ -31,6 +31,7 @@
         "moveLabelModifier": "ctrl",
         "nextLabelShortcut": "Tab",
         "nextPageShortcut": "Alt+Right",
+        "previousLabelModifier": "ctrl",
         "previousPageShortcut": "Alt+Left",
         "redoShortcut": "Ctrl+Shift+Z",
         "undoShortcut": "Ctrl+Z"

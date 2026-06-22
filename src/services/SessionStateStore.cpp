@@ -5,6 +5,8 @@
 #include <QSettings>
 #include <QStringView>
 
+#include <algorithm>
+
 namespace labelminus::services {
 
 namespace {
@@ -21,6 +23,8 @@ constexpr QLatin1StringView sessionZoomPercentKey{"zoomPercent"};
 constexpr QLatin1StringView sessionViewCenterXKey{"viewCenterX"};
 constexpr QLatin1StringView sessionViewCenterYKey{"viewCenterY"};
 constexpr QLatin1StringView sessionSelectedLabelIndexKey{"selectedLabelIndex"};
+constexpr QLatin1StringView recentProjectsGroup{"recentProjects"};
+constexpr QLatin1StringView recentProjectPathsKey{"paths"};
 } // namespace
 
 WindowLayoutState SessionStateStore::loadWindowLayout() const
@@ -82,6 +86,61 @@ void SessionStateStore::saveProjectSession(const QString& projectPath, const Pro
     settings.setValue(sessionViewCenterXKey, state.viewCenter.x());
     settings.setValue(sessionViewCenterYKey, state.viewCenter.y());
     settings.setValue(sessionSelectedLabelIndexKey, state.selectedLabelIndex);
+}
+
+QStringList SessionStateStore::recentProjectPaths(int maximumCount) const
+{
+    QSettings settings;
+    settings.beginGroup(recentProjectsGroup);
+    QStringList paths = settings.value(recentProjectPathsKey).toStringList();
+    paths.erase(
+        std::remove_if(paths.begin(), paths.end(), [](const QString& path) { return path.trimmed().isEmpty(); }),
+        paths.end());
+    paths.removeDuplicates();
+    if (maximumCount > 0 && paths.size() > maximumCount) {
+        paths.erase(paths.begin() + maximumCount, paths.end());
+    }
+    return paths;
+}
+
+QString SessionStateStore::mostRecentProjectPath() const
+{
+    const QStringList paths = recentProjectPaths(1);
+    return paths.isEmpty() ? QString() : paths.first();
+}
+
+void SessionStateStore::addRecentProjectPath(const QString& projectPath, int maximumCount) const
+{
+    if (projectPath.isEmpty()) {
+        return;
+    }
+
+    const QString path = canonicalSessionPath(projectPath);
+    QStringList paths = recentProjectPaths(maximumCount);
+    paths.removeAll(path);
+    paths.prepend(path);
+    if (maximumCount > 0 && paths.size() > maximumCount) {
+        paths.erase(paths.begin() + maximumCount, paths.end());
+    }
+
+    QSettings settings;
+    settings.beginGroup(recentProjectsGroup);
+    settings.setValue(recentProjectPathsKey, paths);
+}
+
+void SessionStateStore::removeRecentProjectPath(const QString& projectPath) const
+{
+    if (projectPath.isEmpty()) {
+        return;
+    }
+
+    const QString path = canonicalSessionPath(projectPath);
+    QStringList paths = recentProjectPaths();
+    paths.removeAll(path);
+
+    QSettings settings;
+    settings.beginGroup(recentProjectsGroup);
+    settings.setValue(recentProjectPathsKey, paths);
 }
 
 QString SessionStateStore::canonicalSessionPath(const QString& path)

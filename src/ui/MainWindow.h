@@ -41,6 +41,7 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
 
     bool openProjectFile(const QString& path);
+    bool openMostRecentProject();
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -52,6 +53,7 @@ private:
     void createCentralWidget();
     void newProject();
     void openProject();
+    void openRecentProjectFromAction();
     void openPreferences();
     bool saveProject();
     bool saveProjectAs();
@@ -80,9 +82,9 @@ private:
     void selectNextPage();
     bool handleLabelViewShortcut(QEvent* event);
     void selectNextVisibleLabel();
+    void selectPreviousVisibleLabel();
     void editCurrentLabelText();
     void selectLabelAndCenter(int imageIndex, int labelIndex);
-    int firstVisibleLabelIndex(int imageIndex) const;
     bool isLabelVisibleByGroupFilter(const labelminus::core::Label& label) const;
     QVector<int> selectedLabelIndexes() const;
     void selectLabelIndexes(const QVector<int>& sourceIndexes);
@@ -111,6 +113,8 @@ private:
     void setDirty(bool dirty);
     bool promptToSaveIfDirty();
     void updateWindowTitle();
+    bool loadProjectFile(const QString& path, bool showErrors, const QString& successMessage);
+    void updateRecentProjectsMenu();
     void applyGroupStylesToCombo(QComboBox* comboBox);
     void updateInsertGroupTextColor();
     QColor colorForGroup(const QString& group) const;
@@ -139,6 +143,7 @@ private:
     QAction* m_newProjectAction{nullptr};
     QAction* m_saveProjectAction{nullptr};
     QAction* m_saveProjectAsAction{nullptr};
+    QMenu* m_recentProjectsMenu{nullptr};
     QAction* m_undoAction{nullptr};
     QAction* m_redoAction{nullptr};
     QAction* m_previousPageAction{nullptr};

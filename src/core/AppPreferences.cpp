@@ -157,14 +157,13 @@ MarkerShape markerShapeFromString(const QString& markerStyle, MarkerShape fallba
     return fallback;
 }
 
-Qt::KeyboardModifiers modifiersFromString(const QString& text, Qt::KeyboardModifiers fallback,
-                                          QVector<AppPreferenceWarning>& warnings)
+Qt::KeyboardModifiers modifiersFromString(const QString& text, const QString& key, Qt::KeyboardModifiers fallback,
+                                          AppPreferenceWarningType warningType, QVector<AppPreferenceWarning>& warnings)
 {
     Qt::KeyboardModifiers modifiers;
     const QStringList parts = text.toLower().split(QLatin1Char('+'), Qt::SkipEmptyParts);
     if (parts.isEmpty()) {
-        warnings.append(
-            makeWarning(AppPreferenceWarningType::MoveLabelModifierInvalid, QStringLiteral("input.moveLabelModifier")));
+        warnings.append(makeWarning(warningType, key));
         return fallback;
     }
 
@@ -174,8 +173,7 @@ Qt::KeyboardModifiers modifiersFromString(const QString& text, Qt::KeyboardModif
             if (parts.size() == 1) {
                 return Qt::NoModifier;
             }
-            warnings.append(makeWarning(AppPreferenceWarningType::MoveLabelModifierInvalid,
-                                        QStringLiteral("input.moveLabelModifier")));
+            warnings.append(makeWarning(warningType, key));
             return fallback;
         }
         if (part == QStringLiteral("ctrl") || part == QStringLiteral("control")) {
@@ -191,8 +189,7 @@ Qt::KeyboardModifiers modifiersFromString(const QString& text, Qt::KeyboardModif
             modifiers |= Qt::MetaModifier;
         }
         else {
-            warnings.append(makeWarning(AppPreferenceWarningType::MoveLabelModifierInvalid,
-                                        QStringLiteral("input.moveLabelModifier")));
+            warnings.append(makeWarning(warningType, key));
             return fallback;
         }
     }
@@ -392,8 +389,9 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
             const QJsonValue moveLabelModifierValue = inputValue.toObject().value(QStringLiteral("moveLabelModifier"));
             if (!moveLabelModifierValue.isUndefined()) {
                 if (moveLabelModifierValue.isString()) {
-                    preferences.m_moveLabelModifiers = modifiersFromString(moveLabelModifierValue.toString(),
-                                                                           preferences.m_moveLabelModifiers, warnings);
+                    preferences.m_moveLabelModifiers = modifiersFromString(
+                        moveLabelModifierValue.toString(), QStringLiteral("input.moveLabelModifier"),
+                        preferences.m_moveLabelModifiers, AppPreferenceWarningType::MoveLabelModifierInvalid, warnings);
                 }
                 else {
                     warnings.append(makeWarning(AppPreferenceWarningType::MoveLabelModifierInvalid,
@@ -402,6 +400,20 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
             }
 
             const QJsonObject input = inputValue.toObject();
+            const QJsonValue previousLabelModifierValue = input.value(QStringLiteral("previousLabelModifier"));
+            if (!previousLabelModifierValue.isUndefined()) {
+                if (previousLabelModifierValue.isString()) {
+                    preferences.m_previousLabelModifiers = modifiersFromString(
+                        previousLabelModifierValue.toString(), QStringLiteral("input.previousLabelModifier"),
+                        preferences.m_previousLabelModifiers, AppPreferenceWarningType::PreviousLabelModifierInvalid,
+                        warnings);
+                }
+                else {
+                    warnings.append(makeWarning(AppPreferenceWarningType::PreviousLabelModifierInvalid,
+                                                QStringLiteral("input.previousLabelModifier")));
+                }
+            }
+
             preferences.m_undoShortcut = keySequenceFromJsonValue(
                 input.value(QStringLiteral("undoShortcut")), QStringLiteral("input.undoShortcut"),
                 preferences.m_undoShortcut, AppPreferenceWarningType::UndoShortcutInvalid, warnings);
@@ -609,6 +621,11 @@ QString AppPreferences::applicationTheme() const
 Qt::KeyboardModifiers AppPreferences::moveLabelModifiers() const noexcept
 {
     return m_moveLabelModifiers;
+}
+
+Qt::KeyboardModifiers AppPreferences::previousLabelModifiers() const noexcept
+{
+    return m_previousLabelModifiers;
 }
 
 QKeySequence AppPreferences::undoShortcut() const

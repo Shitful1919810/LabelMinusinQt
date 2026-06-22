@@ -10,6 +10,7 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 
 - 从图片文件夹新建工程，或打开和保存经典 LabelPlus `.txt` 工程文件。
 - 支持从命令行直接打开工程文件。
+- 支持记录最近打开的工程；无命令行参数启动时会自动恢复最近一次工程。
 - 左侧图像预览区支持缩放、翻页、点击添加标签。
 - 支持按偏好设置中的修饰键拖动标签坐标，默认使用 `Ctrl`。
 - 标签 marker 可按分组配置颜色、大小、字体大小和形状。
@@ -233,6 +234,7 @@ cmake --build --preset windows-vs-release --target deploy_windows
   },
   "input": {
     "moveLabelModifier": "ctrl",
+    "previousLabelModifier": "ctrl",
     "nextLabelShortcut": "Tab",
     "previousPageShortcut": "Alt+Left",
     "nextPageShortcut": "Alt+Right",
@@ -279,7 +281,8 @@ cmake --build --preset windows-vs-release --target deploy_windows
 - `markerTextBubble.fontPointSize`：图像 marker 文本气泡字号。为 `0` 时使用系统默认字号。
 - `markerTextBubble.opacity`：图像 marker 文本气泡不透明度，范围 `0.0` 到 `1.0`，默认 `1.0`。
 - `input.moveLabelModifier`：拖动图像 marker 时需要按住的修饰键，默认 `ctrl`。
-- `input.nextLabelShortcut`：焦点位于右侧标签列表时切换到下一个可见标签的快捷键，默认 `Tab`。
+- `input.previousLabelModifier`：反向切换标签时需要按住的修饰键，默认 `ctrl`。
+- `input.nextLabelShortcut`：焦点位于右侧标签列表时切换到下一个可见标签的快捷键，默认 `Tab`。按住 `input.previousLabelModifier` 再触发该快捷键会切换到上一个可见标签。
 - `input.previousPageShortcut`：切换到上一页的快捷键，默认 `Alt+Left`。
 - `input.nextPageShortcut`：切换到下一页的快捷键，默认 `Alt+Right`。
 - `input.editLabelTextShortcut`：焦点位于右侧标签列表时进入当前标签文本原地编辑的快捷键，默认 `Return`。

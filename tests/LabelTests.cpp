@@ -1,6 +1,8 @@
 #include "core/AppPreferences.h"
 #include "core/Label.h"
 #include "core/LabelPlusDocument.h"
+#include "core/Project.h"
+#include "services/LabelNavigator.h"
 
 #include <QDir>
 #include <QFile>
@@ -51,6 +53,54 @@ private slots:
         QCOMPARE(reloaded.images().first().labels.first().text(), QStringLiteral("题目：憧憬的回忆"));
     }
 
+    void labelNavigatorMovesAcrossVisibleLabels()
+    {
+        labelminus::core::Project project;
+        project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().last().labels.append(Label(QStringLiteral("a"), QStringLiteral("框内"), {}));
+        project.images().last().labels.append(Label(QStringLiteral("b"), QStringLiteral("框外"), {}));
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        project.images().last().labels.append(Label(QStringLiteral("c"), QStringLiteral("框内"), {}));
+        project.images().last().labels.append(Label(QStringLiteral("d"), QStringLiteral("框外"), {}));
+
+        const QStringList visibleGroups{QStringLiteral("框内"), QStringLiteral("框外")};
+        const auto next = labelminus::services::LabelNavigator::nextVisibleLabel(project, {0, 1, visibleGroups});
+        QVERIFY(next.isValid());
+        QCOMPARE(next.imageIndex, 1);
+        QCOMPARE(next.labelIndex, 0);
+
+        const auto previous =
+            labelminus::services::LabelNavigator::previousVisibleLabel(project, {1, 0, visibleGroups});
+        QVERIFY(previous.isValid());
+        QCOMPARE(previous.imageIndex, 0);
+        QCOMPARE(previous.labelIndex, 1);
+    }
+
+    void labelNavigatorRespectsVisibleGroups()
+    {
+        labelminus::core::Project project;
+        project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().last().labels.append(Label(QStringLiteral("a"), QStringLiteral("框外"), {}));
+        project.images().last().labels.append(Label(QStringLiteral("b"), QStringLiteral("框内"), {}));
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        project.images().last().labels.append(Label(QStringLiteral("c"), QStringLiteral("框外"), {}));
+        project.images().last().labels.append(Label(QStringLiteral("d"), QStringLiteral("框内"), {}));
+
+        const QStringList visibleGroups{QStringLiteral("框内")};
+        const auto next = labelminus::services::LabelNavigator::nextVisibleLabel(project, {0, 1, visibleGroups});
+        QVERIFY(next.isValid());
+        QCOMPARE(next.imageIndex, 1);
+        QCOMPARE(next.labelIndex, 1);
+
+        const auto previous =
+            labelminus::services::LabelNavigator::previousVisibleLabel(project, {1, 1, visibleGroups});
+        QVERIFY(previous.isValid());
+        QCOMPARE(previous.imageIndex, 0);
+        QCOMPARE(previous.labelIndex, 1);
+    }
+
     void preferencesReadMarkerFloatingPointSizes()
     {
         const QString dirPath = QDir::temp().filePath("labelminus_preferences_test");
@@ -85,6 +135,7 @@ private slots:
                << "  },\n"
                << "  \"input\": {\n"
                << "    \"moveLabelModifier\": \"ctrl+shift\",\n"
+               << "    \"previousLabelModifier\": \"ctrl\",\n"
                << "    \"nextLabelShortcut\": \"Tab\",\n"
                << "    \"previousPageShortcut\": \"Alt+Left\",\n"
                << "    \"nextPageShortcut\": \"Alt+Right\",\n"
@@ -127,6 +178,7 @@ private slots:
         QCOMPARE(result.preferences.applicationStyle(), QStringLiteral("Fusion"));
         QCOMPARE(result.preferences.applicationTheme(), QStringLiteral("breezeDark"));
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier | Qt::ShiftModifier);
+        QCOMPARE(result.preferences.previousLabelModifiers(), Qt::ControlModifier);
         QCOMPARE(result.preferences.undoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Z"));
         QCOMPARE(result.preferences.redoShortcut().toString(QKeySequence::PortableText),
                  QStringLiteral("Ctrl+Shift+Z"));
@@ -174,6 +226,7 @@ private slots:
         QCOMPARE(result.preferences.applicationStyle(), QString());
         QCOMPARE(result.preferences.applicationTheme(), QString());
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier);
+        QCOMPARE(result.preferences.previousLabelModifiers(), Qt::ControlModifier);
         QCOMPARE(result.preferences.undoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Z"));
         QCOMPARE(result.preferences.redoShortcut().toString(QKeySequence::PortableText), QStringLiteral("Ctrl+Y"));
         QCOMPARE(result.preferences.nextLabelShortcut().toString(QKeySequence::PortableText), QStringLiteral("Tab"));

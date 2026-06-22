@@ -41,6 +41,7 @@ Qt Widgets. Current services include:
 
 - `ProjectController`: owns the open `Project`, project dirty state, file load/save and auto-backup writes.
 - `LabelEditController`: applies label/group edits and registers undo commands without depending on widgets.
+- `LabelNavigator`: finds previous/next visible labels across pages using project data and the active group filter.
 - `SessionStateStore`: persists local window layout and per-project session state through `QSettings`.
 - Archive reading.
 - OCR subprocesses.
@@ -104,6 +105,7 @@ Current preferences:
 - `markerTextBubble.fontPointSize`: optional marker text bubble font point size; `0` keeps the Qt/system default.
 - `markerTextBubble.opacity`: marker text bubble opacity from `0.0` to `1.0`.
 - `input.moveLabelModifier`: modifier key or key combination used to drag label markers.
+- `input.previousLabelModifier`: modifier key or key combination used with `input.nextLabelShortcut` to select the previous visible label.
 - `input.nextLabelShortcut`: shortcut used in the label table to select the next visible label.
 - `input.previousPageShortcut`: shortcut used to move to the previous image page.
 - `input.nextPageShortcut`: shortcut used to move to the next image page.
@@ -180,6 +182,7 @@ Local, machine-specific state is stored with `QSettings`, not in `preference.jso
 Current session state includes:
 
 - Main window geometry and splitter positions.
+- Recent project file paths.
 - Last viewed page for each project file.
 - Image zoom percentage and normalized view center.
 - Last selected label index.

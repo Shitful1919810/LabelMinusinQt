@@ -92,6 +92,10 @@
         <translation>&amp;Edit</translation>
     </message>
     <message>
+        <source>Recent Projects</source>
+        <translation>Recent Projects</translation>
+    </message>
+    <message>
         <source>Zoom</source>
         <translation>Zoom</translation>
     </message>
@@ -196,8 +200,24 @@
         <translation>Loaded %1</translation>
     </message>
     <message>
+        <source>Loaded recent project: %1</source>
+        <translation>Loaded recent project: %1</translation>
+    </message>
+    <message>
         <source>Open failed</source>
         <translation>Open failed</translation>
+    </message>
+    <message>
+        <source>%1 does not exist.</source>
+        <translation>%1 does not exist.</translation>
+    </message>
+    <message>
+        <source>No recent projects</source>
+        <translation>No recent projects</translation>
+    </message>
+    <message>
+        <source>%1 (missing)</source>
+        <translation>%1 (missing)</translation>
     </message>
     <message>
         <source>Saved %1</source>
@@ -481,6 +501,10 @@
     <message>
         <source>Move-label modifier</source>
         <translation>Move-label modifier</translation>
+    </message>
+    <message>
+        <source>Previous label modifier</source>
+        <translation>Previous label modifier</translation>
     </message>
     <message>
         <source>Undo shortcut</source>

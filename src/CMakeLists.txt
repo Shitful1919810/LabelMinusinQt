@@ -10,6 +10,7 @@ set(LABELMINUS_CORE_SOURCES
 set(LABELMINUS_SERVICE_SOURCES
     services/ArchiveReader.cpp
     services/LabelEditController.cpp
+    services/LabelNavigator.cpp
     services/OcrProcess.cpp
     services/ProjectController.cpp
     services/SessionStateStore.cpp
