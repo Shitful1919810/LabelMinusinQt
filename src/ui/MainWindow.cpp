@@ -1850,7 +1850,7 @@ void MainWindow::updateRecentProjectsMenu()
 
     for (const QString& path : paths) {
         const QFileInfo fileInfo(path);
-        QAction* action = m_recentProjectsMenu->addAction(fileInfo.fileName().isEmpty() ? path : fileInfo.fileName());
+        QAction* action = m_recentProjectsMenu->addAction(path);
         action->setData(path);
         action->setToolTip(path);
         if (!fileInfo.exists()) {
