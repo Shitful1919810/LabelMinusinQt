@@ -28,12 +28,6 @@ ProjectMergeDialog::ProjectMergeDialog(labelminus::services::ProjectMergePlan me
     buildUi();
 }
 
-labelminus::core::Project ProjectMergeDialog::mergedProject() const
-{
-    return labelminus::services::ProjectMergeService::mergedProjectWithSelections(m_mergePlan,
-                                                                                  m_selectedCandidateIndexes);
-}
-
 QVector<int> ProjectMergeDialog::selectedCandidateIndexes() const
 {
     return m_selectedCandidateIndexes;

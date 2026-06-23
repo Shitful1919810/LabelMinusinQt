@@ -40,7 +40,8 @@ public:
     static ProjectMergePlan createPlan(const QStringList& projectPaths);
     static labelminus::core::Project mergedProjectWithSelections(ProjectMergePlan plan,
                                                                  const QVector<int>& selectedCandidateIndexes,
-                                                                 const QString& outputProjectPath = {});
+                                                                 const QString& outputProjectPath = {},
+                                                                 const QVector<int>& imageOrder = {});
 
 private:
     static int visibleLabelCount(const labelminus::core::ImageEntry& image);

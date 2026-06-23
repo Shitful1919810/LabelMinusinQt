@@ -1,16 +1,15 @@
 #include "services/ProjectMergeService.h"
 
 #include "core/LabelPlusDocument.h"
+#include "services/ProjectPageOrderService.h"
 
 #include <QDir>
 #include <QFileInfo>
 #include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QSet>
 
 #include <algorithm>
-#include <stdexcept>
 #include <utility>
 
 namespace labelminus::services {
@@ -234,7 +233,8 @@ ProjectMergePlan ProjectMergeService::createPlan(const QStringList& projectPaths
 
 labelminus::core::Project ProjectMergeService::mergedProjectWithSelections(ProjectMergePlan plan,
                                                                            const QVector<int>& selectedCandidateIndexes,
-                                                                           const QString& outputProjectPath)
+                                                                           const QString& outputProjectPath,
+                                                                           const QVector<int>& imageOrder)
 {
     QHash<QString, labelminus::core::ImageEntry> selectedImagesByName;
     QHash<QString, ProjectMergePageSource> selectedSourcesByName;
@@ -273,6 +273,20 @@ labelminus::core::Project ProjectMergeService::mergedProjectWithSelections(Proje
         if (sourceIt != plan.pageSources.cend()) {
             finalPageSources.append(*sourceIt);
         }
+    }
+
+    if (!imageOrder.isEmpty() &&
+        ProjectPageOrderService::isValidOrder(imageOrder, static_cast<int>(plan.mergedProject.images().size())) &&
+        (imageOrder.size() != plan.mergedProject.images().size() ||
+         !ProjectPageOrderService::isIdentityOrder(imageOrder))) {
+        plan.mergedProject.images() = ProjectPageOrderService::reorderedImages(plan.mergedProject.images(), imageOrder);
+
+        QVector<ProjectMergePageSource> reorderedPageSources;
+        reorderedPageSources.reserve(finalPageSources.size());
+        for (int sourceIndex : imageOrder) {
+            reorderedPageSources.append(finalPageSources.at(sourceIndex));
+        }
+        finalPageSources = std::move(reorderedPageSources);
     }
 
     plan.mergedProject.setCommentLines(mergeSourceCommentLines(finalPageSources, outputProjectPath));

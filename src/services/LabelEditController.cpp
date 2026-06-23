@@ -6,6 +6,30 @@
 namespace labelminus::services {
 
 namespace {
+QString imageName(const labelminus::core::Project& project, int imageIndex)
+{
+    if (imageIndex < 0 || imageIndex >= project.images().size()) {
+        return {};
+    }
+
+    const labelminus::core::ImageEntry& image = project.images().at(imageIndex);
+    return image.name.isEmpty() ? image.path : image.name;
+}
+
+QString labelNumber(int labelIndex)
+{
+    return QString::number(labelIndex + 1).rightJustified(3, QLatin1Char('0'));
+}
+
+QString labelMessage(const QString& messageTemplate, const QString& fallback, const labelminus::core::Project& project,
+                     int imageIndex, int labelIndex, const QString& group)
+{
+    if (messageTemplate.isEmpty()) {
+        return fallback;
+    }
+    return QString(messageTemplate).arg(imageName(project, imageIndex), group, labelNumber(labelIndex));
+}
+
 bool labelEquals(const labelminus::core::Label& lhs, const labelminus::core::Label& rhs)
 {
     return lhs.text() == rhs.text() && lhs.group() == rhs.group() && lhs.position() == rhs.position() &&
@@ -56,8 +80,13 @@ LabelEditResult LabelEditController::addGroup(const QString& group)
     newGroups.append(trimmedGroup);
 
     m_project.setGroups(newGroups);
+    const QString message = m_commandTexts.addGroupMessage.isEmpty()
+                                ? m_commandTexts.addGroup
+                                : QString(m_commandTexts.addGroupMessage).arg(trimmedGroup);
     m_undoStack.push(
         m_commandTexts.addGroup,
+        message,
+        message,
         [this, oldGroups, oldLabelGroups]() { applyGroupsAndLabelGroups(oldGroups, oldLabelGroups); },
         [this, newGroups, oldLabelGroups]() { applyGroupsAndLabelGroups(newGroups, oldLabelGroups); });
     if (m_projectChanged) {
@@ -91,8 +120,13 @@ LabelEditResult LabelEditController::removeGroup(const QString& group, const QSt
     const QVector<QVector<QString>> newLabelGroups = currentLabelGroups();
     m_project.setGroups(newGroups);
 
+    const QString message = m_commandTexts.removeGroupMessage.isEmpty()
+                                ? m_commandTexts.removeGroup
+                                : QString(m_commandTexts.removeGroupMessage).arg(group);
     m_undoStack.push(
         m_commandTexts.removeGroup,
+        message,
+        message,
         [this, oldGroups, oldLabelGroups]() { applyGroupsAndLabelGroups(oldGroups, oldLabelGroups); },
         [this, newGroups, newLabelGroups]() { applyGroupsAndLabelGroups(newGroups, newLabelGroups); });
     if (m_projectChanged) {
@@ -114,8 +148,13 @@ LabelEditResult LabelEditController::addLabel(int imageIndex, const labelminus::
     image->labels.append(label);
     const int labelIndex = static_cast<int>(image->labels.size()) - 1;
     const labelminus::core::Label addedLabel = image->labels.last();
+    const QString message =
+        labelMessage(m_commandTexts.addLabelMessage, m_commandTexts.addLabel, m_project, imageIndex, labelIndex,
+                     addedLabel.group());
     m_undoStack.push(
         m_commandTexts.addLabel,
+        message,
+        message,
         [this, imageIndex, labelIndex, addedLabel]() {
             labelminus::core::ImageEntry* targetImage = imageAt(imageIndex);
             if (targetImage == nullptr || labelIndex < 0 || labelIndex >= targetImage->labels.size()) {
@@ -172,8 +211,15 @@ LabelEditResult LabelEditController::deleteLabels(int imageIndex, const QVector<
         return {};
     }
 
+    const QString message = changedIndexes.size() == 1
+                                ? labelMessage(m_commandTexts.deleteLabelMessage, m_commandTexts.deleteLabels,
+                                               m_project, imageIndex, changedIndexes.first(),
+                                               image->labels.at(changedIndexes.first()).group())
+                                : m_commandTexts.deleteLabels;
     m_undoStack.push(
         m_commandTexts.deleteLabels,
+        message,
+        message,
         [this, imageIndex, labelIndexes = changedIndexes, oldDeleted]() {
             applyBatchLabelDeleted(imageIndex, labelIndexes, oldDeleted);
         },
@@ -211,8 +257,15 @@ LabelEditResult LabelEditController::changeLabelsGroup(int imageIndex, const QVe
         return {};
     }
 
+    const QString message = changedIndexes.size() == 1
+                                ? labelMessage(m_commandTexts.changeLabelGroupMessage,
+                                               m_commandTexts.changeLabelGroup, m_project, imageIndex,
+                                               changedIndexes.first(), group)
+                                : m_commandTexts.changeLabelGroup;
     m_undoStack.push(
         m_commandTexts.changeLabelGroup,
+        message,
+        message,
         [this, imageIndex, labelIndexes = changedIndexes, oldGroups]() {
             applyBatchLabelGroups(imageIndex, labelIndexes, oldGroups);
         },
@@ -305,8 +358,14 @@ LabelEditResult LabelEditController::reorderLabels(int imageIndex, QVector<int> 
     }
 
     image->labels = newLabels;
+    const QString message =
+        m_commandTexts.reorderLabelsMessage.isEmpty()
+            ? m_commandTexts.reorderLabels
+            : QString(m_commandTexts.reorderLabelsMessage).arg(imageName(m_project, imageIndex));
     m_undoStack.push(
         m_commandTexts.reorderLabels,
+        message,
+        message,
         [this, imageIndex, oldLabels, sourceIndexes]() { applyLabelOrder(imageIndex, oldLabels, sourceIndexes); },
         [this, imageIndex, newLabels, newSelectedIndexes]() {
             applyLabelOrder(imageIndex, newLabels, newSelectedIndexes);
@@ -373,8 +432,13 @@ LabelEditResult LabelEditController::setLabelPosition(int imageIndex, int labelI
     }
 
     if (registerUndo) {
+        const QString message =
+            labelMessage(m_commandTexts.moveLabelMessage, m_commandTexts.moveLabel, m_project, imageIndex, labelIndex,
+                         image->labels.at(labelIndex).group());
         m_undoStack.push(
             m_commandTexts.moveLabel,
+            message,
+            message,
             [this, imageIndex, labelIndex, oldPosition]() { applyLabelPosition(imageIndex, labelIndex, oldPosition); },
             [this, imageIndex, labelIndex, newPosition]() { applyLabelPosition(imageIndex, labelIndex, newPosition); });
     }
@@ -389,8 +453,16 @@ void LabelEditController::registerLabelTextUndo(int imageIndex, int labelIndex, 
         return;
     }
 
+    const labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    const QString group =
+        image != nullptr && labelIndex >= 0 && labelIndex < image->labels.size() ? image->labels.at(labelIndex).group()
+                                                                                 : QString();
+    const QString message = labelMessage(m_commandTexts.editLabelTextMessage, m_commandTexts.editLabelText, m_project,
+                                         imageIndex, labelIndex, group);
     m_undoStack.push(
         m_commandTexts.editLabelText,
+        message,
+        message,
         [this, imageIndex, labelIndex, oldText]() { applyLabelText(imageIndex, labelIndex, oldText); },
         [this, imageIndex, labelIndex, newText]() { applyLabelText(imageIndex, labelIndex, newText); });
 }
@@ -402,8 +474,12 @@ void LabelEditController::registerLabelGroupUndo(int imageIndex, int labelIndex,
         return;
     }
 
+    const QString message = labelMessage(m_commandTexts.changeLabelGroupMessage, m_commandTexts.changeLabelGroup,
+                                         m_project, imageIndex, labelIndex, newGroup);
     m_undoStack.push(
         m_commandTexts.changeLabelGroup,
+        message,
+        message,
         [this, imageIndex, labelIndex, oldGroup]() { applyLabelGroup(imageIndex, labelIndex, oldGroup); },
         [this, imageIndex, labelIndex, newGroup]() { applyLabelGroup(imageIndex, labelIndex, newGroup); });
 }

@@ -12,8 +12,10 @@ set(LABELMINUS_SERVICE_SOURCES
     services/LabelEditController.cpp
     services/LabelNavigator.cpp
     services/OcrProcess.cpp
+    services/ProjectPageOrderService.cpp
     services/ProjectMergeService.cpp
     services/ProjectController.cpp
+    services/ProjectWorkflowController.cpp
     services/SessionStateStore.cpp
 )
 
@@ -26,9 +28,12 @@ set(LABELMINUS_UI_SOURCES
     ui/LabelTableModel.cpp
     ui/MainWindow.cpp
     ui/MainWindowShortcutController.cpp
+    ui/PageOrderDialog.cpp
+    ui/PageOrderListModel.cpp
     ui/PreferenceDialog.cpp
     ui/ProjectMergeDialog.cpp
     ui/ThemeManager.cpp
+    ui/ViewportFittedTableColumns.cpp
 )
 
 qt_add_resources(LABELMINUS_RESOURCE_SOURCES

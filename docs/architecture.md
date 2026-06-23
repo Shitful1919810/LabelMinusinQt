@@ -27,6 +27,10 @@ Qt Widgets classes live here:
 - `CanvasLabelTextEditController`: lifecycle controller for marker-adjacent label text editing on the image canvas.
 - `CanvasLabelTextEditor`: temporary marker-adjacent text editor widget for canvas-side label text edits.
 - `ProjectMergeDialog`: conflict-resolution dialog for offline page-based LabelPlus project merges.
+- `PageOrderDialog`: reusable page-order editor with an `ImageCanvas` preview for main-project and merge-output page
+  reordering.
+- `PageOrderListModel`: page-order list model used by `PageOrderDialog`; it owns the transient order vector and drag/drop
+  behavior so the dialog does not manipulate list items directly.
 - `LabelTableModel`: table model for current image labels.
 - `GroupFilterComboBox`: multi-select group filtering widget.
 - `ThemeManager`: application-level Qt stylesheet theme loading.
@@ -58,6 +62,7 @@ Qt Widgets. Current services include:
 
 - `ProjectController`: owns the open `Project`, project dirty state, file load/save and auto-backup writes.
 - `ProjectMergeService`: loads multiple LabelPlus text projects and prepares page-based merge plans.
+- `ProjectPageOrderService`: validates and applies image-page reorder vectors without depending on widgets.
 - `LabelEditController`: applies label/group edits and registers undo commands without depending on widgets.
 - `LabelNavigator`: finds previous/next visible labels across pages using project data and the active group filter.
 - `SessionStateStore`: persists local window layout and per-project session state through `QSettings`.
@@ -192,8 +197,8 @@ Run `scripts/check_translations.sh` after changing UI text.
 Use the Qt-backed `UndoStack` wrapper for every reversible project edit. It stores commands as `QUndoCommand` instances
 inside a `QUndoStack`, so new edit commands must provide both undo and redo behavior. Current covered commands include
 adding labels, moving labels, editing label text, changing label groups, adding/removing groups, deleting labels,
-reordering labels and bulk group changes. Future operations such as OCR writes should be added as commands instead of
-separate ad hoc state.
+reordering labels, reordering pages and bulk group changes. Future operations such as OCR writes should be added as
+commands instead of separate ad hoc state.
 
 Undo commands should be registered close to the code that performs the edit. Label edits should go through
 `LabelEditController`, which routes normal edits and undo replay through shared apply functions. Future non-label
@@ -235,3 +240,7 @@ the order of files selected for merging. `sourcePath` is written relative to the
 `pageCount` is the number of pages in the range. `labelCount` is the total number of non-deleted labels taken from that
 source across the range. Keep this block line-oriented so normal text diffs can identify changed ranges without
 rewriting a large single JSON object.
+
+The merge workflow lets the user adjust the final page order after resolving conflicts and before saving. Generate this
+metadata only after the final page order is known, otherwise compressed ranges may describe the pre-reorder sequence
+instead of the saved output.

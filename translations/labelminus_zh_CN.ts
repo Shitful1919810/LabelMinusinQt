@@ -293,6 +293,62 @@
         <translation>调整标签顺序</translation>
     </message>
     <message>
+        <source>Add %1 %2 label %3</source>
+        <translation>新增 %1 的 %2 标签 %3</translation>
+    </message>
+    <message>
+        <source>Delete %1 %2 label %3</source>
+        <translation>删除 %1 的 %2 标签 %3</translation>
+    </message>
+    <message>
+        <source>Edit %1 %2 label %3</source>
+        <translation>编辑 %1 的 %2 标签 %3</translation>
+    </message>
+    <message>
+        <source>Change %1 %2 label %3</source>
+        <translation>修改 %1 的 %2 标签 %3</translation>
+    </message>
+    <message>
+        <source>Move %1 %2 label %3</source>
+        <translation>移动 %1 的 %2 标签 %3</translation>
+    </message>
+    <message>
+        <source>Reorder labels on %1</source>
+        <translation>调整 %1 的标签顺序</translation>
+    </message>
+    <message>
+        <source>Add group %1</source>
+        <translation>新增分组 %1</translation>
+    </message>
+    <message>
+        <source>Remove group %1</source>
+        <translation>删除分组 %1</translation>
+    </message>
+    <message>
+        <source>Reorder pages</source>
+        <translation>调整页面顺序</translation>
+    </message>
+    <message>
+        <source>Reorder &amp;Pages...</source>
+        <translation>调整页面顺序(&amp;P)...</translation>
+    </message>
+    <message>
+        <source>Reorder Pages</source>
+        <translation>调整页面顺序</translation>
+    </message>
+    <message>
+        <source>There are no pages to reorder.</source>
+        <translation>没有可调整顺序的页面。</translation>
+    </message>
+    <message>
+        <source>Undo:</source>
+        <translation>撤销：</translation>
+    </message>
+    <message>
+        <source>Redo:</source>
+        <translation>重做：</translation>
+    </message>
+    <message>
         <source>Delete labels</source>
         <translation>删除标签</translation>
     </message>
@@ -464,6 +520,40 @@
     <message>
         <source>Open merged project after saving</source>
         <translation>保存后打开合并工程</translation>
+    </message>
+</context>
+<context>
+    <name>PageOrderDialog</name>
+    <message>
+        <source>Reorder Pages</source>
+        <translation>调整页面顺序</translation>
+    </message>
+    <message>
+        <source>Drag pages in the list to change their order.</source>
+        <translation>在列表中拖动页面即可改变顺序。</translation>
+    </message>
+    <message>
+        <source>Move selected pages up</source>
+        <translation>上移选中页面</translation>
+    </message>
+    <message>
+        <source>Move selected pages down</source>
+        <translation>下移选中页面</translation>
+    </message>
+    <message>
+        <source>Remove selected pages from the project</source>
+        <translation>从工程中移除选中页面</translation>
+    </message>
+</context>
+<context>
+    <name>PageOrderListModel</name>
+    <message>
+        <source>Image</source>
+        <translation>图片文件名</translation>
+    </message>
+    <message>
+        <source>Original #</source>
+        <translation>原顺序</translation>
     </message>
 </context>
 <context>

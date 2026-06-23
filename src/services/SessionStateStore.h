@@ -36,6 +36,11 @@ public:
     void removeRecentProjectPath(const QString& projectPath) const;
     QString lastFileDialogDirectory() const;
     void saveLastFileDialogPath(const QString& path) const;
+    int labelTableNumberColumnWidth(int defaultWidth) const;
+    int labelTableGroupColumnWidth(int defaultWidth) const;
+    void saveLabelTableColumnWidths(int numberWidth, int groupWidth) const;
+    int pageOrderOriginalIndexColumnWidth(int defaultWidth) const;
+    void savePageOrderOriginalIndexColumnWidth(int width) const;
     bool shouldOpenMergedProjectAfterSave() const;
     void saveShouldOpenMergedProjectAfterSave(bool shouldOpen) const;
 

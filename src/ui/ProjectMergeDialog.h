@@ -13,7 +13,6 @@ class ImageCanvas;
 class QCheckBox;
 class QLabel;
 class QListWidget;
-class QScrollArea;
 class QStackedWidget;
 
 class ProjectMergeDialog final : public QDialog {
@@ -23,7 +22,6 @@ public:
     ProjectMergeDialog(labelminus::services::ProjectMergePlan mergePlan, labelminus::core::AppPreferences preferences,
                        QWidget* parent = nullptr);
 
-    labelminus::core::Project mergedProject() const;
     QVector<int> selectedCandidateIndexes() const;
     bool shouldOpenMergedProjectAfterSave() const noexcept;
     void setShouldOpenMergedProjectAfterSave(bool shouldOpen);

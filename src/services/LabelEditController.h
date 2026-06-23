@@ -28,6 +28,14 @@ struct LabelEditCommandTexts {
     QString reorderLabels;
     QString addGroup;
     QString removeGroup;
+    QString addLabelMessage;
+    QString deleteLabelMessage;
+    QString editLabelTextMessage;
+    QString changeLabelGroupMessage;
+    QString moveLabelMessage;
+    QString reorderLabelsMessage;
+    QString addGroupMessage;
+    QString removeGroupMessage;
 };
 
 class LabelEditController {

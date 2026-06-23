@@ -15,6 +15,9 @@ constexpr QLatin1StringView geometryKey{"geometry"};
 constexpr QLatin1StringView windowStateKey{"windowState"};
 constexpr QLatin1StringView rootSplitterKey{"rootSplitter"};
 constexpr QLatin1StringView rightSplitterKey{"rightSplitter"};
+constexpr QLatin1StringView labelTableNumberColumnWidthKey{"labelTableNumberColumnWidth"};
+constexpr QLatin1StringView labelTableGroupColumnWidthKey{"labelTableGroupColumnWidth"};
+constexpr QLatin1StringView pageOrderOriginalIndexColumnWidthKey{"pageOrderOriginalIndexColumnWidth"};
 constexpr QLatin1StringView projectSessionsGroup{"projectSessions"};
 constexpr QLatin1StringView sessionFilePathKey{"filePath"};
 constexpr QLatin1StringView sessionImageIndexKey{"imageIndex"};
@@ -175,6 +178,42 @@ void SessionStateStore::saveLastFileDialogPath(const QString& path) const
     QSettings settings;
     settings.beginGroup(fileDialogsGroup);
     settings.setValue(lastDirectoryKey, directory);
+}
+
+int SessionStateStore::labelTableNumberColumnWidth(int defaultWidth) const
+{
+    QSettings settings;
+    settings.beginGroup(layoutGroup);
+    return settings.value(labelTableNumberColumnWidthKey, defaultWidth).toInt();
+}
+
+int SessionStateStore::labelTableGroupColumnWidth(int defaultWidth) const
+{
+    QSettings settings;
+    settings.beginGroup(layoutGroup);
+    return settings.value(labelTableGroupColumnWidthKey, defaultWidth).toInt();
+}
+
+void SessionStateStore::saveLabelTableColumnWidths(int numberWidth, int groupWidth) const
+{
+    QSettings settings;
+    settings.beginGroup(layoutGroup);
+    settings.setValue(labelTableNumberColumnWidthKey, numberWidth);
+    settings.setValue(labelTableGroupColumnWidthKey, groupWidth);
+}
+
+int SessionStateStore::pageOrderOriginalIndexColumnWidth(int defaultWidth) const
+{
+    QSettings settings;
+    settings.beginGroup(layoutGroup);
+    return settings.value(pageOrderOriginalIndexColumnWidthKey, defaultWidth).toInt();
+}
+
+void SessionStateStore::savePageOrderOriginalIndexColumnWidth(int width) const
+{
+    QSettings settings;
+    settings.beginGroup(layoutGroup);
+    settings.setValue(pageOrderOriginalIndexColumnWidthKey, width);
 }
 
 bool SessionStateStore::shouldOpenMergedProjectAfterSave() const

@@ -1,15 +1,15 @@
 #include "ui/MainWindow.h"
 
-#include "core/LabelPlusDocument.h"
 #include "services/LabelNavigator.h"
-#include "services/ProjectMergeService.h"
 #include "services/SessionStateStore.h"
 #include "ui/CanvasLabelTextEditController.h"
 #include "ui/LabelEditDelegates.h"
 #include "ui/MainWindowShortcutController.h"
+#include "ui/PageOrderDialog.h"
 #include "ui/PreferenceDialog.h"
 #include "ui/ProjectMergeDialog.h"
 #include "ui/ThemeManager.h"
+#include "ui/ViewportFittedTableColumns.h"
 
 #include <QAbstractItemDelegate>
 #include <QAbstractItemView>
@@ -55,6 +55,13 @@
 #include <utility>
 
 namespace {
+constexpr int defaultLabelNumberColumnWidth = 72;
+constexpr int defaultLabelTextColumnWidth = 560;
+constexpr int defaultLabelGroupColumnWidth = 120;
+constexpr int minimumLabelNumberColumnWidth = 40;
+constexpr int minimumLabelTextColumnWidth = 120;
+constexpr int minimumLabelGroupColumnWidth = 60;
+
 template <typename T>
 T* selfOrAncestor(QWidget* widget)
 {
@@ -126,6 +133,16 @@ MainWindow::MainWindow(QWidget* parent)
             });
     m_labelTableMaxTextRows = m_preferences.labelTableMaxTextRows();
     m_labelTextDelegate->setCommitShortcut(m_preferences.commitLabelTextShortcut());
+    m_undoStack.setChangedCallback([this]() { updateUndoRedoActions(); });
+    m_projectWorkflowController =
+        std::make_unique<labelminus::services::ProjectWorkflowController>(project(), m_undoStack, tr("Reorder pages"));
+    m_projectWorkflowController->setCallbacks(
+        [this](QVector<labelminus::core::ImageEntry> images, const QString& preferredImageName, int fallbackImageIndex,
+               int zoomPercent, QPointF normalizedCenter) {
+            replaceProjectImages(std::move(images), preferredImageName, fallbackImageIndex, zoomPercent,
+                                 normalizedCenter);
+        },
+        [this]() { markDirty(); });
     m_labelEditController =
         std::make_unique<labelminus::services::LabelEditController>(project(), m_undoStack,
                                                                     labelminus::services::LabelEditCommandTexts{
@@ -137,6 +154,14 @@ MainWindow::MainWindow(QWidget* parent)
                                                                         tr("Reorder labels"),
                                                                         tr("Add group"),
                                                                         tr("Remove group"),
+                                                                        tr("Add %1 %2 label %3"),
+                                                                        tr("Delete %1 %2 label %3"),
+                                                                        tr("Edit %1 %2 label %3"),
+                                                                        tr("Change %1 %2 label %3"),
+                                                                        tr("Move %1 %2 label %3"),
+                                                                        tr("Reorder labels on %1"),
+                                                                        tr("Add group %1"),
+                                                                        tr("Remove group %1"),
                                                                     });
     m_labelEditController->setCallbacks(
         [this](int imageIndex, int labelIndex) { refreshLabelEditSelection(imageIndex, labelIndex); },
@@ -159,6 +184,10 @@ MainWindow::MainWindow(QWidget* parent)
     applyLabelTableFont();
     applyTextEditorFont();
     setEditorEnabled(false);
+    m_operationMessageLabel = new QLabel(this);
+    m_operationMessageLabel->setTextFormat(Qt::RichText);
+    m_operationMessageLabel->setVisible(false);
+    statusBar()->addWidget(m_operationMessageLabel, 1);
     m_warningLabel = new QLabel(this);
     m_warningLabel->setTextFormat(Qt::PlainText);
     m_warningLabel->setStyleSheet(QStringLiteral("QLabel { color: #b26a00; font-weight: 600; }"));
@@ -198,6 +227,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
     saveProjectSessionState();
     saveLayoutState();
+    saveLabelTableColumnWidths();
     event->accept();
 }
 
@@ -232,6 +262,9 @@ void MainWindow::createActions()
     m_mergeProjectsAction = new QAction(tr("&Merge Projects..."), this);
     connect(m_mergeProjectsAction, &QAction::triggered, this, &MainWindow::mergeProjects);
 
+    m_reorderPagesAction = new QAction(tr("Reorder &Pages..."), this);
+    connect(m_reorderPagesAction, &QAction::triggered, this, &MainWindow::reorderPages);
+
     m_saveProjectAction = new QAction(tr("&Save"), this);
     m_saveProjectAction->setShortcut(QKeySequence::Save);
     connect(m_saveProjectAction, &QAction::triggered, this, &MainWindow::saveProject);
@@ -265,6 +298,7 @@ void MainWindow::createActions()
     connect(m_quitAction, &QAction::triggered, this, &QWidget::close);
 
     updateEditShortcuts();
+    updateUndoRedoActions();
 }
 
 void MainWindow::createMenus()
@@ -286,6 +320,8 @@ void MainWindow::createMenus()
     QMenu* editMenu = menuBar()->addMenu(tr("&Edit"));
     editMenu->addAction(m_undoAction);
     editMenu->addAction(m_redoAction);
+    editMenu->addSeparator();
+    editMenu->addAction(m_reorderPagesAction);
 }
 
 void MainWindow::createCentralWidget()
@@ -380,10 +416,20 @@ void MainWindow::createCentralWidget()
     m_labelView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_labelView->setWordWrap(true);
     m_labelView->verticalHeader()->setVisible(false);
-    m_labelView->horizontalHeader()->setStretchLastSection(false);
-    m_labelView->horizontalHeader()->setSectionResizeMode(LabelTableModel::NumberColumn, QHeaderView::ResizeToContents);
-    m_labelView->horizontalHeader()->setSectionResizeMode(LabelTableModel::TextColumn, QHeaderView::Stretch);
-    m_labelView->horizontalHeader()->setSectionResizeMode(LabelTableModel::GroupColumn, QHeaderView::ResizeToContents);
+    m_labelView->setColumnWidth(LabelTableModel::NumberColumn, defaultLabelNumberColumnWidth);
+    m_labelView->setColumnWidth(LabelTableModel::TextColumn, defaultLabelTextColumnWidth);
+    m_labelView->setColumnWidth(LabelTableModel::GroupColumn, defaultLabelGroupColumnWidth);
+    restoreLabelTableColumnWidths();
+    m_labelTableColumns = new ViewportFittedTableColumns(
+        m_labelView,
+        {
+            {LabelTableModel::NumberColumn, defaultLabelNumberColumnWidth, minimumLabelNumberColumnWidth, false},
+            {LabelTableModel::TextColumn, defaultLabelTextColumnWidth, minimumLabelTextColumnWidth, true},
+            {LabelTableModel::GroupColumn, defaultLabelGroupColumnWidth, minimumLabelGroupColumnWidth, false},
+        },
+        this);
+    m_labelTableColumns->setColumnsChangedCallback([this]() { resizeLabelRowsToContents(); });
+    m_labelTableColumns->fitToViewport();
     m_labelView->setAlternatingRowColors(true);
     m_labelView->installEventFilter(this);
     m_labelView->viewport()->installEventFilter(this);
@@ -393,6 +439,8 @@ void MainWindow::createCentralWidget()
     connect(labelRowsResizeTimer, &QTimer::timeout, this, &MainWindow::resizeLabelRowsToContents);
     connect(m_labelView->horizontalHeader(), &QHeaderView::sectionResized, labelRowsResizeTimer,
             [labelRowsResizeTimer]() { labelRowsResizeTimer->start(); });
+    connect(m_labelView->horizontalHeader(), &QHeaderView::sectionResized, m_labelTableColumns,
+            &ViewportFittedTableColumns::rebalanceFromSectionResize);
 
     auto* editorPanel = new QWidget(m_rightSplitter);
     auto* editorLayout = new QVBoxLayout(editorPanel);
@@ -564,7 +612,7 @@ void MainWindow::mergeProjects()
 
     labelminus::services::ProjectMergePlan mergePlan;
     try {
-        mergePlan = labelminus::services::ProjectMergeService::createPlan(paths);
+        mergePlan = m_projectWorkflowController->createMergePlan(paths);
     }
     catch (const std::exception& error) {
         QMessageBox::critical(this, tr("Merge failed"), QString::fromUtf8(error.what()));
@@ -594,6 +642,14 @@ void MainWindow::mergeProjects()
         selectedCandidateIndexes = dialog.selectedCandidateIndexes();
     }
 
+    const labelminus::core::Project orderPreviewProject =
+        m_projectWorkflowController->mergedProjectPreview(mergePlan, selectedCandidateIndexes);
+    PageOrderDialog pageOrderDialog(orderPreviewProject, m_preferences, this);
+    pageOrderDialog.showMaximized();
+    if (pageOrderDialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
     const QString savePath = QFileDialog::getSaveFileName(this, tr("Save merged LabelPlus text"),
                                                           m_sessionStateStore.lastFileDialogDirectory(),
                                                           tr("LabelPlus text (*.txt);;All files (*)"));
@@ -606,11 +662,12 @@ void MainWindow::mergeProjects()
         return;
     }
     saveProjectSessionState();
-    labelminus::core::Project mergedProject = labelminus::services::ProjectMergeService::mergedProjectWithSelections(
-        std::move(mergePlan), selectedCandidateIndexes, savePath);
+
+    labelminus::core::Project mergedProject = m_projectWorkflowController->mergedProject(
+        std::move(mergePlan), selectedCandidateIndexes, savePath, pageOrderDialog.pageOrder());
 
     try {
-        labelminus::core::LabelPlusDocument::saveToFile(mergedProject, savePath);
+        m_projectWorkflowController->saveProject(mergedProject, savePath);
     }
     catch (const std::exception& error) {
         QMessageBox::critical(this, tr("Merge failed"), QString::fromUtf8(error.what()));
@@ -625,6 +682,31 @@ void MainWindow::mergeProjects()
     else {
         statusBar()->showMessage(tr("Merged project saved to %1").arg(savePath), 4000);
     }
+}
+
+void MainWindow::reorderPages()
+{
+    commitActiveTextInput();
+    if (project().images().isEmpty()) {
+        QMessageBox::information(this, tr("Reorder Pages"), tr("There are no pages to reorder."));
+        return;
+    }
+
+    PageOrderDialog dialog(project(), m_preferences, this);
+    dialog.showMaximized();
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    const labelminus::services::ProjectViewState viewState{
+        m_currentImageIndex >= 0 && m_currentImageIndex < project().images().size()
+            ? project().images().at(m_currentImageIndex).name
+            : QString(),
+        m_currentImageIndex,
+        m_canvas == nullptr ? 100 : m_canvas->zoomPercent(),
+        m_canvas == nullptr ? QPointF(0.5, 0.5) : m_canvas->normalizedViewCenter(),
+    };
+    m_projectWorkflowController->applyPageOrder(dialog.pageOrder(), viewState);
 }
 
 bool MainWindow::openProjectFile(const QString& path)
@@ -649,6 +731,7 @@ bool MainWindow::openMostRecentProject()
 bool MainWindow::loadProjectFile(const QString& path, bool showErrors, const QString& successMessage)
 {
     try {
+        detachProjectViewsFromProjectData();
         m_projectController.loadFromFile(path);
         m_undoStack.clear();
         refreshProjectUi();
@@ -1370,14 +1453,22 @@ void MainWindow::undoLastOperation()
 {
     commitCanvasLabelTextEditor();
     commitPendingTextEdit();
-    m_undoStack.undo();
+    if (!m_undoStack.canUndo()) {
+        updateUndoRedoActions();
+        return;
+    }
+    showUndoRedoMessage(tr("Undo:"), m_undoStack.undo());
 }
 
 void MainWindow::redoLastOperation()
 {
     commitCanvasLabelTextEditor();
     commitPendingTextEdit();
-    m_undoStack.redo();
+    if (!m_undoStack.canRedo()) {
+        updateUndoRedoActions();
+        return;
+    }
+    showUndoRedoMessage(tr("Redo:"), m_undoStack.redo());
 }
 
 void MainWindow::updateEditShortcuts()
@@ -1394,6 +1485,54 @@ void MainWindow::updateEditShortcuts()
     if (m_nextPageAction != nullptr) {
         m_nextPageAction->setShortcut(m_preferences.nextPageShortcut());
     }
+}
+
+void MainWindow::updateUndoRedoActions()
+{
+    if (m_undoAction != nullptr) {
+        m_undoAction->setEnabled(m_undoStack.canUndo());
+    }
+    if (m_redoAction != nullptr) {
+        m_redoAction->setEnabled(m_undoStack.canRedo());
+    }
+}
+
+void MainWindow::showUndoRedoMessage(const QString& prefix, const QString& message)
+{
+    if (m_operationMessageLabel == nullptr || message.isEmpty()) {
+        return;
+    }
+
+    statusBar()->clearMessage();
+    m_operationMessageLabel->setText(QStringLiteral("%1 %2").arg(prefix.toHtmlEscaped(), richUndoRedoMessage(message)));
+    m_operationMessageLabel->setVisible(true);
+    const int messageSerial = ++m_operationMessageSerial;
+    QTimer::singleShot(5000, m_operationMessageLabel, [this, label = m_operationMessageLabel, messageSerial]() {
+        if (label != nullptr && messageSerial == m_operationMessageSerial) {
+            label->clear();
+            label->setVisible(false);
+        }
+    });
+}
+
+QString MainWindow::richUndoRedoMessage(QString message) const
+{
+    QString richText = message.toHtmlEscaped();
+    QStringList groups = project().groups();
+    std::sort(groups.begin(), groups.end(),
+              [](const QString& lhs, const QString& rhs) { return lhs.size() > rhs.size(); });
+
+    for (const QString& group : groups) {
+        const QColor color = colorForGroup(group);
+        if (!color.isValid()) {
+            continue;
+        }
+
+        const QString escapedGroup = group.toHtmlEscaped();
+        richText.replace(escapedGroup, QStringLiteral("<span style=\"color:%1; font-weight:600;\">%2</span>")
+                                           .arg(color.name(QColor::HexRgb), escapedGroup));
+    }
+    return richText;
 }
 
 void MainWindow::selectPreviousPage()
@@ -1626,6 +1765,59 @@ void MainWindow::refreshProjectUi()
     updateWindowTitle();
 }
 
+void MainWindow::detachProjectViewsFromProjectData()
+{
+    closeCanvasLabelTextEditor();
+    resetPendingTextEdit();
+    m_isUpdatingUi = true;
+    if (m_labelView != nullptr && m_labelView->selectionModel() != nullptr) {
+        m_labelView->selectionModel()->clear();
+    }
+    if (m_labelModel != nullptr) {
+        m_labelModel->setLabels(nullptr);
+    }
+    if (m_canvas != nullptr) {
+        m_canvas->setLabels({});
+        m_canvas->setSelectedLabels({});
+    }
+    m_currentLabelIndex = -1;
+    m_isUpdatingUi = false;
+}
+
+void MainWindow::replaceProjectImages(QVector<labelminus::core::ImageEntry> images, const QString& preferredImageName,
+                                      int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter)
+{
+    detachProjectViewsFromProjectData();
+
+    project().images() = std::move(images);
+    refreshProjectUi();
+
+    int restoredImageIndex = -1;
+    if (!preferredImageName.isEmpty()) {
+        for (int i = 0; i < project().images().size(); ++i) {
+            if (project().images().at(i).name == preferredImageName) {
+                restoredImageIndex = i;
+                break;
+            }
+        }
+    }
+    if (restoredImageIndex < 0 && !project().images().isEmpty()) {
+        restoredImageIndex = std::clamp(fallbackImageIndex, 0, static_cast<int>(project().images().size()) - 1);
+    }
+
+    if (restoredImageIndex >= 0) {
+        m_currentImageIndex = restoredImageIndex;
+        refreshImageUi();
+        if (m_canvas != nullptr) {
+            m_canvas->restoreView(zoomPercent, normalizedCenter);
+            if (m_zoomSlider != nullptr) {
+                const QSignalBlocker zoomBlocker(m_zoomSlider);
+                m_zoomSlider->setValue(m_canvas->zoomPercent());
+            }
+        }
+    }
+}
+
 void MainWindow::refreshImageUi()
 {
     closeCanvasLabelTextEditor();
@@ -1799,6 +1991,30 @@ void MainWindow::saveLayoutState() const
         state.rightSplitterState = m_rightSplitter->saveState();
     }
     m_sessionStateStore.saveWindowLayout(state);
+}
+
+void MainWindow::restoreLabelTableColumnWidths()
+{
+    if (m_labelView == nullptr || m_labelView->horizontalHeader() == nullptr) {
+        return;
+    }
+
+    QHeaderView* header = m_labelView->horizontalHeader();
+    const QSignalBlocker blocker(header);
+    header->resizeSection(LabelTableModel::NumberColumn,
+                          std::max(minimumLabelNumberColumnWidth,
+                                   m_sessionStateStore.labelTableNumberColumnWidth(defaultLabelNumberColumnWidth)));
+    header->resizeSection(LabelTableModel::GroupColumn,
+                          std::max(minimumLabelGroupColumnWidth,
+                                   m_sessionStateStore.labelTableGroupColumnWidth(defaultLabelGroupColumnWidth)));
+}
+
+void MainWindow::saveLabelTableColumnWidths() const
+{
+    if (m_labelView != nullptr && m_labelView->horizontalHeader() != nullptr) {
+        m_sessionStateStore.saveLabelTableColumnWidths(m_labelView->columnWidth(LabelTableModel::NumberColumn),
+                                                       m_labelView->columnWidth(LabelTableModel::GroupColumn));
+    }
 }
 
 void MainWindow::restoreProjectSessionState()

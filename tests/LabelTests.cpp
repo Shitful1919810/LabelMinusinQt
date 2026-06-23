@@ -4,6 +4,7 @@
 #include "core/Project.h"
 #include "services/LabelNavigator.h"
 #include "services/ProjectMergeService.h"
+#include "services/ProjectPageOrderService.h"
 
 #include <QDir>
 #include <QFile>
@@ -192,6 +193,64 @@ private slots:
         QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"sourceIndex\":2")));
         QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"sourcePath\":\"second.txt\"")));
         QVERIFY(!merged.commentLines().at(1).contains(dirPath));
+    }
+
+    void projectMergeAppliesFinalPageOrderBeforeSourceComments()
+    {
+        const QString dirPath = QDir::temp().filePath("labelminus_merge_page_order_test");
+        QDir().mkpath(dirPath);
+
+        labelminus::core::Project firstProject;
+        firstProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        firstProject.images().last().labels.append(Label(QStringLiteral("first"), QStringLiteral("框内"), {}));
+        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        firstProject.images().last().labels.append(Label(QStringLiteral("second"), QStringLiteral("框内"), {}));
+
+        labelminus::core::Project secondProject;
+        secondProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        secondProject.images().append(labelminus::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
+        secondProject.images().last().labels.append(Label(QStringLiteral("third"), QStringLiteral("框外"), {}));
+
+        const QString firstPath = QDir(dirPath).filePath("first.txt");
+        const QString secondPath = QDir(dirPath).filePath("second.txt");
+        LabelPlusDocument::saveToFile(firstProject, firstPath);
+        LabelPlusDocument::saveToFile(secondProject, secondPath);
+
+        const auto plan = labelminus::services::ProjectMergeService::createPlan({firstPath, secondPath});
+        const QString mergedPath = QDir(dirPath).filePath("merged.txt");
+        const labelminus::core::Project merged =
+            labelminus::services::ProjectMergeService::mergedProjectWithSelections(plan, {}, mergedPath, {2, 0, 1});
+
+        QCOMPARE(merged.images().size(), 3);
+        QCOMPARE(merged.images().at(0).name, QStringLiteral("003.png"));
+        QCOMPARE(merged.images().at(1).name, QStringLiteral("001.png"));
+        QCOMPARE(merged.images().at(2).name, QStringLiteral("002.png"));
+        QCOMPARE(merged.commentLines().size(), 4);
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"firstImage\":\"003.png\"")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"lastImage\":\"003.png\"")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"sourceIndex\":2")));
+        QVERIFY(merged.commentLines().at(2).contains(QStringLiteral("\"firstImage\":\"001.png\"")));
+        QVERIFY(merged.commentLines().at(2).contains(QStringLiteral("\"lastImage\":\"002.png\"")));
+        QVERIFY(merged.commentLines().at(2).contains(QStringLiteral("\"sourceIndex\":1")));
+    }
+
+    void projectPageOrderServiceReordersImages()
+    {
+        labelminus::core::Project project;
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
+
+        QVERIFY(labelminus::services::ProjectPageOrderService::isValidOrder({2, 0, 1}, 3));
+        QVERIFY(labelminus::services::ProjectPageOrderService::isValidOrder({2, 0}, 3));
+        QVERIFY(!labelminus::services::ProjectPageOrderService::isValidOrder({2, 2, 1}, 3));
+        QVERIFY(labelminus::services::ProjectPageOrderService::isIdentityOrder({0, 1, 2}));
+
+        labelminus::services::ProjectPageOrderService::reorderImages(project, {2, 0});
+        QCOMPARE(project.images().size(), 2);
+        QCOMPARE(project.images().at(0).name, QStringLiteral("003.png"));
+        QCOMPARE(project.images().at(1).name, QStringLiteral("001.png"));
     }
 
     void labelPlusDocumentPreservesCommentLines()

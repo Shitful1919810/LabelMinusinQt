@@ -294,6 +294,62 @@
         <translation>Reorder labels</translation>
     </message>
     <message>
+        <source>Add %1 %2 label %3</source>
+        <translation>Add %1 %2 label %3</translation>
+    </message>
+    <message>
+        <source>Delete %1 %2 label %3</source>
+        <translation>Delete %1 %2 label %3</translation>
+    </message>
+    <message>
+        <source>Edit %1 %2 label %3</source>
+        <translation>Edit %1 %2 label %3</translation>
+    </message>
+    <message>
+        <source>Change %1 %2 label %3</source>
+        <translation>Change %1 %2 label %3</translation>
+    </message>
+    <message>
+        <source>Move %1 %2 label %3</source>
+        <translation>Move %1 %2 label %3</translation>
+    </message>
+    <message>
+        <source>Reorder labels on %1</source>
+        <translation>Reorder labels on %1</translation>
+    </message>
+    <message>
+        <source>Add group %1</source>
+        <translation>Add group %1</translation>
+    </message>
+    <message>
+        <source>Remove group %1</source>
+        <translation>Remove group %1</translation>
+    </message>
+    <message>
+        <source>Reorder pages</source>
+        <translation>Reorder pages</translation>
+    </message>
+    <message>
+        <source>Reorder &amp;Pages...</source>
+        <translation>Reorder &amp;Pages...</translation>
+    </message>
+    <message>
+        <source>Reorder Pages</source>
+        <translation>Reorder Pages</translation>
+    </message>
+    <message>
+        <source>There are no pages to reorder.</source>
+        <translation>There are no pages to reorder.</translation>
+    </message>
+    <message>
+        <source>Undo:</source>
+        <translation>Undo:</translation>
+    </message>
+    <message>
+        <source>Redo:</source>
+        <translation>Redo:</translation>
+    </message>
+    <message>
         <source>Delete labels</source>
         <translation>Delete labels</translation>
     </message>
@@ -465,6 +521,40 @@
     <message>
         <source>Open merged project after saving</source>
         <translation>Open merged project after saving</translation>
+    </message>
+</context>
+<context>
+    <name>PageOrderDialog</name>
+    <message>
+        <source>Reorder Pages</source>
+        <translation>Reorder Pages</translation>
+    </message>
+    <message>
+        <source>Drag pages in the list to change their order.</source>
+        <translation>Drag pages in the list to change their order.</translation>
+    </message>
+    <message>
+        <source>Move selected pages up</source>
+        <translation>Move selected pages up</translation>
+    </message>
+    <message>
+        <source>Move selected pages down</source>
+        <translation>Move selected pages down</translation>
+    </message>
+    <message>
+        <source>Remove selected pages from the project</source>
+        <translation>Remove selected pages from the project</translation>
+    </message>
+</context>
+<context>
+    <name>PageOrderListModel</name>
+    <message>
+        <source>Image</source>
+        <translation>Image</translation>
+    </message>
+    <message>
+        <source>Original #</source>
+        <translation>Original #</translation>
     </message>
 </context>
 <context>
