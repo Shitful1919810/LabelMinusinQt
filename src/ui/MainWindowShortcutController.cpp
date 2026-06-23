@@ -1,5 +1,7 @@
 #include "ui/MainWindowShortcutController.h"
 
+#include "ui/ShortcutUtils.h"
+
 #include <QEvent>
 #include <QKeyEvent>
 #include <QKeySequence>
@@ -8,20 +10,6 @@
 #include <utility>
 
 namespace {
-constexpr Qt::KeyboardModifiers shortcutModifiers =
-    Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier;
-
-QKeyCombination normalizedKeyCombination(const QKeyEvent& event)
-{
-    Qt::Key key = static_cast<Qt::Key>(event.key());
-    Qt::KeyboardModifiers modifiers = event.modifiers() & shortcutModifiers;
-    if (key == Qt::Key_Backtab) {
-        key = Qt::Key_Tab;
-        modifiers |= Qt::ShiftModifier;
-    }
-    return QKeyCombination(modifiers, key);
-}
-
 QKeyCombination firstKeyCombination(const QKeySequence& sequence)
 {
     return sequence.isEmpty() ? QKeyCombination() : sequence[0];
@@ -73,7 +61,7 @@ bool MainWindowShortcutController::handleGlobalShortcut(QObject* watched, QEvent
         return false;
     }
 
-    const QKeyCombination pressedKey = normalizedKeyCombination(*keyEvent);
+    const QKeyCombination pressedKey = labelminus::ui::normalizedShortcutKeyCombination(*keyEvent);
     const QKeyCombination nextLabelKey = firstKeyCombination(m_preferences.nextLabelShortcut());
     const QKeyCombination previousLabelKey = withModifiers(nextLabelKey, m_preferences.previousLabelModifiers());
     const QKeyCombination alternatePreviousLabelKey =
@@ -149,7 +137,7 @@ bool MainWindowShortcutController::handleLabelViewShortcut(QEvent* event)
         return false;
     }
 
-    const QKeyCombination pressedKey = normalizedKeyCombination(*keyEvent);
+    const QKeyCombination pressedKey = labelminus::ui::normalizedShortcutKeyCombination(*keyEvent);
     const QKeySequence keySequence(pressedKey);
     if (keySequence.matches(m_preferences.editLabelTextShortcut()) == QKeySequence::ExactMatch) {
         if (m_callbacks.editCurrentLabelText) {

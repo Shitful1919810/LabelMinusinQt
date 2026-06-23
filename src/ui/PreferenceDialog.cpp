@@ -1,7 +1,9 @@
 #include "ui/PreferenceDialog.h"
 
+#include "core/TranslationManager.h"
 #include "ui/ThemeManager.h"
 
+#include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
 #include <QDesktopServices>
@@ -21,15 +23,18 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScrollBar>
+#include <QSet>
 #include <QSpinBox>
 #include <QStyleFactory>
 #include <QTabWidget>
 #include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QUrl>
 #include <QVBoxLayout>
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <optional>
 
 namespace {
@@ -37,6 +42,9 @@ constexpr int colorColumn = 0;
 constexpr int diameterColumn = 1;
 constexpr int fontColumn = 2;
 constexpr int shapeColumn = 3;
+constexpr int automationScriptColumn = 0;
+constexpr int automationShortcutColumn = 1;
+constexpr int automationScriptIdRole = Qt::UserRole + 1;
 
 QColor colorFromStyleObject(const QJsonObject& style)
 {
@@ -155,8 +163,9 @@ const labelminus::core::AppPreferences& defaultPreferences()
 } // namespace
 
 PreferenceDialog::PreferenceDialog(QString preferencePath, labelminus::core::AppPreferences currentPreferences,
-                                   QWidget* parent)
-    : QDialog(parent), m_preferencePath(std::move(preferencePath)), m_currentPreferences(std::move(currentPreferences))
+                                   QVector<labelminus::services::AutomationScript> automationScripts, QWidget* parent)
+    : QDialog(parent), m_preferencePath(std::move(preferencePath)), m_currentPreferences(std::move(currentPreferences)),
+      m_automationScripts(std::move(automationScripts))
 {
     createUi();
     loadDocument(m_currentPreferences.toJsonDocument());
@@ -177,6 +186,7 @@ void PreferenceDialog::createUi()
     auto* tabWidget = new QTabWidget(this);
     tabWidget->addTab(createGeneralPage(tabWidget), tr("General"));
     tabWidget->addTab(createKeyMappingPage(tabWidget), tr("Key mappings"));
+    tabWidget->addTab(createAutomationShortcutsPage(tabWidget), tr("Automation shortcuts"));
     tabWidget->addTab(createGroupStylesPage(tabWidget), tr("Group styles"));
     tabWidget->addTab(createJsonPage(tabWidget), tr("JSON preview"));
 
@@ -190,14 +200,12 @@ void PreferenceDialog::createUi()
     auto* buttonBox = new QDialogButtonBox(this);
     auto* reloadButton = buttonBox->addButton(tr("Reload"), QDialogButtonBox::ResetRole);
     auto* openButton = buttonBox->addButton(tr("Open in Text Editor"), QDialogButtonBox::ActionRole);
-    m_applyButton = buttonBox->addButton(tr("Apply"), QDialogButtonBox::ApplyRole);
     m_saveButton = buttonBox->addButton(tr("Save"), QDialogButtonBox::AcceptRole);
     auto* closeButton = buttonBox->addButton(tr("Close"), QDialogButtonBox::RejectRole);
     rootLayout->addWidget(buttonBox);
 
     connect(reloadButton, &QPushButton::clicked, this, &PreferenceDialog::loadFromDisk);
     connect(openButton, &QPushButton::clicked, this, &PreferenceDialog::openPreferenceFile);
-    connect(m_applyButton, &QPushButton::clicked, this, &PreferenceDialog::applyPreferences);
     connect(m_saveButton, &QPushButton::clicked, this, &PreferenceDialog::savePreferences);
     connect(closeButton, &QPushButton::clicked, this, &QDialog::reject);
 
@@ -226,6 +234,13 @@ QWidget* PreferenceDialog::createGeneralPage(QTabWidget* tabWidget)
     for (const QString& themeName : labelminus::ui::availableApplicationThemes()) {
         m_applicationThemeComboBox->addItem(themeDisplayName(themeName), themeName);
     }
+    m_applicationLanguageComboBox = new QComboBox(generalPage);
+    m_applicationLanguageComboBox->addItem(tr("Follow system language"), QString());
+    for (const labelminus::core::ApplicationLanguage& language : labelminus::core::availableApplicationLanguages()) {
+        m_applicationLanguageComboBox->addItem(language.displayName, language.localeName);
+    }
+    m_showAutomationRunLogCheckBox = new QCheckBox(tr("Show automation run log window"), generalPage);
+    m_showAutomationRunLogCheckBox->setChecked(defaultPreferences().showAutomationRunLog());
 
     auto* labelTableFontWidget = makeFontSelectorWidget(generalPage, m_labelTableFontLabel,
                                                         m_chooseLabelTableFontButton, m_resetLabelTableFontButton);
@@ -250,6 +265,8 @@ QWidget* PreferenceDialog::createGeneralPage(QTabWidget* tabWidget)
     generalLayout->addRow(tr("Default marker font size"), m_markerFontSpinBox);
     generalLayout->addRow(tr("Qt widget style"), m_applicationStyleComboBox);
     generalLayout->addRow(tr("Breeze stylesheet theme"), m_applicationThemeComboBox);
+    generalLayout->addRow(tr("Language"), m_applicationLanguageComboBox);
+    generalLayout->addRow(tr("Automation"), m_showAutomationRunLogCheckBox);
     generalLayout->addRow(tr("Maximum label table text rows"), m_tableMaxRowsSpinBox);
     generalLayout->addRow(tr("Label table font"), labelTableFontWidget);
     generalLayout->addRow(tr("Text editor font"), textEditorFontWidget);
@@ -302,6 +319,30 @@ QWidget* PreferenceDialog::createKeyMappingPage(QTabWidget* tabWidget)
     return keyMappingPage;
 }
 
+QWidget* PreferenceDialog::createAutomationShortcutsPage(QTabWidget* tabWidget)
+{
+    auto* page = new QWidget(tabWidget);
+    auto* layout = new QVBoxLayout(page);
+
+    auto* descriptionLabel =
+        new QLabel(tr("Assign shortcuts to automation scripts. Leave a shortcut empty to disable it."), page);
+    descriptionLabel->setWordWrap(true);
+    layout->addWidget(descriptionLabel);
+
+    m_automationShortcutTable = new QTableWidget(page);
+    m_automationShortcutTable->setColumnCount(2);
+    m_automationShortcutTable->setHorizontalHeaderLabels({tr("Automation script"), tr("Shortcut")});
+    m_automationShortcutTable->horizontalHeader()->setSectionResizeMode(automationScriptColumn, QHeaderView::Stretch);
+    m_automationShortcutTable->horizontalHeader()->setSectionResizeMode(automationShortcutColumn,
+                                                                        QHeaderView::ResizeToContents);
+    m_automationShortcutTable->verticalHeader()->setVisible(false);
+    m_automationShortcutTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_automationShortcutTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    layout->addWidget(m_automationShortcutTable, 1);
+
+    return page;
+}
+
 QWidget* PreferenceDialog::createGroupStylesPage(QTabWidget* tabWidget)
 {
     auto* groupPage = new QWidget(tabWidget);
@@ -352,6 +393,8 @@ void PreferenceDialog::connectPreferenceChangeSignals()
     connect(m_markerFontSpinBox, &QDoubleSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_applicationStyleComboBox, &QComboBox::currentTextChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_applicationThemeComboBox, &QComboBox::currentIndexChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_applicationLanguageComboBox, &QComboBox::currentIndexChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_showAutomationRunLogCheckBox, &QCheckBox::toggled, this, &PreferenceDialog::updateJsonPreview);
     connect(m_tableMaxRowsSpinBox, &QSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_chooseLabelTableFontButton, &QPushButton::clicked, this, &PreferenceDialog::chooseLabelTableFont);
     connect(m_resetLabelTableFontButton, &QPushButton::clicked, this, &PreferenceDialog::resetLabelTableFont);
@@ -416,6 +459,7 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     const QJsonObject root = document.object();
     const QJsonObject labelMarker = root.value(QStringLiteral("labelMarker")).toObject();
     const QJsonObject appearance = root.value(QStringLiteral("appearance")).toObject();
+    const QJsonObject automation = root.value(QStringLiteral("automation")).toObject();
     const QJsonObject labelTable = root.value(QStringLiteral("labelTable")).toObject();
     const QJsonObject labelTextEditor = root.value(QStringLiteral("labelTextEditor")).toObject();
     const QJsonObject markerTextBubble = root.value(QStringLiteral("markerTextBubble")).toObject();
@@ -436,6 +480,50 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     const QString applicationTheme = appearance.value(QStringLiteral("theme")).toString().trimmed();
     const int themeIndex = m_applicationThemeComboBox->findData(applicationTheme);
     m_applicationThemeComboBox->setCurrentIndex(themeIndex >= 0 ? themeIndex : 0);
+    const QString applicationLanguage = appearance.value(QStringLiteral("language")).toString().trimmed();
+    const int languageIndex = m_applicationLanguageComboBox->findData(applicationLanguage);
+    m_applicationLanguageComboBox->setCurrentIndex(languageIndex >= 0 ? languageIndex : 0);
+    m_showAutomationRunLogCheckBox->setChecked(
+        automation.value(QStringLiteral("showRunLog")).toBool(defaultPreferences().showAutomationRunLog()));
+    m_automationShortcutTable->setRowCount(0);
+    const QJsonObject automationShortcuts = automation.value(QStringLiteral("shortcuts")).toObject();
+    QSet<QString> knownScriptIds;
+    for (const labelminus::services::AutomationScript& script : std::as_const(m_automationScripts)) {
+        knownScriptIds.insert(script.id);
+        const int row = m_automationShortcutTable->rowCount();
+        m_automationShortcutTable->insertRow(row);
+
+        const QString source = script.official ? tr("Official") : tr("Custom");
+        auto* item = new QTableWidgetItem(tr("%1 / %2 / %3").arg(source, script.directoryName, script.name));
+        item->setData(automationScriptIdRole, script.id);
+        item->setToolTip(script.description);
+        m_automationShortcutTable->setItem(row, automationScriptColumn, item);
+
+        const QKeySequence shortcut =
+            QKeySequence::fromString(automationShortcuts.value(script.id).toString(), QKeySequence::PortableText);
+        auto* shortcutEdit = new QKeySequenceEdit(shortcut, m_automationShortcutTable);
+        connect(shortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
+        m_automationShortcutTable->setCellWidget(row, automationShortcutColumn, shortcutEdit);
+    }
+
+    for (auto it = automationShortcuts.constBegin(); it != automationShortcuts.constEnd(); ++it) {
+        if (knownScriptIds.contains(it.key())) {
+            continue;
+        }
+
+        const int row = m_automationShortcutTable->rowCount();
+        m_automationShortcutTable->insertRow(row);
+        auto* item = new QTableWidgetItem(tr("Missing script: %1").arg(it.key()));
+        item->setData(automationScriptIdRole, it.key());
+        item->setForeground(QColor(QStringLiteral("#b26a00")));
+        m_automationShortcutTable->setItem(row, automationScriptColumn, item);
+
+        const QKeySequence shortcut = QKeySequence::fromString(it.value().toString(), QKeySequence::PortableText);
+        auto* shortcutEdit = new QKeySequenceEdit(shortcut, m_automationShortcutTable);
+        connect(shortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
+        m_automationShortcutTable->setCellWidget(row, automationShortcutColumn, shortcutEdit);
+    }
+
     m_tableMaxRowsSpinBox->setValue(
         labelTable.value(QStringLiteral("maxTextRows")).toInt(defaultPreferences().labelTableMaxTextRows()));
     const QString labelTableFontFamily = labelTable.value(QStringLiteral("fontFamily")).toString().trimmed();
@@ -570,6 +658,25 @@ QJsonDocument PreferenceDialog::documentFromUi() const
     QJsonObject appearance;
     appearance.insert(QStringLiteral("style"), comboBoxDataOrText(m_applicationStyleComboBox));
     appearance.insert(QStringLiteral("theme"), comboBoxDataOrText(m_applicationThemeComboBox));
+    appearance.insert(QStringLiteral("language"), comboBoxDataOrText(m_applicationLanguageComboBox));
+
+    QJsonObject automation;
+    automation.insert(QStringLiteral("showRunLog"), m_showAutomationRunLogCheckBox->isChecked());
+    QJsonObject automationShortcuts;
+    for (int row = 0; row < m_automationShortcutTable->rowCount(); ++row) {
+        const QTableWidgetItem* item = m_automationShortcutTable->item(row, automationScriptColumn);
+        const auto* shortcutEdit =
+            qobject_cast<QKeySequenceEdit*>(m_automationShortcutTable->cellWidget(row, automationShortcutColumn));
+        if (item == nullptr || shortcutEdit == nullptr || shortcutEdit->keySequence().isEmpty()) {
+            continue;
+        }
+
+        const QString scriptId = item->data(automationScriptIdRole).toString();
+        if (!scriptId.isEmpty()) {
+            automationShortcuts.insert(scriptId, shortcutEdit->keySequence().toString(QKeySequence::PortableText));
+        }
+    }
+    automation.insert(QStringLiteral("shortcuts"), automationShortcuts);
 
     QJsonObject labelTable;
     labelTable.insert(QStringLiteral("maxTextRows"), m_tableMaxRowsSpinBox->value());
@@ -639,6 +746,7 @@ QJsonDocument PreferenceDialog::documentFromUi() const
 
     QJsonObject root;
     root.insert(QStringLiteral("appearance"), appearance);
+    root.insert(QStringLiteral("automation"), automation);
     root.insert(QStringLiteral("labelMarker"), labelMarker);
     root.insert(QStringLiteral("labelTable"), labelTable);
     root.insert(QStringLiteral("labelTextEditor"), labelTextEditor);
@@ -852,30 +960,54 @@ void PreferenceDialog::updateMarkerTextBubbleFontSummary()
     m_markerTextBubbleFontLabel->setFont(font());
 }
 
-void PreferenceDialog::applyPreferences()
+QString PreferenceDialog::automationShortcutConflictText() const
 {
-    const QByteArray json = documentFromUi().toJson(QJsonDocument::Indented);
-    labelminus::core::AppPreferencesLoadResult result = labelminus::core::AppPreferences::loadFromJson(json);
-    m_currentPreferences = result.preferences;
-    emit preferencesApplied(result);
-    setMessage(result.warnings.isEmpty() ? tr("Preferences applied.")
-                                         : tr("Preferences applied with warnings; see the main window status bar."),
-               !result.warnings.isEmpty());
+    std::map<QString, QString> scriptNameByShortcut;
+    for (int row = 0; row < m_automationShortcutTable->rowCount(); ++row) {
+        const QTableWidgetItem* item = m_automationShortcutTable->item(row, automationScriptColumn);
+        const auto* shortcutEdit =
+            qobject_cast<QKeySequenceEdit*>(m_automationShortcutTable->cellWidget(row, automationShortcutColumn));
+        if (item == nullptr || shortcutEdit == nullptr || shortcutEdit->keySequence().isEmpty()) {
+            continue;
+        }
+
+        const QString shortcutText = shortcutEdit->keySequence().toString(QKeySequence::PortableText);
+        const auto [existing, inserted] = scriptNameByShortcut.emplace(shortcutText, item->text());
+        if (!inserted) {
+            return tr("%1 is already assigned to %2; clear one automation shortcut before saving.")
+                .arg(shortcutText, existing->second);
+        }
+    }
+    return {};
 }
 
 void PreferenceDialog::savePreferences()
 {
+    const QString shortcutConflict = automationShortcutConflictText();
+    if (!shortcutConflict.isEmpty()) {
+        setMessage(shortcutConflict, true);
+        return;
+    }
+
+    const QJsonDocument document = documentFromUi();
     QFile file(m_preferencePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         setMessage(tr("Could not save preference file."), true);
         return;
     }
 
-    file.write(documentFromUi().toJson(QJsonDocument::Indented));
+    file.write(document.toJson(QJsonDocument::Indented));
     file.write("\n");
     file.close();
-    applyPreferences();
-    setMessage(tr("Preferences saved and applied."));
+
+    labelminus::core::AppPreferencesLoadResult result =
+        labelminus::core::AppPreferences::loadFromJson(document.toJson(QJsonDocument::Compact));
+    m_currentPreferences = result.preferences;
+    emit preferencesApplied(result);
+    setMessage(result.warnings.isEmpty()
+                   ? tr("Preferences saved and applied.")
+                   : tr("Preferences saved and applied with warnings; see the main window status bar."),
+               !result.warnings.isEmpty());
 }
 
 void PreferenceDialog::openPreferenceFile()

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/AppPreferences.h"
+#include "services/AutomationService.h"
 
 #include <QDialog>
 #include <QFont>
@@ -8,6 +9,7 @@
 #include <QString>
 
 class QComboBox;
+class QCheckBox;
 class QDoubleSpinBox;
 class QKeySequenceEdit;
 class QLabel;
@@ -25,7 +27,7 @@ class PreferenceDialog final : public QDialog {
 
 public:
     PreferenceDialog(QString preferencePath, labelminus::core::AppPreferences currentPreferences,
-                     QWidget* parent = nullptr);
+                     QVector<labelminus::services::AutomationScript> automationScripts, QWidget* parent = nullptr);
 
 signals:
     void preferencesApplied(labelminus::core::AppPreferencesLoadResult result);
@@ -34,6 +36,7 @@ private:
     void createUi();
     QWidget* createGeneralPage(QTabWidget* tabWidget);
     QWidget* createKeyMappingPage(QTabWidget* tabWidget);
+    QWidget* createAutomationShortcutsPage(QTabWidget* tabWidget);
     QWidget* createGroupStylesPage(QTabWidget* tabWidget);
     QWidget* createJsonPage(QTabWidget* tabWidget);
     void connectPreferenceChangeSignals();
@@ -55,17 +58,20 @@ private:
     void chooseMarkerTextBubbleFont();
     void resetMarkerTextBubbleFont();
     void updateMarkerTextBubbleFontSummary();
-    void applyPreferences();
+    QString automationShortcutConflictText() const;
     void savePreferences();
     void openPreferenceFile();
 
     QString m_preferencePath;
     labelminus::core::AppPreferences m_currentPreferences;
+    QVector<labelminus::services::AutomationScript> m_automationScripts;
     QDoubleSpinBox* m_markerDiameterSpinBox{nullptr};
     QDoubleSpinBox* m_markerFontSpinBox{nullptr};
     QSpinBox* m_tableMaxRowsSpinBox{nullptr};
     QComboBox* m_applicationStyleComboBox{nullptr};
     QComboBox* m_applicationThemeComboBox{nullptr};
+    QComboBox* m_applicationLanguageComboBox{nullptr};
+    QCheckBox* m_showAutomationRunLogCheckBox{nullptr};
     QLabel* m_labelTableFontLabel{nullptr};
     QPushButton* m_chooseLabelTableFontButton{nullptr};
     QPushButton* m_resetLabelTableFontButton{nullptr};
@@ -90,12 +96,12 @@ private:
     QKeySequenceEdit* m_nextPageShortcutEdit{nullptr};
     QKeySequenceEdit* m_editLabelTextShortcutEdit{nullptr};
     QKeySequenceEdit* m_commitLabelTextShortcutEdit{nullptr};
+    QTableWidget* m_automationShortcutTable{nullptr};
     QLineEdit* m_backupPathEdit{nullptr};
     QSpinBox* m_backupIntervalSpinBox{nullptr};
     QTableWidget* m_groupStyleTable{nullptr};
     QPlainTextEdit* m_jsonPreview{nullptr};
     QLabel* m_messageLabel{nullptr};
-    QPushButton* m_applyButton{nullptr};
     QPushButton* m_saveButton{nullptr};
     QFont m_labelTableFont;
     QFont m_textEditorFont;

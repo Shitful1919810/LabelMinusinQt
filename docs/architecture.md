@@ -48,6 +48,12 @@ objects. If a class caches raw pointers owned by a Qt container or parent object
 or null the cache before the owner clears/destructs. For cached `QObject`/`QWidget` references used from callbacks,
 queued events or delayed deletion paths, prefer `QPointer` so the pointer becomes null when the object is destroyed.
 
+Menus and actions also need stable lifetimes while their signals are being dispatched. Do not clear or rebuild a
+`QMenu`/`QAction` tree from inside a slot triggered by one of its own actions. This caused an intermittent crash after
+an automation result dialog closed: the script action triggered the run slot, the run slot rebuilt the automation menu,
+and the original menu/action stack was still unwinding. During running workflows, update existing actions in place
+instead; rebuild menus only from explicit refresh actions or after the triggering call stack has returned.
+
 Global shortcut matching should stay in `MainWindowShortcutController`. `MainWindow` may provide callbacks that preserve
 editing state before/after navigation, but it should not grow another parallel shortcut parser.
 
@@ -63,6 +69,8 @@ Qt Widgets. Current services include:
 - `ProjectController`: owns the open `Project`, project dirty state, file load/save and auto-backup writes.
 - `ProjectMergeService`: loads multiple LabelPlus text projects and prepares page-based merge plans.
 - `ProjectPageOrderService`: validates and applies image-page reorder vectors without depending on widgets.
+- `AutomationService`: discovers external Python automation scripts, exports project snapshots to JSON and runs scripts
+  through `QProcess`.
 - `LabelEditController`: applies label/group edits and registers undo commands without depending on widgets.
 - `LabelNavigator`: finds previous/next visible labels across pages using project data and the active group filter.
 - `SessionStateStore`: persists local window layout and per-project session state through `QSettings`.
@@ -71,6 +79,38 @@ Qt Widgets. Current services include:
 - Future platform-specific desktop integration.
 
 Keep workflow/state persistence code here when it would otherwise make `MainWindow` responsible for non-UI details.
+
+Automation scripts are external processes, not embedded Python. Official scripts live under `scripts/official`, and
+user scripts live under `scripts/custom`; each script owns its own directory and manifest. Scripts receive a JSON
+snapshot of the current project plus user-filled `parameters`, current UI `context` and the current image selection,
+then write a JSON result file. The default snapshot exports only non-deleted labels. Each exported label carries
+`labelIndex`, the internal project label index for operation references, and `visibleIndex`, the active-label order shown
+to scripts. `context` contains the current page and all currently selected labels on that page, including multi-select
+state. `project` contains both detailed `pages[]` entries and a convenience `imagePaths` array for all project images.
+`selection` contains `hasSelection`, current page identity and a normalized `rect` when the image canvas has an active
+region.
+`script.json` may describe one script directly or multiple scripts through a top-level `scripts` array. Multiple scripts
+in one directory should appear as a submenu in the automation menu. Per-script `environment` entries are copied into the
+Python process environment and are intended for lightweight runtime switches, not for storing secrets.
+Per-script `parameters` describe the pre-run Qt parameter form. Supported parameter types should stay generic and
+script-agnostic: `text`, `group`, `choice`/`select`/`enum`, `boolean`/`bool`, `file` and `directory`. Scripts that need
+persistent local configuration should provide a configuration menu item that writes a script-local ignored file such as
+`config.json`; do not store user-specific paths in `script.json`.
+Scripts must not directly modify LabelPlus project files. Script-generated project edits must be represented as
+validated `operations` and applied by C++ code so undo, dirty state and UI refresh remain consistent. Keep the operation
+vocabulary narrow and explicit; for example, `setLabelGroup` identifies a page by image name, a label by `labelIndex`,
+and the target group by name. `setLabelText`, `setLabelPosition` and `deleteLabel` similarly target one existing
+non-deleted label. `addLabel` identifies a page by image name and carries the new label's group, text and normalized
+image coordinates. OCR scripts should use `addLabel` instead of writing project files directly.
+Scripts may set top-level `quiet` to `true` in the output JSON to skip the success result dialog. Quiet mode should only
+affect success reporting; failures should still be surfaced to the user.
+While an automation script is running, project editing entry points should be disabled and the automation menu should
+keep a cancel action available. This prevents a script from producing operations against a snapshot that changes during
+execution. If automation becomes fully asynchronous later, add explicit project revision checks before applying
+operations.
+Changing automation running state should not rediscover or rebuild the automation menu, because scripts are launched
+from actions in that menu. Update action enabled states in place; reserve rediscovery/rebuild for the explicit refresh
+command or startup.
 
 ## UI Refresh Rules
 
@@ -117,6 +157,8 @@ Current preferences:
 
 - `appearance.style`: optional Qt widget style name. Empty means the platform/system default is used. Available values are discovered with `QStyleFactory::keys()` at runtime.
 - `appearance.theme`: optional built-in Breeze stylesheet theme. Empty means no application stylesheet. Current built-in values are `breezeDark` and `breezeLight`. This is layered on top of `appearance.style`, so Qt styles and Breeze QSS themes coexist.
+- `appearance.language`: optional UI language locale name such as `zh_CN` or `en_US`. Empty means the system locale is used. Available values are discovered from `labelminus_*.qm` translation resources at runtime. Language changes currently take effect after restart.
+- `automation.showRunLog`: whether running automation scripts should open a live stdout/stderr log window. The default is `false`, so automation output logs are ignored unless the user opts in.
 - `labelMarker.diameter`: marker diameter in screen pixels; floating-point values are accepted.
 - `labelMarker.fontPointSize`: marker number size as a Qt font point size; floating-point values are accepted.
 - `labelTable.maxTextRows`: maximum visible wrapped text lines for each label table row.
@@ -197,8 +239,8 @@ Run `scripts/check_translations.sh` after changing UI text.
 Use the Qt-backed `UndoStack` wrapper for every reversible project edit. It stores commands as `QUndoCommand` instances
 inside a `QUndoStack`, so new edit commands must provide both undo and redo behavior. Current covered commands include
 adding labels, moving labels, editing label text, changing label groups, adding/removing groups, deleting labels,
-reordering labels, reordering pages and bulk group changes. Future operations such as OCR writes should be added as
-commands instead of separate ad hoc state.
+reordering labels, reordering pages, bulk group changes and automation-applied label additions/text edits/position
+edits/deletions. Future operations should be added as commands instead of separate ad hoc state.
 
 Undo commands should be registered close to the code that performs the edit. Label edits should go through
 `LabelEditController`, which routes normal edits and undo replay through shared apply functions. Future non-label

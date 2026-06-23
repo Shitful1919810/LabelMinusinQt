@@ -7,20 +7,29 @@
 #include <QFont>
 #include <QGraphicsView>
 #include <QHash>
+#include <QRectF>
 #include <QSet>
 #include <QStringList>
 #include <QVector>
 
 class QGraphicsItem;
+class QGraphicsRectItem;
 class QLabel;
 
 class ImageCanvas final : public QGraphicsView {
     Q_OBJECT
 
 public:
+    enum class InteractionMode {
+        Label,
+        Selection,
+    };
+
     explicit ImageCanvas(QWidget* parent = nullptr);
     ~ImageCanvas() override;
 
+    void setInteractionMode(InteractionMode mode);
+    InteractionMode interactionMode() const noexcept;
     void setPreferences(const labelminus::core::AppPreferences& preferences);
     void setImage(const QString& path, const QVector<labelminus::core::Label>& labels);
     void setLabels(const QVector<labelminus::core::Label>& labels);
@@ -32,6 +41,8 @@ public:
     void clearLabelTextPreview(int index);
     void centerOnLabel(int index);
     QPoint globalPositionForLabel(int index) const;
+    bool hasSelection() const noexcept;
+    QRectF normalizedSelectionRect() const noexcept;
     void setZoomPercent(int percent);
     int zoomPercent() const noexcept;
     QPointF normalizedViewCenter() const;
@@ -44,8 +55,11 @@ signals:
     void labelTextEditRequested(int index, QPoint globalPosition);
     void zoomPercentChanged(int percent);
     void viewportStateChanged(int zoomPercent, QPointF normalizedCenter);
+    void selectionChanged(QRectF normalizedRect);
+    void imageCopiedToClipboard();
 
 protected:
+    void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
@@ -68,9 +82,18 @@ private:
     void hideHoveredLabelToolTip();
     labelminus::core::LabelGroupStyle styleForGroup(const QString& group) const;
     QPointF normalizedPositionFromScene(QPointF scenePosition) const;
+    QRectF imageClampedSceneRect(QPointF firstScenePosition, QPointF secondScenePosition) const;
+    QRectF normalizedRectFromSceneRect(QRectF sceneRect) const;
+    void beginSelection(QPoint viewportPosition);
+    void updateSelection(QPoint viewportPosition);
+    void finishSelection(QPoint viewportPosition);
+    void clearSelection();
+    bool copyImageToClipboard();
+    void updateCursorForInteractionMode();
 
     QGraphicsScene m_scene;
     QGraphicsPixmapItem* m_pixmapItem{nullptr};
+    QGraphicsRectItem* m_selectionItem{nullptr};
     QLabel* m_hoverToolTip{nullptr};
     QVector<labelminus::core::Label> m_labels;
     QVector<QGraphicsItem*> m_labelItems;
@@ -91,8 +114,14 @@ private:
     bool m_pendingLabelCreate{false};
     bool m_pendingLabelSelect{false};
     bool m_isMovingLabel{false};
+    bool m_isSelectingRegion{false};
+    bool m_isMiddleButtonPanning{false};
     int m_pendingLabelSelectIndex{-1};
     int m_movingLabelIndex{-1};
     QPoint m_labelCreatePressPosition;
     QPoint m_labelSelectPressPosition;
+    QPoint m_lastMiddlePanPosition;
+    QPointF m_selectionStartScenePosition;
+    QRectF m_normalizedSelectionRect;
+    InteractionMode m_interactionMode{InteractionMode::Label};
 };

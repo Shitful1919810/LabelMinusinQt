@@ -2,10 +2,10 @@
 
 This directory is reserved for runtime assets that should ship with the Qt port.
 
-Planned resource groups:
+Current resource groups:
 
-- `ocr/`: Python bridge scripts and model descriptors.
-- `icons/`: application and toolbar icons.
+- `themes/`: bundled application stylesheet themes and their license files.
+
+Automation scripts live in the top-level `scripts/official` and `scripts/custom` directories, not under `resources/`.
 
 Qt translation source files currently live in the top-level `translations/` directory. CMake compiles generated `.qm` files into the application resource system when `Qt6LinguistTools` is available.
-

@@ -1,30 +1,16 @@
 #include "ui/CanvasLabelTextEditController.h"
 
 #include "ui/CanvasLabelTextEditor.h"
+#include "ui/ShortcutUtils.h"
 
 #include <QApplication>
 #include <QEvent>
 #include <QKeyEvent>
+#include <QMouseEvent>
 #include <QPlainTextEdit>
 #include <QTimer>
 
 #include <utility>
-
-namespace {
-constexpr Qt::KeyboardModifiers shortcutModifiers =
-    Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier;
-
-QKeyCombination normalizedKeyCombination(const QKeyEvent& event)
-{
-    Qt::Key key = static_cast<Qt::Key>(event.key());
-    Qt::KeyboardModifiers modifiers = event.modifiers() & shortcutModifiers;
-    if (key == Qt::Key_Backtab) {
-        key = Qt::Key_Tab;
-        modifiers |= Qt::ShiftModifier;
-    }
-    return QKeyCombination(modifiers, key);
-}
-} // namespace
 
 CanvasLabelTextEditController::CanvasLabelTextEditController(QObject* parent) : QObject(parent) {}
 
@@ -78,6 +64,7 @@ void CanvasLabelTextEditController::open(QWidget* parent, int imageIndex, int la
     editor->setEditorFont(font);
     editor->setText(text);
     editor->editor()->installEventFilter(this);
+    qApp->installEventFilter(this);
 
     m_editor = editor;
     m_imageIndex = imageIndex;
@@ -120,6 +107,7 @@ void CanvasLabelTextEditController::close()
 
     if (m_editor != nullptr) {
         m_editor->editor()->removeEventFilter(this);
+        qApp->removeEventFilter(this);
         m_editor->deleteLater();
     }
 
@@ -134,13 +122,35 @@ void CanvasLabelTextEditController::close()
 
 bool CanvasLabelTextEditController::eventFilter(QObject* watched, QEvent* event)
 {
+    if (m_editor != nullptr &&
+        (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick ||
+         event->type() == QEvent::WindowDeactivate)) {
+        const auto* watchedWidget = qobject_cast<QWidget*>(watched);
+        bool insideEditor =
+            watchedWidget != nullptr && (watchedWidget == m_editor || m_editor->isAncestorOf(watchedWidget));
+        if (!insideEditor &&
+            (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick)) {
+            const auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            const QPoint editorPosition = m_editor->mapFromGlobal(mouseEvent->globalPosition().toPoint());
+            insideEditor = m_editor->rect().contains(editorPosition);
+        }
+
+        if (!insideEditor) {
+            QTimer::singleShot(0, this, [this]() {
+                if (m_editor != nullptr) {
+                    commit();
+                }
+            });
+        }
+    }
+
     if (!isEditorObject(watched)) {
         return QObject::eventFilter(watched, event);
     }
 
     if (event->type() == QEvent::KeyPress) {
         const auto* keyEvent = static_cast<QKeyEvent*>(event);
-        const QKeySequence keySequence(normalizedKeyCombination(*keyEvent));
+        const QKeySequence keySequence(labelminus::ui::normalizedShortcutKeyCombination(*keyEvent));
         if (keySequence.matches(m_commitShortcut) == QKeySequence::ExactMatch) {
             commit();
             return true;

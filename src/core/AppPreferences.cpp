@@ -264,6 +264,59 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
     }
 
     const QJsonObject root = document.object();
+    const QJsonValue automationValue = root.value(QStringLiteral("automation"));
+    if (!automationValue.isUndefined()) {
+        if (!automationValue.isObject()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::AutomationNotObject));
+        }
+        else {
+            const QJsonValue showRunLogValue = automationValue.toObject().value(QStringLiteral("showRunLog"));
+            if (!showRunLogValue.isUndefined()) {
+                if (showRunLogValue.isBool()) {
+                    preferences.m_showAutomationRunLog = showRunLogValue.toBool();
+                }
+                else {
+                    warnings.append(makeWarning(AppPreferenceWarningType::AutomationShowRunLogWrongType,
+                                                QStringLiteral("automation.showRunLog")));
+                }
+            }
+
+            const QJsonValue shortcutsValue = automationValue.toObject().value(QStringLiteral("shortcuts"));
+            if (!shortcutsValue.isUndefined()) {
+                if (!shortcutsValue.isObject()) {
+                    warnings.append(makeWarning(AppPreferenceWarningType::AutomationShortcutsNotObject,
+                                                QStringLiteral("automation.shortcuts")));
+                }
+                else {
+                    const QJsonObject shortcuts = shortcutsValue.toObject();
+                    for (auto it = shortcuts.constBegin(); it != shortcuts.constEnd(); ++it) {
+                        const QString scriptId = it.key().trimmed();
+                        if (scriptId.isEmpty()) {
+                            warnings.append(makeWarning(AppPreferenceWarningType::AutomationShortcutInvalid,
+                                                        QStringLiteral("automation.shortcuts")));
+                            continue;
+                        }
+                        if (!it.value().isString()) {
+                            warnings.append(makeWarning(AppPreferenceWarningType::AutomationShortcutInvalid,
+                                                        QStringLiteral("automation.shortcuts.%1").arg(scriptId)));
+                            continue;
+                        }
+
+                        const QString shortcutText = it.value().toString().trimmed();
+                        const QKeySequence shortcut =
+                            QKeySequence::fromString(shortcutText, QKeySequence::PortableText);
+                        if (shortcut.isEmpty()) {
+                            warnings.append(makeWarning(AppPreferenceWarningType::AutomationShortcutInvalid,
+                                                        QStringLiteral("automation.shortcuts.%1").arg(scriptId)));
+                            continue;
+                        }
+                        preferences.m_automationShortcuts.insert(scriptId, shortcut);
+                    }
+                }
+            }
+        }
+    }
+
     const QJsonValue appearanceValue = root.value(QStringLiteral("appearance"));
     if (!appearanceValue.isUndefined()) {
         if (!appearanceValue.isObject()) {
@@ -296,6 +349,17 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
                 else {
                     warnings.append(makeWarning(AppPreferenceWarningType::AppearanceThemeWrongType,
                                                 QStringLiteral("appearance.theme")));
+                }
+            }
+
+            const QJsonValue languageValue = appearanceValue.toObject().value(QStringLiteral("language"));
+            if (!languageValue.isUndefined()) {
+                if (languageValue.isString()) {
+                    preferences.m_applicationLanguage = languageValue.toString().trimmed();
+                }
+                else {
+                    warnings.append(makeWarning(AppPreferenceWarningType::AppearanceLanguageWrongType,
+                                                QStringLiteral("appearance.language")));
                 }
             }
         }
@@ -613,6 +677,17 @@ QJsonDocument AppPreferences::toJsonDocument() const
     QJsonObject appearance;
     appearance.insert(QStringLiteral("style"), m_applicationStyle);
     appearance.insert(QStringLiteral("theme"), m_applicationTheme);
+    appearance.insert(QStringLiteral("language"), m_applicationLanguage);
+
+    QJsonObject automation;
+    automation.insert(QStringLiteral("showRunLog"), m_showAutomationRunLog);
+    QJsonObject automationShortcuts;
+    for (auto it = m_automationShortcuts.constBegin(); it != m_automationShortcuts.constEnd(); ++it) {
+        if (!it.value().isEmpty()) {
+            automationShortcuts.insert(it.key(), it.value().toString(QKeySequence::PortableText));
+        }
+    }
+    automation.insert(QStringLiteral("shortcuts"), automationShortcuts);
 
     QJsonObject labelMarker;
     labelMarker.insert(QStringLiteral("diameter"), m_labelMarkerDiameterPixels);
@@ -664,6 +739,7 @@ QJsonDocument AppPreferences::toJsonDocument() const
 
     QJsonObject root;
     root.insert(QStringLiteral("appearance"), appearance);
+    root.insert(QStringLiteral("automation"), automation);
     root.insert(QStringLiteral("backupIntervalSeconds"), m_backupIntervalSeconds);
     root.insert(QStringLiteral("backupPath"), m_backupPath);
     root.insert(QStringLiteral("canvasLabelTextEditor"), canvasLabelTextEditor);
@@ -739,6 +815,21 @@ QString AppPreferences::applicationStyle() const
 QString AppPreferences::applicationTheme() const
 {
     return m_applicationTheme;
+}
+
+QString AppPreferences::applicationLanguage() const
+{
+    return m_applicationLanguage;
+}
+
+bool AppPreferences::showAutomationRunLog() const noexcept
+{
+    return m_showAutomationRunLog;
+}
+
+const QMap<QString, QKeySequence>& AppPreferences::automationShortcuts() const noexcept
+{
+    return m_automationShortcuts;
 }
 
 Qt::KeyboardModifiers AppPreferences::moveLabelModifiers() const noexcept

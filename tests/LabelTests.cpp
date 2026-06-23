@@ -2,6 +2,7 @@
 #include "core/Label.h"
 #include "core/LabelPlusDocument.h"
 #include "core/Project.h"
+#include "services/AutomationOperationApplier.h"
 #include "services/LabelNavigator.h"
 #include "services/ProjectMergeService.h"
 #include "services/ProjectPageOrderService.h"
@@ -101,6 +102,103 @@ private slots:
         QVERIFY(previous.isValid());
         QCOMPARE(previous.imageIndex, 0);
         QCOMPARE(previous.labelIndex, 1);
+    }
+
+    void appPreferencesLoadsAutomationShortcuts()
+    {
+        const QByteArray json = R"({
+            "automation": {
+                "shortcuts": {
+                    "official:test:word_count": "Ctrl+Alt+W",
+                    "official:test:bad": 12,
+                    "": "Ctrl+Alt+E"
+                }
+            }
+        })";
+
+        const labelminus::core::AppPreferencesLoadResult result = labelminus::core::AppPreferences::loadFromJson(json);
+
+        QCOMPARE(result.preferences.automationShortcuts().size(), 1);
+        QCOMPARE(result.preferences.automationShortcuts().value(QStringLiteral("official:test:word_count")),
+                 QKeySequence(QStringLiteral("Ctrl+Alt+W")));
+        QCOMPARE(result.warnings.size(), 2);
+    }
+
+    void automationOperationApplierAddsLabelsWithUndo()
+    {
+        labelminus::core::Project project;
+        project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+
+        labelminus::services::AutomationOperation operation;
+        operation.type = QStringLiteral("addLabel");
+        operation.page = QStringLiteral("001.png");
+        operation.group = QStringLiteral("框内");
+        operation.text = QStringLiteral("识别文本");
+        operation.x = 0.75;
+        operation.y = 0.25;
+
+        const auto plan = labelminus::services::AutomationOperationApplier::plan(project, {operation});
+        QVERIFY(plan.hasChanges());
+        QCOMPARE(plan.changeCount(), 1);
+
+        labelminus::services::AutomationOperationApplier::apply(project, plan, true);
+        QCOMPARE(project.images().first().labels.size(), 1);
+        QCOMPARE(project.images().first().labels.first().text(), QStringLiteral("识别文本"));
+        QCOMPARE(project.images().first().labels.first().group(), QStringLiteral("框内"));
+        QCOMPARE(project.images().first().labels.first().position().x(), 0.75);
+        QCOMPARE(project.images().first().labels.first().position().y(), 0.25);
+
+        labelminus::services::AutomationOperationApplier::apply(project, plan, false);
+        QCOMPARE(project.images().first().labels.size(), 0);
+
+        labelminus::services::AutomationOperationApplier::apply(project, plan, true);
+        QCOMPARE(project.images().first().labels.size(), 1);
+        QCOMPARE(project.images().first().labels.first().text(), QStringLiteral("识别文本"));
+    }
+
+    void automationOperationApplierEditsAndDeletesLabelsWithUndo()
+    {
+        labelminus::core::Project project;
+        project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().last().labels.append(Label(QStringLiteral("原文本"), QStringLiteral("框内"), {0.2, 0.3}));
+        project.images().last().labels.append(Label(QStringLiteral("删除我"), QStringLiteral("框外"), {0.4, 0.5}));
+
+        labelminus::services::AutomationOperation textOperation;
+        textOperation.type = QStringLiteral("setLabelText");
+        textOperation.page = QStringLiteral("001.png");
+        textOperation.labelIndex = 0;
+        textOperation.text = QStringLiteral("新文本");
+
+        labelminus::services::AutomationOperation positionOperation;
+        positionOperation.type = QStringLiteral("setLabelPosition");
+        positionOperation.page = QStringLiteral("001.png");
+        positionOperation.labelIndex = 0;
+        positionOperation.x = 0.8;
+        positionOperation.y = 0.9;
+
+        labelminus::services::AutomationOperation deleteOperation;
+        deleteOperation.type = QStringLiteral("deleteLabel");
+        deleteOperation.page = QStringLiteral("001.png");
+        deleteOperation.labelIndex = 1;
+
+        const auto plan = labelminus::services::AutomationOperationApplier::plan(
+            project, {textOperation, positionOperation, deleteOperation});
+        QVERIFY(plan.hasChanges());
+        QCOMPARE(plan.changeCount(), 3);
+
+        labelminus::services::AutomationOperationApplier::apply(project, plan, true);
+        QCOMPARE(project.images().first().labels.at(0).text(), QStringLiteral("新文本"));
+        QCOMPARE(project.images().first().labels.at(0).position().x(), 0.8);
+        QCOMPARE(project.images().first().labels.at(0).position().y(), 0.9);
+        QVERIFY(project.images().first().labels.at(1).isDeleted());
+
+        labelminus::services::AutomationOperationApplier::apply(project, plan, false);
+        QCOMPARE(project.images().first().labels.at(0).text(), QStringLiteral("原文本"));
+        QCOMPARE(project.images().first().labels.at(0).position().x(), 0.2);
+        QCOMPARE(project.images().first().labels.at(0).position().y(), 0.3);
+        QVERIFY(!project.images().first().labels.at(1).isDeleted());
     }
 
     void projectMergeUsesSingleInvolvedPageAutomatically()

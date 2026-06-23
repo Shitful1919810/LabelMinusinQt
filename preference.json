@@ -1,10 +1,19 @@
 {
     "appearance": {
+        "language": "zh_CN",
         "style": "",
         "theme": ""
     },
+    "automation": {
+        "shortcuts": {
+        },
+        "showRunLog": false
+    },
     "backupIntervalSeconds": 200,
     "backupPath": "bak",
+    "canvasLabelTextEditor": {
+        "opacity": 0.75
+    },
     "groupStyles": [
         {
             "fontPointSize": 10,
@@ -26,11 +35,11 @@
         }
     ],
     "input": {
+        "alternateNextLabelShortcut": "Ctrl+Down",
+        "alternatePreviousLabelShortcut": "Ctrl+Up",
         "commitLabelTextShortcut": "Ctrl+Return",
         "editLabelTextShortcut": "Return",
         "moveLabelModifier": "ctrl",
-        "alternateNextLabelShortcut": "Ctrl+Down",
-        "alternatePreviousLabelShortcut": "Ctrl+Up",
         "nextLabelShortcut": "Tab",
         "nextPageShortcut": "Ctrl+Right",
         "previousLabelModifier": "ctrl",
@@ -55,8 +64,6 @@
         "fontFamily": "",
         "fontPointSize": 0,
         "opacity": 1
-    },
-    "canvasLabelTextEditor": {
-        "opacity": 1
     }
 }
+

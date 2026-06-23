@@ -2,7 +2,10 @@
 
 #include <QApplication>
 #include <QBrush>
+#include <QClipboard>
 #include <QGraphicsPixmapItem>
+#include <QGraphicsRectItem>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
@@ -158,6 +161,7 @@ ImageCanvas::ImageCanvas(QWidget* parent) : QGraphicsView(parent)
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
     viewport()->setMouseTracking(true);
+    updateCursorForInteractionMode();
     connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, &ImageCanvas::notifyViewportStateChanged);
     connect(verticalScrollBar(), &QScrollBar::valueChanged, this, &ImageCanvas::notifyViewportStateChanged);
 
@@ -185,6 +189,35 @@ ImageCanvas::~ImageCanvas()
     setScene(nullptr);
 }
 
+void ImageCanvas::setInteractionMode(InteractionMode mode)
+{
+    if (m_interactionMode == mode) {
+        return;
+    }
+
+    m_interactionMode = mode;
+    m_pendingLabelCreate = false;
+    m_pendingLabelSelect = false;
+    m_pendingLabelSelectIndex = -1;
+    m_isMovingLabel = false;
+    m_movingLabelIndex = -1;
+    m_isSelectingRegion = false;
+    m_isMiddleButtonPanning = false;
+    hideHoveredLabelToolTip();
+    setDragMode(m_interactionMode == InteractionMode::Label ? QGraphicsView::ScrollHandDrag : QGraphicsView::NoDrag);
+    updateCursorForInteractionMode();
+    if (m_interactionMode == InteractionMode::Label) {
+        clearSelection();
+        emit selectionChanged({});
+    }
+    rebuildLabelItems();
+}
+
+ImageCanvas::InteractionMode ImageCanvas::interactionMode() const noexcept
+{
+    return m_interactionMode;
+}
+
 void ImageCanvas::setPreferences(const labelminus::core::AppPreferences& preferences)
 {
     m_markerDiameterPixels = preferences.labelMarkerDiameterPixels();
@@ -205,10 +238,13 @@ void ImageCanvas::setPreferences(const labelminus::core::AppPreferences& prefere
 
 void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::Label>& labels)
 {
+    hideHoveredLabelToolTip();
     m_imagePath = path;
     m_labels = labels;
     m_selectedLabels.clear();
     m_labelTextPreviews.clear();
+    m_normalizedSelectionRect = {};
+    m_isSelectingRegion = false;
 
     QPixmap pixmap(path);
     clearSceneItems();
@@ -228,12 +264,14 @@ void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::
 void ImageCanvas::clearSceneItems()
 {
     m_pixmapItem = nullptr;
+    m_selectionItem = nullptr;
     m_labelItems.clear();
     m_scene.clear();
 }
 
 void ImageCanvas::setLabels(const QVector<labelminus::core::Label>& labels)
 {
+    hideHoveredLabelToolTip();
     m_labels = labels;
     for (auto it = m_selectedLabels.begin(); it != m_selectedLabels.end();) {
         if (*it < 0 || *it >= m_labels.size()) {
@@ -336,6 +374,16 @@ QPoint ImageCanvas::globalPositionForLabel(int index) const
     return viewport()->mapToGlobal(viewportPosition);
 }
 
+bool ImageCanvas::hasSelection() const noexcept
+{
+    return m_normalizedSelectionRect.width() > 0.0 && m_normalizedSelectionRect.height() > 0.0;
+}
+
+QRectF ImageCanvas::normalizedSelectionRect() const noexcept
+{
+    return m_normalizedSelectionRect;
+}
+
 void ImageCanvas::setZoomPercent(int percent)
 {
     m_hasUserZoom = true;
@@ -375,8 +423,42 @@ void ImageCanvas::restoreView(int zoomPercent, QPointF normalizedCenter)
     notifyViewportStateChanged();
 }
 
+void ImageCanvas::keyPressEvent(QKeyEvent* event)
+{
+    if (m_interactionMode == InteractionMode::Selection && event->matches(QKeySequence::Copy)) {
+        if (copyImageToClipboard()) {
+            emit imageCopiedToClipboard();
+        }
+        event->accept();
+        return;
+    }
+
+    QGraphicsView::keyPressEvent(event);
+}
+
 void ImageCanvas::mousePressEvent(QMouseEvent* event)
 {
+    if (event->button() == Qt::MiddleButton) {
+        setFocus();
+        m_isMiddleButtonPanning = true;
+        m_lastMiddlePanPosition = event->pos();
+        m_pendingLabelCreate = false;
+        m_pendingLabelSelect = false;
+        m_pendingLabelSelectIndex = -1;
+        m_isSelectingRegion = false;
+        hideHoveredLabelToolTip();
+        viewport()->setCursor(Qt::ClosedHandCursor);
+        event->accept();
+        return;
+    }
+
+    if (m_interactionMode == InteractionMode::Selection && event->button() == Qt::LeftButton) {
+        setFocus();
+        beginSelection(event->pos());
+        event->accept();
+        return;
+    }
+
     if (event->button() == Qt::LeftButton) {
         setFocus();
         m_pendingLabelCreate = false;
@@ -420,6 +502,11 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
 
 void ImageCanvas::mouseDoubleClickEvent(QMouseEvent* event)
 {
+    if (m_interactionMode == InteractionMode::Selection && event->button() == Qt::LeftButton) {
+        event->accept();
+        return;
+    }
+
     if (event->button() == Qt::LeftButton) {
         setFocus();
         m_pendingLabelCreate = false;
@@ -444,6 +531,23 @@ void ImageCanvas::mouseDoubleClickEvent(QMouseEvent* event)
 
 void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
 {
+    if (m_isMiddleButtonPanning) {
+        const QPoint delta = event->pos() - m_lastMiddlePanPosition;
+        horizontalScrollBar()->setValue(horizontalScrollBar()->value() - delta.x());
+        verticalScrollBar()->setValue(verticalScrollBar()->value() - delta.y());
+        m_lastMiddlePanPosition = event->pos();
+        hideHoveredLabelToolTip();
+        notifyViewportStateChanged();
+        event->accept();
+        return;
+    }
+
+    if (m_interactionMode == InteractionMode::Selection && m_isSelectingRegion) {
+        updateSelection(event->pos());
+        event->accept();
+        return;
+    }
+
     if (m_isMovingLabel && m_pixmapItem != nullptr && m_movingLabelIndex >= 0 && m_movingLabelIndex < m_labels.size()) {
         m_labels[m_movingLabelIndex].setPosition(normalizedPositionFromScene(mapToScene(event->pos())));
         rebuildLabelItems();
@@ -462,7 +566,7 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
     }
 
     QGraphicsView::mouseMoveEvent(event);
-    if (event->buttons() == Qt::NoButton) {
+    if (m_interactionMode == InteractionMode::Label && event->buttons() == Qt::NoButton) {
         updateHoveredLabelToolTip(event->pos(), event->globalPosition().toPoint());
     }
     else {
@@ -472,6 +576,20 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
 
 void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
 {
+    if (event->button() == Qt::MiddleButton && m_isMiddleButtonPanning) {
+        m_isMiddleButtonPanning = false;
+        updateCursorForInteractionMode();
+        notifyViewportStateChanged();
+        event->accept();
+        return;
+    }
+
+    if (m_interactionMode == InteractionMode::Selection && event->button() == Qt::LeftButton && m_isSelectingRegion) {
+        finishSelection(event->pos());
+        event->accept();
+        return;
+    }
+
     if (event->button() == Qt::LeftButton && m_isMovingLabel) {
         const int labelIndex = m_movingLabelIndex;
         m_isMovingLabel = false;
@@ -527,6 +645,10 @@ void ImageCanvas::resizeEvent(QResizeEvent* event)
 
 void ImageCanvas::leaveEvent(QEvent* event)
 {
+    if (m_isMiddleButtonPanning) {
+        m_isMiddleButtonPanning = false;
+        updateCursorForInteractionMode();
+    }
     hideHoveredLabelToolTip();
     QGraphicsView::leaveEvent(event);
 }
@@ -556,7 +678,7 @@ void ImageCanvas::rebuildLabelItems()
         m_scene.addItem(marker);
         m_labelItems.append(marker);
 
-        if (m_selectedLabels.contains(i)) {
+        if (m_interactionMode == InteractionMode::Label && m_selectedLabels.contains(i)) {
             auto* bubble =
                 new LabelTextBubbleItem(i, displayTextForLabel(i), style, m_textBubbleFont, m_textBubbleOpacity);
             bubble->setPos(marker->pos());
@@ -689,6 +811,132 @@ void ImageCanvas::hideHoveredLabelToolTip()
     if (m_hoverToolTip != nullptr) {
         m_hoverToolTip->hide();
     }
+}
+
+QRectF ImageCanvas::imageClampedSceneRect(QPointF firstScenePosition, QPointF secondScenePosition) const
+{
+    if (m_pixmapItem == nullptr) {
+        return {};
+    }
+
+    const QRectF imageRect = m_pixmapItem->boundingRect();
+    firstScenePosition.setX(std::clamp(firstScenePosition.x(), imageRect.left(), imageRect.right()));
+    firstScenePosition.setY(std::clamp(firstScenePosition.y(), imageRect.top(), imageRect.bottom()));
+    secondScenePosition.setX(std::clamp(secondScenePosition.x(), imageRect.left(), imageRect.right()));
+    secondScenePosition.setY(std::clamp(secondScenePosition.y(), imageRect.top(), imageRect.bottom()));
+
+    return QRectF(firstScenePosition, secondScenePosition).normalized();
+}
+
+QRectF ImageCanvas::normalizedRectFromSceneRect(QRectF sceneRect) const
+{
+    if (m_pixmapItem == nullptr || sceneRect.isNull()) {
+        return {};
+    }
+
+    const QRectF imageRect = m_pixmapItem->boundingRect();
+    const double left = (sceneRect.left() - imageRect.left()) / imageRect.width();
+    const double top = (sceneRect.top() - imageRect.top()) / imageRect.height();
+    const double right = (sceneRect.right() - imageRect.left()) / imageRect.width();
+    const double bottom = (sceneRect.bottom() - imageRect.top()) / imageRect.height();
+    return QRectF(QPointF(std::clamp(left, 0.0, 1.0), std::clamp(top, 0.0, 1.0)),
+                  QPointF(std::clamp(right, 0.0, 1.0), std::clamp(bottom, 0.0, 1.0)))
+        .normalized();
+}
+
+void ImageCanvas::beginSelection(QPoint viewportPosition)
+{
+    if (m_pixmapItem == nullptr) {
+        return;
+    }
+
+    m_pendingLabelCreate = false;
+    m_pendingLabelSelect = false;
+    m_pendingLabelSelectIndex = -1;
+    m_isMovingLabel = false;
+    m_movingLabelIndex = -1;
+    hideHoveredLabelToolTip();
+
+    m_isSelectingRegion = true;
+    m_selectionStartScenePosition = mapToScene(viewportPosition);
+    if (m_selectionItem == nullptr) {
+        m_selectionItem = m_scene.addRect({}, QPen(QColor(46, 103, 230), 2.0, Qt::DashLine), QColor(46, 103, 230, 40));
+        m_selectionItem->setZValue(8.0);
+    }
+    updateSelection(viewportPosition);
+}
+
+void ImageCanvas::updateSelection(QPoint viewportPosition)
+{
+    if (m_pixmapItem == nullptr || m_selectionItem == nullptr) {
+        return;
+    }
+
+    const QRectF sceneRect = imageClampedSceneRect(m_selectionStartScenePosition, mapToScene(viewportPosition));
+    m_selectionItem->setRect(sceneRect);
+    m_normalizedSelectionRect = normalizedRectFromSceneRect(sceneRect);
+}
+
+void ImageCanvas::finishSelection(QPoint viewportPosition)
+{
+    updateSelection(viewportPosition);
+    m_isSelectingRegion = false;
+
+    if (m_selectionItem == nullptr || m_normalizedSelectionRect.width() <= 0.0 ||
+        m_normalizedSelectionRect.height() <= 0.0) {
+        clearSelection();
+        emit selectionChanged({});
+        return;
+    }
+
+    emit selectionChanged(m_normalizedSelectionRect);
+}
+
+void ImageCanvas::clearSelection()
+{
+    if (m_selectionItem != nullptr) {
+        m_scene.removeItem(m_selectionItem);
+        delete m_selectionItem;
+        m_selectionItem = nullptr;
+    }
+    m_normalizedSelectionRect = {};
+    m_isSelectingRegion = false;
+}
+
+bool ImageCanvas::copyImageToClipboard()
+{
+    if (m_pixmapItem == nullptr) {
+        return false;
+    }
+
+    const QPixmap pixmap = m_pixmapItem->pixmap();
+    if (pixmap.isNull()) {
+        return false;
+    }
+
+    QRect copyRect = pixmap.rect();
+    if (hasSelection()) {
+        const QRectF normalizedRect = m_normalizedSelectionRect.normalized();
+        const QRectF pixelRect(normalizedRect.left() * pixmap.width(), normalizedRect.top() * pixmap.height(),
+                               normalizedRect.width() * pixmap.width(), normalizedRect.height() * pixmap.height());
+        copyRect = pixelRect.toAlignedRect().intersected(pixmap.rect());
+    }
+    if (copyRect.isEmpty()) {
+        return false;
+    }
+
+    QApplication::clipboard()->setPixmap(pixmap.copy(copyRect));
+    return true;
+}
+
+void ImageCanvas::updateCursorForInteractionMode()
+{
+    if (m_interactionMode == InteractionMode::Label) {
+        viewport()->setCursor(Qt::OpenHandCursor);
+        return;
+    }
+
+    viewport()->unsetCursor();
 }
 
 labelminus::core::LabelGroupStyle ImageCanvas::styleForGroup(const QString& group) const

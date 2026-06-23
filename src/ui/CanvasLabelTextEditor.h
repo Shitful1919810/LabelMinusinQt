@@ -4,6 +4,8 @@
 
 class QPlainTextEdit;
 class QGraphicsOpacityEffect;
+class QMouseEvent;
+class QWheelEvent;
 
 class CanvasLabelTextEditor final : public QFrame {
     Q_OBJECT
@@ -17,6 +19,12 @@ public:
     void setEditorOpacity(double opacity);
     void moveNearGlobalPosition(const QPoint& globalPosition);
     QPlainTextEdit* editor() const noexcept;
+
+protected:
+    void wheelEvent(QWheelEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
 
 signals:
     void textChanged(QString text);

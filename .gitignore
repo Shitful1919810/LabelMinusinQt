@@ -10,3 +10,16 @@ CMakeUserPresets.json
 *.AppImage
 *.deb
 *.rpm
+
+# Python cache files from automation scripts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local user automation scripts
+scripts/custom/*
+!scripts/custom/.gitkeep
+scripts/official/**/config.json
+scripts/custom/**/config.json

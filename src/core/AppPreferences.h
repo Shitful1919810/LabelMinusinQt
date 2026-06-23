@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QKeySequence>
+#include <QMap>
 #include <QString>
 #include <QVector>
 #include <Qt>
@@ -61,6 +62,11 @@ enum class AppPreferenceWarningType {
     AppearanceNotObject,
     AppearanceStyleWrongType,
     AppearanceThemeWrongType,
+    AppearanceLanguageWrongType,
+    AutomationNotObject,
+    AutomationShowRunLogWrongType,
+    AutomationShortcutsNotObject,
+    AutomationShortcutInvalid,
 };
 
 struct AppPreferenceWarning {
@@ -107,6 +113,9 @@ public:
     double canvasLabelTextEditorOpacity() const noexcept;
     QString applicationStyle() const;
     QString applicationTheme() const;
+    QString applicationLanguage() const;
+    bool showAutomationRunLog() const noexcept;
+    const QMap<QString, QKeySequence>& automationShortcuts() const noexcept;
     Qt::KeyboardModifiers moveLabelModifiers() const noexcept;
     Qt::KeyboardModifiers previousLabelModifiers() const noexcept;
     QKeySequence undoShortcut() const;
@@ -138,6 +147,9 @@ private:
     double m_canvasLabelTextEditorOpacity{1.0};
     QString m_applicationStyle;
     QString m_applicationTheme;
+    QString m_applicationLanguage;
+    bool m_showAutomationRunLog{false};
+    QMap<QString, QKeySequence> m_automationShortcuts;
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
     Qt::KeyboardModifiers m_previousLabelModifiers{Qt::ControlModifier};
     QKeySequence m_undoShortcut{QStringLiteral("Ctrl+Z")};

@@ -37,7 +37,7 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 
 - Follow `CONTRIBUTING.md` and `docs/architecture.md`.
 - New user-visible UI text must use `tr()`.
-- When adding or changing `tr()` strings, update both `translations/labelminus_zh_CN.ts` and `translations/labelminus_en_US.ts`.
+- When adding or changing `tr()` strings, update `translations/labelminus_zh_CN.ts`, `translations/labelminus_zh_TW.ts`, `translations/labelminus_ja_JP.ts` and `translations/labelminus_en_US.ts`.
 - Run `scripts/check_translations.sh` after UI text changes.
 - Configurable UI behavior should go through `AppPreferences` and `preference.json`.
 - Reversible project edits must use the Qt-backed `UndoStack`; add undo and redo behavior in the same change that introduces the edit.
@@ -46,6 +46,7 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - Current-page label changes should update table/marker state in place and must not reload the image unless the current image actually changes.
 - Composite Qt widgets that connect signals from child/internal widgets must disconnect those internal signal connections during destruction before owned child objects start tearing down.
 - If code caches raw pointers owned by Qt containers or parent objects, such as `QGraphicsScene` items or child widgets, clear or null those cached pointers before the owner clears/destructs. Use `QPointer` for cached `QObject`/`QWidget` references whose lifetime may end outside the current synchronous scope.
+- Do not destroy or rebuild a `QMenu`/`QAction` tree from inside a slot triggered by one of its own actions. During long-running or nested-event-loop workflows, update enabled/visible state in place; rebuild menus only after the triggering call stack has unwound.
 - New Qt modules and third-party dependencies must be checked for license compatibility and documented.
 - User-configurable shortcuts should go through `AppPreferences`, `preference.json` and the preference dialog.
 - The Windows `LabelMinusStatic` target is experimental and local-only; do not make it an official release artifact without Qt license review.

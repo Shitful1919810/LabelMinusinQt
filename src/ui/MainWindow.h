@@ -2,6 +2,7 @@
 
 #include "core/AppPreferences.h"
 #include "core/UndoStack.h"
+#include "services/AutomationService.h"
 #include "services/LabelEditController.h"
 #include "services/ProjectController.h"
 #include "services/ProjectWorkflowController.h"
@@ -15,6 +16,7 @@
 #include <QMainWindow>
 #include <QPersistentModelIndex>
 #include <QPointF>
+#include <QPointer>
 #include <QVariant>
 #include <QVector>
 
@@ -32,6 +34,8 @@ class QSplitter;
 class QTableView;
 class QTimer;
 class QToolButton;
+class AutomationRunDialog;
+class AutomationShortcutController;
 class CanvasLabelTextEditController;
 class LabelGroupDelegate;
 class LabelTextDelegate;
@@ -67,6 +71,15 @@ private:
     void openProject();
     void mergeProjects();
     void reorderPages();
+    void refreshAutomationMenu();
+    void updateAutomationMenuEnabledState();
+    void runAutomationScriptFromAction();
+    void runAutomationScriptById(const QString& scriptId);
+    void runAutomationScript(const labelminus::services::AutomationScript& script);
+    void showMissingAutomationScriptMessage(const QString& scriptId);
+    void cancelRunningAutomationScript();
+    void applyAutomationOperations(const QString& scriptName,
+                                   const QVector<labelminus::services::AutomationOperation>& operations);
     void openRecentProjectFromAction();
     void openPreferences();
     bool saveProject();
@@ -144,6 +157,7 @@ private:
     void showPreferenceWarnings();
     void applyPreferences(labelminus::core::AppPreferencesLoadResult result);
     QString preferenceWarningText(const labelminus::core::AppPreferenceWarning& warning) const;
+    QStringList defaultProjectGroups() const;
     void markDirty();
     void setDirty(bool dirty);
     bool promptToSaveIfDirty();
@@ -155,6 +169,7 @@ private:
     QColor colorForGroup(const QString& group) const;
     int labelCountForGroup(const QString& group) const;
     void setEditorEnabled(bool enabled);
+    void setAutomationRunning(bool running);
     labelminus::core::Project& project() noexcept;
     const labelminus::core::Project& project() const noexcept;
     labelminus::core::ImageEntry* currentImage();
@@ -169,6 +184,7 @@ private:
     QPlainTextEdit* m_textEdit{nullptr};
     CanvasLabelTextEditController* m_canvasTextEditController{nullptr};
     MainWindowShortcutController* m_shortcutController{nullptr};
+    AutomationShortcutController* m_automationShortcutController{nullptr};
     QComboBox* m_imageComboBox{nullptr};
     QComboBox* m_insertGroupComboBox{nullptr};
     GroupFilterComboBox* m_groupFilterComboBox{nullptr};
@@ -186,12 +202,16 @@ private:
     QAction* m_saveProjectAction{nullptr};
     QAction* m_saveProjectAsAction{nullptr};
     QMenu* m_recentProjectsMenu{nullptr};
+    QMenu* m_automationMenu{nullptr};
+    QAction* m_cancelAutomationAction{nullptr};
     QAction* m_undoAction{nullptr};
     QAction* m_redoAction{nullptr};
     QAction* m_previousPageAction{nullptr};
     QAction* m_nextPageAction{nullptr};
     QAction* m_preferencesAction{nullptr};
     QAction* m_quitAction{nullptr};
+    QToolButton* m_labelModeButton{nullptr};
+    QToolButton* m_selectionModeButton{nullptr};
     QPushButton* m_previousButton{nullptr};
     QPushButton* m_nextButton{nullptr};
     labelminus::services::ProjectController m_projectController;
@@ -211,5 +231,9 @@ private:
     QFont m_defaultTextEditFont;
     labelminus::services::SessionStateStore m_sessionStateStore;
     labelminus::core::UndoStack m_undoStack;
+    QVector<labelminus::services::AutomationScript> m_automationScripts;
+    QPointer<labelminus::services::AutomationRunner> m_automationRunner;
+    QPointer<AutomationRunDialog> m_automationRunDialog;
     int m_operationMessageSerial{0};
+    bool m_isAutomationRunning{false};
 };

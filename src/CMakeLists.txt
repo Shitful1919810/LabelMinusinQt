@@ -4,14 +4,16 @@ set(LABELMINUS_CORE_SOURCES
     core/Label.cpp
     core/LabelPlusDocument.cpp
     core/Project.cpp
+    core/TranslationManager.cpp
     core/UndoStack.cpp
 )
 
 set(LABELMINUS_SERVICE_SOURCES
     services/ArchiveReader.cpp
+    services/AutomationOperationApplier.cpp
+    services/AutomationService.cpp
     services/LabelEditController.cpp
     services/LabelNavigator.cpp
-    services/OcrProcess.cpp
     services/ProjectPageOrderService.cpp
     services/ProjectMergeService.cpp
     services/ProjectController.cpp
@@ -19,7 +21,15 @@ set(LABELMINUS_SERVICE_SOURCES
     services/SessionStateStore.cpp
 )
 
+file(GLOB LABELMINUS_TRANSLATION_FILES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/../translations/labelminus_*.ts"
+)
+list(SORT LABELMINUS_TRANSLATION_FILES)
+
 set(LABELMINUS_UI_SOURCES
+    ui/AutomationParameterDialog.cpp
+    ui/AutomationRunDialog.cpp
+    ui/AutomationShortcutController.cpp
     ui/CanvasLabelTextEditController.cpp
     ui/CanvasLabelTextEditor.cpp
     ui/GroupFilterComboBox.cpp
@@ -66,8 +76,7 @@ endif()
 if(COMMAND qt_add_translations)
     qt_add_translations(LabelMinus
         TS_FILES
-            "${CMAKE_CURRENT_SOURCE_DIR}/../translations/labelminus_zh_CN.ts"
-            "${CMAKE_CURRENT_SOURCE_DIR}/../translations/labelminus_en_US.ts"
+            ${LABELMINUS_TRANSLATION_FILES}
         RESOURCE_PREFIX "/i18n"
     )
 endif()
@@ -76,6 +85,20 @@ add_custom_command(TARGET LabelMinus POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_CURRENT_SOURCE_DIR}/../preference.json"
         "$<TARGET_FILE_DIR:LabelMinus>/preference.json"
+    VERBATIM
+)
+
+add_custom_target(LabelMinusScripts ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:LabelMinus>/scripts"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/official"
+        "$<TARGET_FILE_DIR:LabelMinus>/scripts/official"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/custom"
+        "$<TARGET_FILE_DIR:LabelMinus>/scripts/custom"
+    DEPENDS LabelMinus
+    COMMENT "Syncing automation scripts"
     VERBATIM
 )
 
@@ -137,8 +160,7 @@ if(LABELMINUS_ENABLE_STATIC_QT_EXPERIMENT)
     if(COMMAND qt_add_translations)
         qt_add_translations(LabelMinusStatic
             TS_FILES
-                "${CMAKE_CURRENT_SOURCE_DIR}/../translations/labelminus_zh_CN.ts"
-                "${CMAKE_CURRENT_SOURCE_DIR}/../translations/labelminus_en_US.ts"
+                ${LABELMINUS_TRANSLATION_FILES}
             RESOURCE_PREFIX "/i18n"
         )
     endif()
@@ -165,4 +187,10 @@ endif()
 install(TARGETS LabelMinus
     BUNDLE DESTINATION .
     RUNTIME DESTINATION bin
+)
+
+install(DIRECTORY
+    "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/official"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/custom"
+    DESTINATION bin/scripts
 )

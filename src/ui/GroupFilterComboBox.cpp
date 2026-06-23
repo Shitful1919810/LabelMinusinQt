@@ -2,6 +2,7 @@
 
 #include <QAction>
 #include <QCheckBox>
+#include <QTimer>
 #include <QWidgetAction>
 
 #include <utility>
@@ -92,17 +93,17 @@ void GroupFilterComboBox::selectAll()
     for (const QString& group : m_groups) {
         m_selectedGroups.insert(group);
     }
-    rebuildMenu();
     updateButtonText();
     emitSelectionChanged();
+    QTimer::singleShot(0, this, &GroupFilterComboBox::rebuildMenu);
 }
 
 void GroupFilterComboBox::clearSelection()
 {
     m_selectedGroups.clear();
-    rebuildMenu();
     updateButtonText();
     emitSelectionChanged();
+    QTimer::singleShot(0, this, &GroupFilterComboBox::rebuildMenu);
 }
 
 void GroupFilterComboBox::emitSelectionChanged()

@@ -1,11 +1,45 @@
 #include "ui/CanvasLabelTextEditor.h"
 
 #include <QGraphicsOpacityEffect>
+#include <QMouseEvent>
 #include <QPlainTextEdit>
 #include <QTextCursor>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 
 #include <algorithm>
+
+namespace {
+class CanvasPlainTextEdit final : public QPlainTextEdit {
+public:
+    using QPlainTextEdit::QPlainTextEdit;
+
+protected:
+    void wheelEvent(QWheelEvent* event) override
+    {
+        QPlainTextEdit::wheelEvent(event);
+        event->accept();
+    }
+
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        QPlainTextEdit::mousePressEvent(event);
+        event->accept();
+    }
+
+    void mouseMoveEvent(QMouseEvent* event) override
+    {
+        QPlainTextEdit::mouseMoveEvent(event);
+        event->accept();
+    }
+
+    void mouseReleaseEvent(QMouseEvent* event) override
+    {
+        QPlainTextEdit::mouseReleaseEvent(event);
+        event->accept();
+    }
+};
+} // namespace
 
 CanvasLabelTextEditor::CanvasLabelTextEditor(QWidget* parent) : QFrame(parent)
 {
@@ -24,7 +58,7 @@ CanvasLabelTextEditor::CanvasLabelTextEditor(QWidget* parent) : QFrame(parent)
     layout->setContentsMargins(6, 6, 6, 6);
     layout->setSpacing(0);
 
-    m_editor = new QPlainTextEdit(this);
+    m_editor = new CanvasPlainTextEdit(this);
     m_editor->setFrameShape(QFrame::NoFrame);
     m_editor->setTabChangesFocus(true);
     layout->addWidget(m_editor);
@@ -80,4 +114,24 @@ void CanvasLabelTextEditor::moveNearGlobalPosition(const QPoint& globalPosition)
 QPlainTextEdit* CanvasLabelTextEditor::editor() const noexcept
 {
     return m_editor;
+}
+
+void CanvasLabelTextEditor::wheelEvent(QWheelEvent* event)
+{
+    event->accept();
+}
+
+void CanvasLabelTextEditor::mousePressEvent(QMouseEvent* event)
+{
+    event->accept();
+}
+
+void CanvasLabelTextEditor::mouseMoveEvent(QMouseEvent* event)
+{
+    event->accept();
+}
+
+void CanvasLabelTextEditor::mouseReleaseEvent(QMouseEvent* event)
+{
+    event->accept();
 }

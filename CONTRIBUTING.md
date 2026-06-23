@@ -11,6 +11,7 @@ This branch is a C++/Qt 6 port of LabelMinus. Keep changes aligned with the curr
 - Prefer small classes and explicit ownership through Qt parent/child relationships.
 - For composite Qt widgets, disconnect signals from child/internal widgets before destruction if those signals can fire while owned objects are tearing down.
 - When caching raw pointers owned by Qt containers or parent objects, clear or null the cache before the owner clears/destructs. Prefer `QPointer` for cached `QObject`/`QWidget` references used across callbacks, queued events or delayed deletion.
+- Avoid clearing or rebuilding a `QMenu`/`QAction` hierarchy from a slot currently triggered by one of its own actions. If a running workflow needs to disable entries, update existing actions in place or defer the rebuild until the action call stack has returned.
 - Run `clang-format` with the repository `.clang-format` before committing substantial C++ changes.
 - Do not introduce WPF, .NET or Windows-only dependencies on this branch.
 
@@ -48,9 +49,11 @@ See `docs/architecture.md` for more detail.
 ## UI Text And i18n
 
 - User-visible UI strings must use `tr()`.
-- When adding or changing a `tr()` string, update both:
+- When adding or changing a `tr()` string, update all of the 4 files:
   - `translations/labelminus_zh_CN.ts`
+  - `translations/labelminus_zh_TW.ts`
   - `translations/labelminus_en_US.ts`
+  - `translations/labelminus_ja_JP.ts`
 - Then run:
 
 ```bash

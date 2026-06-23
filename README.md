@@ -23,6 +23,7 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 - 鼠标悬停在图像 marker 上时显示标签文本提示。
 - 提供撤销/重做能力，覆盖新增、删除、移动、文本编辑、类别修改、标签排序和页面排序等工程编辑操作。
 - 支持按间隔自动备份已修改的 LabelPlus 文本工程。
+- 支持通过“自动化”菜单运行外部 Python 自动化脚本，当前内置标签字数统计和分组互换示例脚本。
 - 偏好设置窗口支持通过系统字体选择器分别调整标签列表和大文本编辑框字体。
 - 支持通过偏好设置启用内置 Breeze 风格 QSS 主题。
 - 提供简体中文和英文界面文本，并使用 Qt Linguist 工作流生成翻译资源。
@@ -275,6 +276,7 @@ cmake --build --preset windows-vs-release --target deploy_windows
 
 - `appearance.style`：启动时强制使用的 Qt 控件风格名称，例如 `Fusion`。为空时不强制设置，使用系统默认风格。可选值由当前 Qt 环境的 `QStyleFactory::keys()` 决定，偏好设置窗口会自动列出可用 style。
 - `appearance.theme`：应用内置 Breeze QSS 样式表主题。为空时不使用样式表；当前支持 `breezeDark`、`breezeLight`。该字段与 `appearance.style` 可同时使用，程序会先设置 Qt style，再叠加 Breeze QSS。
+- `appearance.language`：界面语言。为空时跟随系统语言；可选值由程序扫描当前可用的 `labelminus_*.qm` 翻译资源得到。修改后需要重启应用程序生效。
 - `labelMarker.diameter`：默认 marker 直径，单位为屏幕像素，支持浮点数。
 - `labelMarker.fontPointSize`：默认 marker 内部序号字号，使用 Qt 字号单位，支持浮点数。
 - `labelTable.maxTextRows`：右侧标签列表文本列自动换行后的最大显示行数。
@@ -311,6 +313,216 @@ cmake --build --preset windows-vs-release --target deploy_windows
 
 如果某个分组没有对应的 `groupStyles` 项，图像 marker 会使用黑色圆形和默认大小，文本界面保留默认文字颜色。
 
+## 自动化脚本
+
+程序会在可执行文件所在目录下读取自动化脚本：
+
+```text
+scripts/official    官方脚本
+scripts/custom      用户自定义脚本
+```
+
+每个脚本独立放在一个目录中，目录内至少包含 `script.json` 和入口 Python 文件，也可以附带 `requirements.txt` 与资源文件。`script.json` 示例：
+
+```json
+{
+  "apiVersion": 1,
+  "name": "Label Word Count",
+  "entry": "word_count.py",
+  "description": "Count characters in all non-deleted labels in the current project."
+}
+```
+
+一个脚本目录也可以在同一个 `script.json` 中定义多个菜单项。此时程序会在“自动化”菜单中为这个目录生成子菜单：
+
+```json
+{
+  "apiVersion": 1,
+  "name": "OCR",
+  "description": "Configure OCR and run OCR scripts.",
+  "scripts": [
+    {
+      "id": "configure",
+      "name": "Configure OCR",
+      "entry": "configure_ocr.py",
+      "parameters": [
+        {
+          "key": "engine",
+          "label": "Default OCR engine",
+          "type": "choice",
+          "default": "paddle",
+          "options": ["paddle", "manga-with-paddle"]
+        }
+      ]
+    },
+    {
+      "id": "preview",
+      "name": "OCR Preview",
+      "entry": "ocr_preview.py"
+    },
+    {
+      "id": "add_labels",
+      "name": "OCR Add Labels",
+      "entry": "ocr_preview.py",
+      "environment": {
+        "LABELMINUS_OCR_ACTION": "add-labels"
+      }
+    }
+  ]
+}
+```
+
+`environment` 会被注入到对应脚本进程环境中，适合让多个菜单项复用同一个 Python 入口但采用不同运行参数。
+
+每个脚本还可以声明 `parameters`。只要参数列表非空，运行前主程序会弹出 Qt 参数窗口，把用户填写的值写入 `input.json` 的 `parameters` 字段。当前支持的参数类型包括：
+
+- `text`：普通文本输入框。
+- `group`：当前工程分组下拉框。
+- `choice` / `select` / `enum`：通过 `options` 提供固定选项。
+- `boolean` / `bool`：复选框。
+- `file`：文件路径输入框，附带文件选择按钮。
+- `directory`：目录路径输入框，附带目录选择按钮。
+
+例如：
+
+```json
+{
+  "key": "device",
+  "label": "PaddleOCR device",
+  "type": "choice",
+  "default": "cpu",
+  "options": ["cpu", "gpu"]
+}
+```
+
+运行脚本时，程序会通过外部 Python 进程调用：
+
+```bash
+python script.py --input input.json --output output.json
+```
+
+`input.json` 包含当前工程快照、当前页面与选中标签上下文、当前图像选区，以及用户在参数窗口填写的 `parameters`，`output.json` 返回脚本摘要、结果和可选的结构化 `operations`。如果 `output.json` 顶层包含 `"quiet": true`，脚本成功结束后不会弹出结果窗口，只会更新状态栏。脚本不应直接修改 LabelPlus 工程文件；需要修改工程时，应输出 `operations`，由主程序校验后应用到工程并注册撤销/重做。
+
+输入快照默认只包含未删除 label。每个 label 中的 `labelIndex` 是工程内部 label 下标，供未来 `operations` 精确引用；`visibleIndex` 是过滤掉已删除 label 后的可见序号，仅用于展示。
+
+`context` 描述当前 UI 上下文：
+
+```json
+{
+  "currentPage": {
+    "hasPage": true,
+    "index": 0,
+    "number": 1,
+    "name": "001.png",
+    "imagePath": "/path/to/001.png"
+  },
+  "selectedLabelIndexes": [0, 3],
+  "selectedLabels": [
+    {
+      "labelIndex": 0,
+      "visibleIndex": 0,
+      "group": "框内",
+      "x": 0.5,
+      "y": 0.5,
+      "text": "..."
+    }
+  ]
+}
+```
+
+`currentPage.index` 是从 `0` 开始的内部页下标；`currentPage.number` 是从 `1` 开始、适合显示给用户的页码。`selectedLabelIndexes` 和 `selectedLabels` 均只描述当前页的未删除已选标签，支持多选。
+
+`project.pages[].imagePath` 是每页图片路径；`project.imagePaths` 额外提供工程内所有图片路径列表，便于脚本批量处理。`selection` 描述当前图像预览区的选区：
+
+```json
+{
+  "hasSelection": true,
+  "imageIndex": 0,
+  "page": "001.png",
+  "imagePath": "/path/to/001.png",
+  "rect": {
+    "x": 0.12,
+    "y": 0.34,
+    "width": 0.2,
+    "height": 0.1,
+    "left": 0.12,
+    "top": 0.34,
+    "right": 0.32,
+    "bottom": 0.44
+  }
+}
+```
+
+选区坐标均为相对当前图片的归一化坐标，范围为 `0.0` 到 `1.0`。如果当前没有选区，`selection.hasSelection` 为 `false`。
+
+当前支持的修改操作包括：
+
+修改 label 类别：
+
+```json
+{
+  "type": "setLabelGroup",
+  "page": "012.png",
+  "labelIndex": 3,
+  "group": "框外"
+}
+```
+
+修改 label 文本：
+
+```json
+{
+  "type": "setLabelText",
+  "page": "012.png",
+  "labelIndex": 3,
+  "text": "新的文本内容"
+}
+```
+
+修改 marker 坐标：
+
+```json
+{
+  "type": "setLabelPosition",
+  "page": "012.png",
+  "labelIndex": 3,
+  "x": 0.4,
+  "y": 0.6
+}
+```
+
+删除 label：
+
+```json
+{
+  "type": "deleteLabel",
+  "page": "012.png",
+  "labelIndex": 3
+}
+```
+
+新增 label：
+
+```json
+{
+  "type": "addLabel",
+  "page": "012.png",
+  "group": "框内",
+  "text": "识别出的文本",
+  "x": 0.75,
+  "y": 0.25
+}
+```
+
+其中 `x` 和 `y` 是归一化图片坐标。主程序会校验页名、标签下标和分组名，应用成功后统一注册到撤销/重做栈。
+
+仓库内置示例脚本包括：
+
+- `scripts/official/test`：测试用脚本目录，会在自动化菜单中显示为 `Test` 子菜单，包含字数统计、分组互换和等待 5 秒等脚本。
+- `scripts/official/ocr_preview`：对当前选区或当前页运行 OCR。`Configure OCR` 会通过参数窗口写入本机 `config.json`，用于保存 OCR 引擎、语言、设备、本地 manga-ocr 模型目录、默认标签分组和排序方向等设置。预览入口只报告识别结果；生成标签入口会按原版 LabelMinus 的思路合并文本块并输出 `addLabel` 操作。选区 OCR 会合并为一个 label，整页 OCR 会为每个文本块生成一个 label。
+
+用户本机脚本建议放在 `scripts/custom`，该目录下除 `.gitkeep` 外默认不会提交到仓库。
+
 ## 开发检查
 
 提交前建议运行：
@@ -346,7 +558,7 @@ src/services    工程工作流、会话状态、自动备份、OCR 与压缩包
 translations    Qt Linguist 翻译源文件
 tests           Qt Test 单元测试
 docs            架构与开发文档
-scripts         开发辅助脚本
+scripts         开发辅助脚本，以及 official/custom 自动化脚本目录
 ```
 
 更多开发约定请参见：

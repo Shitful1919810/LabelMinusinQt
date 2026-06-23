@@ -2,26 +2,22 @@
 #include "ui/ThemeManager.h"
 
 #include "core/AppPreferences.h"
+#include "core/TranslationManager.h"
 
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QCoreApplication>
-#include <QDir>
 #include <QFileInfo>
-#include <QLocale>
 #include <QStyle>
 #include <QStyleFactory>
 #include <QTranslator>
 
 namespace {
-void installTranslator(QApplication& app)
+void installTranslator(QApplication& app, const QString& language)
 {
     auto* translator = new QTranslator(&app);
-    const QLocale locale;
-    const QString appDir = QDir(QApplication::applicationDirPath()).filePath(QStringLiteral("i18n"));
 
-    if (translator->load(locale, QStringLiteral("labelminus"), QStringLiteral("_"), QStringLiteral(":/i18n")) ||
-        translator->load(locale, QStringLiteral("labelminus"), QStringLiteral("_"), appDir)) {
+    if (labelminus::core::loadApplicationTranslator(*translator, language)) {
         app.installTranslator(translator);
         return;
     }
@@ -48,7 +44,7 @@ int main(int argc, char* argv[])
     QApplication::setApplicationName("LabelMinus");
     QApplication::setOrganizationName("LabelMinus");
     QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
-    installTranslator(app);
+    installTranslator(app, preferences.preferences.applicationLanguage());
 
     QCommandLineParser parser;
     parser.setApplicationDescription(QCoreApplication::translate("main", "LabelPlus text project editor."));

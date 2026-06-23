@@ -1,7 +1,11 @@
 #include "ui/MainWindow.h"
 
+#include "services/AutomationOperationApplier.h"
 #include "services/LabelNavigator.h"
 #include "services/SessionStateStore.h"
+#include "ui/AutomationParameterDialog.h"
+#include "ui/AutomationRunDialog.h"
+#include "ui/AutomationShortcutController.h"
 #include "ui/CanvasLabelTextEditController.h"
 #include "ui/LabelEditDelegates.h"
 #include "ui/MainWindowShortcutController.h"
@@ -15,13 +19,16 @@
 #include <QAbstractItemView>
 #include <QAction>
 #include <QApplication>
+#include <QButtonGroup>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QDialog>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFontMetrics>
 #include <QHBoxLayout>
+#include <QHash>
 #include <QHeaderView>
 #include <QIcon>
 #include <QInputDialog>
@@ -51,6 +58,7 @@
 #include <QWidgetAction>
 
 #include <algorithm>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -99,6 +107,12 @@ MainWindow::MainWindow(QWidget* parent)
         },
         [this]() { editCurrentLabelText(); },
     });
+    m_automationShortcutController = new AutomationShortcutController(this, this);
+    m_automationShortcutController->setPreferences(m_preferences);
+    connect(m_automationShortcutController, &AutomationShortcutController::scriptTriggered, this,
+            &MainWindow::runAutomationScriptById);
+    connect(m_automationShortcutController, &AutomationShortcutController::missingScriptTriggered, this,
+            &MainWindow::showMissingAutomationScriptMessage);
     m_canvasTextEditController = new CanvasLabelTextEditController(this);
     m_canvasTextEditController->setCommitShortcut(m_preferences.commitLabelTextShortcut());
     m_canvasTextEditController->setEditorOpacity(m_preferences.canvasLabelTextEditorOpacity());
@@ -219,6 +233,11 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
+    if (m_isAutomationRunning) {
+        event->ignore();
+        return;
+    }
+
     commitActiveTextInput();
     if (!promptToSaveIfDirty()) {
         event->ignore();
@@ -235,6 +254,15 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
 {
     if (watched == m_textEdit && event->type() == QEvent::FocusOut) {
         commitPendingTextEdit();
+    }
+
+    if (m_isAutomationRunning) {
+        return QMainWindow::eventFilter(watched, event);
+    }
+
+    if (m_automationShortcutController != nullptr &&
+        m_automationShortcutController->handleGlobalShortcut(watched, event)) {
+        return true;
     }
 
     if (m_shortcutController != nullptr && m_shortcutController->handleGlobalShortcut(watched, event)) {
@@ -322,6 +350,9 @@ void MainWindow::createMenus()
     editMenu->addAction(m_redoAction);
     editMenu->addSeparator();
     editMenu->addAction(m_reorderPagesAction);
+
+    m_automationMenu = menuBar()->addMenu(tr("&Automation"));
+    refreshAutomationMenu();
 }
 
 void MainWindow::createCentralWidget()
@@ -349,6 +380,23 @@ void MainWindow::createCentralWidget()
     m_zoomSlider->setFixedWidth(180);
     bottomLayout->addWidget(new QLabel(tr("Zoom"), bottomBar));
     bottomLayout->addWidget(m_zoomSlider);
+    bottomLayout->addStretch();
+
+    auto* interactionModeGroup = new QButtonGroup(bottomBar);
+    interactionModeGroup->setExclusive(true);
+    m_labelModeButton = new QToolButton(bottomBar);
+    m_selectionModeButton = new QToolButton(bottomBar);
+    m_labelModeButton->setText(tr("Label mode"));
+    m_selectionModeButton->setText(tr("Selection mode"));
+    m_labelModeButton->setCheckable(true);
+    m_selectionModeButton->setCheckable(true);
+    m_labelModeButton->setChecked(true);
+    m_labelModeButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    m_selectionModeButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    interactionModeGroup->addButton(m_labelModeButton);
+    interactionModeGroup->addButton(m_selectionModeButton);
+    bottomLayout->addWidget(m_labelModeButton);
+    bottomLayout->addWidget(m_selectionModeButton);
     bottomLayout->addStretch();
 
     m_insertGroupComboBox = new QComboBox(bottomBar);
@@ -525,6 +573,14 @@ void MainWindow::createCentralWidget()
             &MainWindow::previewLabelTextFromTableEditor);
     connect(m_labelTextDelegate, &LabelTextDelegate::editorTextPreviewFinished, this,
             &MainWindow::clearLabelTextPreviewFromTableEditor);
+    connect(m_labelModeButton, &QToolButton::clicked, this,
+            [this]() { m_canvas->setInteractionMode(ImageCanvas::InteractionMode::Label); });
+    connect(m_selectionModeButton, &QToolButton::clicked, this, [this]() {
+        commitActiveTextInput();
+        m_canvas->setInteractionMode(ImageCanvas::InteractionMode::Selection);
+    });
+    connect(m_canvas, &ImageCanvas::imageCopiedToClipboard, this,
+            [this]() { statusBar()->showMessage(tr("Image copied to clipboard."), 3000); });
     connect(m_groupFilterComboBox, &GroupFilterComboBox::selectedGroupsChanged, this, &MainWindow::updateGroupFilter);
     connect(m_labelGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateCurrentLabelGroup);
     connect(m_insertGroupComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::updateInsertGroupTextColor);
@@ -548,8 +604,9 @@ void MainWindow::newProject()
     m_sessionStateStore.saveLastFileDialogPath(directoryPath);
 
     const QString projectBaseName = tr("New Translation");
-    labelminus::services::NewProjectResult result = m_projectController.createProjectFromImageDirectory(
-        directoryPath, projectBaseName, {QStringLiteral("框内"), QStringLiteral("框外")}, false);
+    const QStringList defaultGroups = defaultProjectGroups();
+    labelminus::services::NewProjectResult result =
+        m_projectController.createProjectFromImageDirectory(directoryPath, projectBaseName, defaultGroups, false);
     if (result.status == labelminus::services::NewProjectResult::Status::ProjectFileExists) {
         QMessageBox messageBox(QMessageBox::Question, tr("Project file already exists"),
                                tr("%1 already exists. Create the project with the next available name instead?")
@@ -562,8 +619,8 @@ void MainWindow::newProject()
             return;
         }
 
-        result = m_projectController.createProjectFromImageDirectory(
-            directoryPath, projectBaseName, {QStringLiteral("框内"), QStringLiteral("框外")}, true);
+        result =
+            m_projectController.createProjectFromImageDirectory(directoryPath, projectBaseName, defaultGroups, true);
     }
 
     if (result.status == labelminus::services::NewProjectResult::Status::NoImages) {
@@ -709,6 +766,277 @@ void MainWindow::reorderPages()
     m_projectWorkflowController->applyPageOrder(dialog.pageOrder(), viewState);
 }
 
+void MainWindow::refreshAutomationMenu()
+{
+    if (m_automationMenu == nullptr) {
+        return;
+    }
+
+    m_automationMenu->clear();
+    m_cancelAutomationAction = m_automationMenu->addAction(tr("Cancel Running Script"));
+    m_cancelAutomationAction->setObjectName(QStringLiteral("automationCancelAction"));
+    m_cancelAutomationAction->setEnabled(m_isAutomationRunning);
+    connect(m_cancelAutomationAction, &QAction::triggered, this, &MainWindow::cancelRunningAutomationScript);
+    m_automationMenu->addSeparator();
+
+    m_automationScripts = labelminus::services::AutomationService::discoverScripts();
+    if (m_automationShortcutController != nullptr) {
+        m_automationShortcutController->setScripts(m_automationScripts);
+    }
+    if (m_automationScripts.isEmpty()) {
+        QAction* emptyAction = m_automationMenu->addAction(tr("No automation scripts found"));
+        emptyAction->setObjectName(QStringLiteral("automationEmptyAction"));
+        emptyAction->setEnabled(false);
+    }
+    else {
+        QHash<QString, QVector<int>> scriptIndexesByDirectory;
+        QStringList directoryOrder;
+        for (int i = 0; i < m_automationScripts.size(); ++i) {
+            const QString directoryPath = m_automationScripts.at(i).directoryPath;
+            if (!scriptIndexesByDirectory.contains(directoryPath)) {
+                directoryOrder.append(directoryPath);
+            }
+            scriptIndexesByDirectory[directoryPath].append(i);
+        }
+
+        auto addScriptAction = [this](QMenu* menu, int scriptIndex) {
+            const labelminus::services::AutomationScript& script = m_automationScripts.at(scriptIndex);
+            QAction* scriptAction = menu->addAction(script.name);
+            scriptAction->setObjectName(QStringLiteral("automationScriptAction"));
+            scriptAction->setData(scriptIndex);
+            scriptAction->setToolTip(script.description);
+            scriptAction->setEnabled(!m_isAutomationRunning);
+            connect(scriptAction, &QAction::triggered, this, &MainWindow::runAutomationScriptFromAction);
+        };
+
+        for (const QString& directoryPath : std::as_const(directoryOrder)) {
+            const QVector<int> scriptIndexes = scriptIndexesByDirectory.value(directoryPath);
+            if (scriptIndexes.size() == 1) {
+                addScriptAction(m_automationMenu, scriptIndexes.first());
+                continue;
+            }
+
+            const labelminus::services::AutomationScript& firstScript = m_automationScripts.at(scriptIndexes.first());
+            QMenu* scriptMenu = m_automationMenu->addMenu(firstScript.directoryName);
+            scriptMenu->menuAction()->setObjectName(QStringLiteral("automationScriptMenuAction"));
+            scriptMenu->setEnabled(!m_isAutomationRunning);
+            for (int scriptIndex : scriptIndexes) {
+                addScriptAction(scriptMenu, scriptIndex);
+            }
+        }
+    }
+
+    m_automationMenu->addSeparator();
+    QAction* refreshAction = m_automationMenu->addAction(tr("Refresh Scripts"));
+    refreshAction->setObjectName(QStringLiteral("automationRefreshAction"));
+    refreshAction->setEnabled(!m_isAutomationRunning);
+    connect(refreshAction, &QAction::triggered, this,
+            [this]() { QTimer::singleShot(0, this, &MainWindow::refreshAutomationMenu); });
+}
+
+void MainWindow::updateAutomationMenuEnabledState()
+{
+    if (m_automationMenu == nullptr) {
+        return;
+    }
+
+    const auto updateActions = [this](const QList<QAction*>& actions, const auto& updateActionsRef) -> void {
+        for (QAction* action : actions) {
+            if (action == nullptr || action->isSeparator()) {
+                continue;
+            }
+
+            if (action == m_cancelAutomationAction ||
+                action->objectName() == QStringLiteral("automationCancelAction")) {
+                action->setEnabled(m_isAutomationRunning);
+            }
+            else if (action->objectName() == QStringLiteral("automationEmptyAction")) {
+                action->setEnabled(false);
+            }
+            else {
+                action->setEnabled(!m_isAutomationRunning);
+            }
+
+            if (QMenu* menu = action->menu()) {
+                updateActionsRef(menu->actions(), updateActionsRef);
+            }
+        }
+    };
+    updateActions(m_automationMenu->actions(), updateActions);
+}
+
+void MainWindow::runAutomationScriptFromAction()
+{
+    const auto* action = qobject_cast<const QAction*>(sender());
+    if (action == nullptr) {
+        return;
+    }
+
+    const int scriptIndex = action->data().toInt();
+    if (scriptIndex < 0 || scriptIndex >= m_automationScripts.size()) {
+        return;
+    }
+    runAutomationScript(m_automationScripts.at(scriptIndex));
+}
+
+void MainWindow::runAutomationScriptById(const QString& scriptId)
+{
+    const auto script = std::find_if(m_automationScripts.cbegin(), m_automationScripts.cend(),
+                                     [&scriptId](const auto& candidate) { return candidate.id == scriptId; });
+    if (script == m_automationScripts.cend()) {
+        showMissingAutomationScriptMessage(scriptId);
+        return;
+    }
+
+    runAutomationScript(*script);
+}
+
+void MainWindow::runAutomationScript(const labelminus::services::AutomationScript& script)
+{
+    if (!QFileInfo::exists(script.entryPath)) {
+        showMissingAutomationScriptMessage(script.id);
+        refreshAutomationMenu();
+        return;
+    }
+    if (m_isAutomationRunning) {
+        return;
+    }
+    if (project().isEmpty()) {
+        QMessageBox::information(this, tr("Automation"), tr("Open a project before running automation scripts."));
+        return;
+    }
+
+    commitActiveTextInput();
+    const std::optional<QJsonObject> parameters =
+        AutomationParameterDialog::getParameters(this, script, project().groups(), m_preferences.groupStyles());
+    if (!parameters.has_value()) {
+        return;
+    }
+
+    statusBar()->showMessage(tr("Running automation script: %1").arg(script.name));
+    labelminus::services::AutomationSelection selection;
+    if (m_canvas != nullptr && m_canvas->hasSelection()) {
+        selection.hasSelection = true;
+        selection.normalizedRect = m_canvas->normalizedSelectionRect();
+    }
+    labelminus::services::AutomationContext context;
+    context.currentImageIndex = m_currentImageIndex;
+    context.selectedLabelIndexes = selectedLabelIndexes();
+
+    auto* runner = new labelminus::services::AutomationRunner(this);
+    AutomationRunDialog* dialog = nullptr;
+    if (m_preferences.showAutomationRunLog()) {
+        dialog = new AutomationRunDialog(script.name, this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+    }
+    m_automationRunner = runner;
+    m_automationRunDialog = dialog;
+
+    if (dialog != nullptr) {
+        connect(dialog, &AutomationRunDialog::cancelRequested, runner, &labelminus::services::AutomationRunner::cancel);
+        connect(dialog, &QObject::destroyed, this, [this]() { m_automationRunDialog.clear(); });
+        connect(runner, &labelminus::services::AutomationRunner::standardOutputReceived, dialog,
+                &AutomationRunDialog::appendStandardOutput);
+        connect(runner, &labelminus::services::AutomationRunner::standardErrorReceived, dialog,
+                &AutomationRunDialog::appendStandardError);
+    }
+    connect(runner, &labelminus::services::AutomationRunner::finished, this,
+            [this, runner, dialog, script](const labelminus::services::AutomationRunResult& result) {
+                setAutomationRunning(false);
+                if (m_automationRunner == runner) {
+                    m_automationRunner.clear();
+                }
+                const QPointer<AutomationRunDialog> dialogPointer(dialog);
+                runner->deleteLater();
+                QTimer::singleShot(0, this, [this, dialogPointer, script, result]() {
+                    if (!dialogPointer.isNull()) {
+                        dialogPointer->setFinished(result.success);
+                    }
+
+                    if (!result.success) {
+                        const QString errorMessage = result.error == QStringLiteral("Automation script was canceled.")
+                                                         ? tr("Automation script was canceled.")
+                                                         : result.error;
+                        const QString displayError =
+                            errorMessage.isEmpty() ? tr("The automation script failed.") : errorMessage;
+                        if (!dialogPointer.isNull()) {
+                            dialogPointer->appendStandardError(displayError + QLatin1Char('\n'));
+                        }
+                        else {
+                            QMessageBox::critical(this, tr("Automation failed"), displayError);
+                        }
+                        statusBar()->showMessage(tr("Automation script failed: %1").arg(script.name), 5000);
+                        if (!dialogPointer.isNull() && !dialogPointer->isVisible()) {
+                            dialogPointer->deleteLater();
+                        }
+                        return;
+                    }
+
+                    applyAutomationOperations(script.name, result.operations);
+
+                    if (!result.quiet) {
+                        const QString title = result.resultTitle.isEmpty() ? script.name : result.resultTitle;
+                        const QString text = result.resultText.isEmpty() ? result.summary : result.resultText;
+                        QMessageBox::information(!dialogPointer.isNull() && dialogPointer->isVisible()
+                                                     ? static_cast<QWidget*>(dialogPointer.data())
+                                                     : static_cast<QWidget*>(this),
+                                                 title, text);
+                    }
+                    statusBar()->showMessage(tr("Automation script finished: %1").arg(script.name), 5000);
+                    if (!dialogPointer.isNull() && !dialogPointer->isVisible()) {
+                        dialogPointer->deleteLater();
+                    }
+                });
+            });
+
+    setAutomationRunning(true);
+    if (dialog != nullptr) {
+        dialog->show();
+    }
+    runner->start(script, project(), m_currentImageIndex, parameters.value(), selection, context);
+}
+
+void MainWindow::showMissingAutomationScriptMessage(const QString& scriptId)
+{
+    statusBar()->showMessage(tr("Automation script is no longer available: %1").arg(scriptId), 5000);
+}
+
+void MainWindow::cancelRunningAutomationScript()
+{
+    if (!m_automationRunner.isNull()) {
+        m_automationRunner->cancel();
+    }
+    if (!m_automationRunDialog.isNull()) {
+        m_automationRunDialog->setCanceling();
+    }
+    statusBar()->showMessage(tr("Canceling automation script..."));
+}
+
+void MainWindow::applyAutomationOperations(const QString& scriptName,
+                                           const QVector<labelminus::services::AutomationOperation>& operations)
+{
+    const labelminus::services::AutomationOperationApplyPlan plan =
+        labelminus::services::AutomationOperationApplier::plan(project(), operations);
+    if (!plan.hasChanges()) {
+        return;
+    }
+
+    auto applyChanges = [this, plan](bool redo) {
+        labelminus::services::AutomationOperationApplier::apply(project(), plan, redo);
+        refreshLabelViews();
+        refreshCurrentLabelUi();
+        markDirty();
+    };
+
+    applyChanges(true);
+    m_undoStack.push(
+        tr("Run automation script"), tr("Automation script %1").arg(scriptName),
+        tr("Automation script %1").arg(scriptName), [applyChanges]() { applyChanges(false); },
+        [applyChanges]() { applyChanges(true); });
+    statusBar()->showMessage(tr("Automation applied %n change(s).", nullptr, static_cast<int>(plan.changeCount())),
+                             5000);
+}
+
 bool MainWindow::openProjectFile(const QString& path)
 {
     return loadProjectFile(path, true, tr("Loaded %1").arg(path));
@@ -753,6 +1081,10 @@ bool MainWindow::loadProjectFile(const QString& path, bool showErrors, const QSt
 
 void MainWindow::openRecentProjectFromAction()
 {
+    if (m_isAutomationRunning) {
+        return;
+    }
+
     const auto* action = qobject_cast<const QAction*>(sender());
     if (action == nullptr) {
         return;
@@ -769,18 +1101,26 @@ void MainWindow::openRecentProjectFromAction()
     }
 
     if (!QFileInfo::exists(path)) {
-        m_sessionStateStore.removeRecentProjectPath(path);
-        updateRecentProjectsMenu();
-        QMessageBox::warning(this, tr("Open failed"), tr("%1 does not exist.").arg(path));
+        QTimer::singleShot(0, this, [this, path]() {
+            m_sessionStateStore.removeRecentProjectPath(path);
+            updateRecentProjectsMenu();
+            QMessageBox::warning(this, tr("Open failed"), tr("%1 does not exist.").arg(path));
+        });
         return;
     }
 
-    openProjectFile(path);
+    QTimer::singleShot(0, this, [this, path]() { openProjectFile(path); });
 }
 
 void MainWindow::openPreferences()
 {
-    auto* dialog = new PreferenceDialog(labelminus::core::AppPreferences::defaultFilePath(), m_preferences, this);
+    m_automationScripts = labelminus::services::AutomationService::discoverScripts();
+    if (m_automationShortcutController != nullptr) {
+        m_automationShortcutController->setScripts(m_automationScripts);
+    }
+
+    auto* dialog = new PreferenceDialog(labelminus::core::AppPreferences::defaultFilePath(), m_preferences,
+                                        m_automationScripts, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(dialog, &PreferenceDialog::preferencesApplied, this, &MainWindow::applyPreferences);
     dialog->show();
@@ -1490,10 +1830,10 @@ void MainWindow::updateEditShortcuts()
 void MainWindow::updateUndoRedoActions()
 {
     if (m_undoAction != nullptr) {
-        m_undoAction->setEnabled(m_undoStack.canUndo());
+        m_undoAction->setEnabled(!m_isAutomationRunning && m_undoStack.canUndo());
     }
     if (m_redoAction != nullptr) {
-        m_redoAction->setEnabled(m_undoStack.canRedo());
+        m_redoAction->setEnabled(!m_isAutomationRunning && m_undoStack.canRedo());
     }
 }
 
@@ -1913,7 +2253,7 @@ void MainWindow::refreshGroupUi()
     m_labelGroupComboBox->clear();
     m_insertGroupComboBox->clear();
     if (project().groups().isEmpty()) {
-        project().setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        project().setGroups(defaultProjectGroups());
     }
     m_groupFilterComboBox->setGroups(project().groups(), m_preferences.groupStyles());
     m_canvas->setGroups(project().groups());
@@ -2166,12 +2506,16 @@ void MainWindow::showPreferenceWarnings()
 
 void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult result)
 {
+    const bool languageChanged = m_preferences.applicationLanguage() != result.preferences.applicationLanguage();
     m_preferences = result.preferences;
     m_preferenceWarnings = std::move(result.warnings);
     m_labelTableMaxTextRows = m_preferences.labelTableMaxTextRows();
     m_labelTextDelegate->setCommitShortcut(m_preferences.commitLabelTextShortcut());
     if (m_shortcutController != nullptr) {
         m_shortcutController->setPreferences(m_preferences);
+    }
+    if (m_automationShortcutController != nullptr) {
+        m_automationShortcutController->setPreferences(m_preferences);
     }
     if (m_canvasTextEditController != nullptr) {
         m_canvasTextEditController->setCommitShortcut(m_preferences.commitLabelTextShortcut());
@@ -2203,6 +2547,10 @@ void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult res
     updateEditShortcuts();
     configureBackupTimer();
     showPreferenceWarnings();
+    if (languageChanged) {
+        QMessageBox::information(this, tr("Language Changed"),
+                                 tr("The language change will take effect after restarting the application."));
+    }
     statusBar()->showMessage(tr("Preferences applied"), 4000);
 }
 
@@ -2223,6 +2571,16 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
         return tr("%1 must be a string; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::AppearanceThemeWrongType:
         return tr("%1 must name a built-in theme; using no application theme.").arg(warning.key);
+    case AppPreferenceWarningType::AppearanceLanguageWrongType:
+        return tr("%1 must be a string; using the system language.").arg(warning.key);
+    case AppPreferenceWarningType::AutomationNotObject:
+        return tr("automation must be a JSON object; using default automation preferences.");
+    case AppPreferenceWarningType::AutomationShowRunLogWrongType:
+        return tr("%1 must be true or false; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::AutomationShortcutsNotObject:
+        return tr("%1 must be a JSON object; ignoring automation shortcuts.").arg(warning.key);
+    case AppPreferenceWarningType::AutomationShortcutInvalid:
+        return tr("%1 must be a valid shortcut string; ignoring this automation shortcut.").arg(warning.key);
     case AppPreferenceWarningType::LabelMarkerNotObject:
         return tr("labelMarker must be a JSON object; using default marker preferences.");
     case AppPreferenceWarningType::MarkerSizeWrongType:
@@ -2305,6 +2663,11 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
     return tr("Unknown preference warning.");
 }
 
+QStringList MainWindow::defaultProjectGroups() const
+{
+    return {tr("Inside frame"), tr("Outside frame")};
+}
+
 void MainWindow::markDirty()
 {
     if (!m_isUpdatingUi) {
@@ -2363,6 +2726,7 @@ void MainWindow::updateRecentProjectsMenu()
         return;
     }
 
+    m_recentProjectsMenu->setEnabled(!m_isAutomationRunning);
     m_recentProjectsMenu->clear();
     const QStringList paths = m_sessionStateStore.recentProjectPaths();
     if (paths.isEmpty()) {
@@ -2426,6 +2790,77 @@ void MainWindow::setEditorEnabled(bool enabled)
 {
     m_textEdit->setEnabled(enabled);
     m_labelGroupComboBox->setEnabled(enabled);
+}
+
+void MainWindow::setAutomationRunning(bool running)
+{
+    m_isAutomationRunning = running;
+
+    setEditorEnabled(!running && !project().isEmpty());
+    if (m_canvas != nullptr) {
+        m_canvas->setEnabled(!running);
+    }
+    if (m_labelView != nullptr) {
+        m_labelView->setEnabled(!running);
+    }
+    if (m_insertGroupComboBox != nullptr) {
+        m_insertGroupComboBox->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_groupFilterComboBox != nullptr) {
+        m_groupFilterComboBox->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_imageComboBox != nullptr) {
+        m_imageComboBox->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_previousButton != nullptr) {
+        m_previousButton->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_nextButton != nullptr) {
+        m_nextButton->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_labelModeButton != nullptr) {
+        m_labelModeButton->setEnabled(!running);
+    }
+    if (m_selectionModeButton != nullptr) {
+        m_selectionModeButton->setEnabled(!running);
+    }
+    if (m_undoAction != nullptr) {
+        m_undoAction->setEnabled(!running && m_undoStack.canUndo());
+    }
+    if (m_redoAction != nullptr) {
+        m_redoAction->setEnabled(!running && m_undoStack.canRedo());
+    }
+    if (m_newProjectAction != nullptr) {
+        m_newProjectAction->setEnabled(!running);
+    }
+    if (m_openProjectAction != nullptr) {
+        m_openProjectAction->setEnabled(!running);
+    }
+    if (m_recentProjectsMenu != nullptr) {
+        m_recentProjectsMenu->setEnabled(!running);
+    }
+    if (m_mergeProjectsAction != nullptr) {
+        m_mergeProjectsAction->setEnabled(!running);
+    }
+    if (m_reorderPagesAction != nullptr) {
+        m_reorderPagesAction->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_saveProjectAction != nullptr) {
+        m_saveProjectAction->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_saveProjectAsAction != nullptr) {
+        m_saveProjectAsAction->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_previousPageAction != nullptr) {
+        m_previousPageAction->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_nextPageAction != nullptr) {
+        m_nextPageAction->setEnabled(!running && !project().isEmpty());
+    }
+    if (m_cancelAutomationAction != nullptr) {
+        m_cancelAutomationAction->setEnabled(running);
+    }
+    updateAutomationMenuEnabledState();
 }
 
 labelminus::core::Project& MainWindow::project() noexcept
