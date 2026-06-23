@@ -13,6 +13,7 @@ void Project::clear()
 {
     m_images.clear();
     m_groups.clear();
+    m_commentLines.clear();
     m_filePath.clear();
     m_sourceName.clear();
 }
@@ -60,6 +61,21 @@ QString Project::sourceName() const
 void Project::setSourceName(QString sourceName)
 {
     m_sourceName = std::move(sourceName);
+}
+
+const QStringList& Project::commentLines() const noexcept
+{
+    return m_commentLines;
+}
+
+QStringList& Project::commentLines() noexcept
+{
+    return m_commentLines;
+}
+
+void Project::setCommentLines(QStringList commentLines)
+{
+    m_commentLines = std::move(commentLines);
 }
 
 } // namespace labelminus::core

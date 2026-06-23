@@ -34,6 +34,9 @@ enum class AppPreferenceWarningType {
     MarkerTextBubbleFontPointSizeOutOfRange,
     MarkerTextBubbleOpacityWrongType,
     MarkerTextBubbleOpacityOutOfRange,
+    CanvasLabelTextEditorNotObject,
+    CanvasLabelTextEditorOpacityWrongType,
+    CanvasLabelTextEditorOpacityOutOfRange,
     GroupStylesNotArray,
     GroupStyleNotObject,
     InvalidGroupStyleColor,
@@ -89,6 +92,8 @@ public:
     static AppPreferencesLoadResult loadFromFile(const QString& path);
     static AppPreferencesLoadResult loadFromJson(const QByteArray& json);
 
+    QJsonDocument toJsonDocument() const;
+
     double labelMarkerDiameterPixels() const noexcept;
     double labelMarkerFontPointSize() const noexcept;
     int labelTableMaxTextRows() const noexcept;
@@ -99,6 +104,7 @@ public:
     QString markerTextBubbleFontFamily() const;
     double markerTextBubbleFontPointSize() const noexcept;
     double markerTextBubbleOpacity() const noexcept;
+    double canvasLabelTextEditorOpacity() const noexcept;
     QString applicationStyle() const;
     QString applicationTheme() const;
     Qt::KeyboardModifiers moveLabelModifiers() const noexcept;
@@ -129,6 +135,7 @@ private:
     QString m_markerTextBubbleFontFamily;
     double m_markerTextBubbleFontPointSize{0.0};
     double m_markerTextBubbleOpacity{1.0};
+    double m_canvasLabelTextEditorOpacity{1.0};
     QString m_applicationStyle;
     QString m_applicationTheme;
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};

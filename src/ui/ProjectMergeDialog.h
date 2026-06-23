@@ -10,6 +10,7 @@
 #include <QVector>
 
 class ImageCanvas;
+class QCheckBox;
 class QLabel;
 class QListWidget;
 class QScrollArea;
@@ -23,6 +24,9 @@ public:
                        QWidget* parent = nullptr);
 
     labelminus::core::Project mergedProject() const;
+    QVector<int> selectedCandidateIndexes() const;
+    bool shouldOpenMergedProjectAfterSave() const noexcept;
+    void setShouldOpenMergedProjectAfterSave(bool shouldOpen);
 
 public slots:
     void done(int result) override;
@@ -43,6 +47,7 @@ private:
     QVector<int> m_selectedCandidateIndexes;
     QVector<QVector<QPointer<ImageCanvas>>> m_candidateCanvases;
     QLabel* m_summaryLabel{nullptr};
+    QCheckBox* m_openMergedProjectCheckBox{nullptr};
     QListWidget* m_conflictList{nullptr};
     QStackedWidget* m_conflictStack{nullptr};
     bool m_isSyncingCanvasViews{false};

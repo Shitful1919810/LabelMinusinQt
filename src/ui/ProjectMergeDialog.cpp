@@ -3,6 +3,7 @@
 #include "ui/ImageCanvas.h"
 
 #include <QButtonGroup>
+#include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QFileInfo>
 #include <QGroupBox>
@@ -31,6 +32,23 @@ labelminus::core::Project ProjectMergeDialog::mergedProject() const
 {
     return labelminus::services::ProjectMergeService::mergedProjectWithSelections(m_mergePlan,
                                                                                   m_selectedCandidateIndexes);
+}
+
+QVector<int> ProjectMergeDialog::selectedCandidateIndexes() const
+{
+    return m_selectedCandidateIndexes;
+}
+
+bool ProjectMergeDialog::shouldOpenMergedProjectAfterSave() const noexcept
+{
+    return m_openMergedProjectCheckBox == nullptr || m_openMergedProjectCheckBox->isChecked();
+}
+
+void ProjectMergeDialog::setShouldOpenMergedProjectAfterSave(bool shouldOpen)
+{
+    if (m_openMergedProjectCheckBox != nullptr) {
+        m_openMergedProjectCheckBox->setChecked(shouldOpen);
+    }
 }
 
 void ProjectMergeDialog::done(int result)
@@ -73,6 +91,8 @@ void ProjectMergeDialog::buildUi()
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    m_openMergedProjectCheckBox = new QCheckBox(tr("Open merged project after saving"), this);
+    buttons->addButton(m_openMergedProjectCheckBox, QDialogButtonBox::ActionRole);
     rootLayout->addWidget(buttons);
 
     updateSummary();
@@ -131,7 +151,7 @@ QWidget* ProjectMergeDialog::createCandidateWidget(int conflictIndex, int candid
         m_mergePlan.conflicts.at(conflictIndex).candidates.at(candidateIndex);
 
     auto* groupBox = new QGroupBox(this);
-    groupBox->setMinimumWidth(420);
+    groupBox->setMinimumWidth(640);
     auto* layout = new QVBoxLayout(groupBox);
 
     auto* radioButton = new QRadioButton(
@@ -147,7 +167,7 @@ QWidget* ProjectMergeDialog::createCandidateWidget(int conflictIndex, int candid
 
     auto* canvas = new ImageCanvas(groupBox);
     canvas->setMinimumHeight(360);
-    canvas->setMinimumWidth(400);
+    canvas->setMinimumWidth(600);
     canvas->setPreferences(m_preferences);
     canvas->setGroups(m_mergePlan.mergedProject.groups());
     canvas->setVisibleGroups(m_mergePlan.mergedProject.groups());

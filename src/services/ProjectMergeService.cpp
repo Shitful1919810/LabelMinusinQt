@@ -2,8 +2,11 @@
 
 #include "core/LabelPlusDocument.h"
 
+#include <QDir>
 #include <QFileInfo>
 #include <QHash>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSet>
 
 #include <algorithm>
@@ -19,6 +22,8 @@ struct LoadedProject {
 
 struct PageMergeData {
     labelminus::core::ImageEntry firstImage;
+    int firstProjectIndex{-1};
+    QString firstProjectPath;
     QVector<ProjectMergeCandidate> candidates;
 };
 
@@ -40,6 +45,92 @@ labelminus::core::ImageEntry withoutDeletedLabels(labelminus::core::ImageEntry i
                                       [](const labelminus::core::Label& label) { return label.isDeleted(); }),
                        image.labels.end());
     return image;
+}
+
+ProjectMergePageSource pageSourceFromCandidate(const QString& imageName, const ProjectMergeCandidate& candidate)
+{
+    return {imageName, candidate.projectIndex, candidate.projectPath, candidate.labelCount};
+}
+
+ProjectMergePageSource pageSourceFromFirstOccurrence(const QString& imageName, const PageMergeData& pageData)
+{
+    return {imageName, pageData.firstProjectIndex, pageData.firstProjectPath, 0};
+}
+
+bool canExtendPageSourceRange(const ProjectMergePageSource& lhs, const ProjectMergePageSource& rhs)
+{
+    return lhs.projectIndex == rhs.projectIndex && lhs.projectPath == rhs.projectPath;
+}
+
+QString relativeSourcePathForOutput(const QString& sourcePath, const QString& outputProjectPath)
+{
+    if (sourcePath.isEmpty() || outputProjectPath.isEmpty()) {
+        return sourcePath;
+    }
+
+    const QFileInfo outputFileInfo(outputProjectPath);
+    const QString outputDirectoryPath = outputFileInfo.absolutePath();
+    if (outputDirectoryPath.isEmpty()) {
+        return sourcePath;
+    }
+
+    return QDir(outputDirectoryPath).relativeFilePath(sourcePath);
+}
+
+QStringList mergeSourceCommentLines(const QVector<ProjectMergePageSource>& pageSources,
+                                    const QString& outputProjectPath)
+{
+    QStringList lines;
+    lines.reserve(pageSources.size() + 2);
+    lines.append(QStringLiteral("# LabelMinusMergeSources v2"));
+
+    auto appendRange = [&lines, &outputProjectPath](const ProjectMergePageSource& firstPageSource,
+                                                    const QString& lastImageName, int pageCount, int labelCount) {
+        QJsonObject object;
+        object.insert(QStringLiteral("firstImage"), firstPageSource.imageName);
+        object.insert(QStringLiteral("lastImage"), lastImageName);
+        object.insert(QStringLiteral("sourceIndex"), firstPageSource.projectIndex + 1);
+        object.insert(QStringLiteral("sourcePath"),
+                      relativeSourcePathForOutput(firstPageSource.projectPath, outputProjectPath));
+        object.insert(QStringLiteral("pageCount"), pageCount);
+        object.insert(QStringLiteral("labelCount"), labelCount);
+        lines.append(
+            QStringLiteral("# %1").arg(QString::fromUtf8(QJsonDocument(object).toJson(QJsonDocument::Compact))));
+    };
+
+    ProjectMergePageSource rangeFirstPageSource;
+    QString rangeLastImageName;
+    int rangePageCount = 0;
+    int rangeLabelCount = 0;
+    for (const ProjectMergePageSource& pageSource : pageSources) {
+        if (rangePageCount == 0) {
+            rangeFirstPageSource = pageSource;
+            rangeLastImageName = pageSource.imageName;
+            rangePageCount = 1;
+            rangeLabelCount = pageSource.labelCount;
+            continue;
+        }
+
+        if (canExtendPageSourceRange(rangeFirstPageSource, pageSource)) {
+            rangeLastImageName = pageSource.imageName;
+            ++rangePageCount;
+            rangeLabelCount += pageSource.labelCount;
+            continue;
+        }
+
+        appendRange(rangeFirstPageSource, rangeLastImageName, rangePageCount, rangeLabelCount);
+        rangeFirstPageSource = pageSource;
+        rangeLastImageName = pageSource.imageName;
+        rangePageCount = 1;
+        rangeLabelCount = pageSource.labelCount;
+    }
+
+    if (rangePageCount > 0) {
+        appendRange(rangeFirstPageSource, rangeLastImageName, rangePageCount, rangeLabelCount);
+    }
+
+    lines.append(QStringLiteral("# EndLabelMinusMergeSources"));
+    return lines;
 }
 } // namespace
 
@@ -82,6 +173,8 @@ ProjectMergePlan ProjectMergeService::createPlan(const QStringList& projectPaths
                 PageMergeData pageData;
                 pageData.firstImage = image;
                 pageData.firstImage.name = imageName;
+                pageData.firstProjectIndex = projectIndex;
+                pageData.firstProjectPath = loaded.path;
                 pageDataByName.insert(imageName, std::move(pageData));
                 imageOrder.append(imageName);
             }
@@ -118,6 +211,7 @@ ProjectMergePlan ProjectMergeService::createPlan(const QStringList& projectPaths
 
         if (pageData.candidates.size() == 1) {
             mergedImage = pageData.candidates.first().image;
+            plan.pageSources.append(pageSourceFromCandidate(imageName, pageData.candidates.first()));
         }
         else if (pageData.candidates.size() > 1) {
             ProjectMergeConflict conflict;
@@ -126,6 +220,10 @@ ProjectMergePlan ProjectMergeService::createPlan(const QStringList& projectPaths
             conflict.selectedCandidateIndex = 0;
             plan.conflicts.append(std::move(conflict));
             mergedImage = pageData.candidates.first().image;
+            plan.pageSources.append(pageSourceFromCandidate(imageName, pageData.candidates.first()));
+        }
+        else {
+            plan.pageSources.append(pageSourceFromFirstOccurrence(imageName, pageData));
         }
 
         plan.mergedProject.images().append(std::move(mergedImage));
@@ -135,9 +233,11 @@ ProjectMergePlan ProjectMergeService::createPlan(const QStringList& projectPaths
 }
 
 labelminus::core::Project ProjectMergeService::mergedProjectWithSelections(ProjectMergePlan plan,
-                                                                           const QVector<int>& selectedCandidateIndexes)
+                                                                           const QVector<int>& selectedCandidateIndexes,
+                                                                           const QString& outputProjectPath)
 {
     QHash<QString, labelminus::core::ImageEntry> selectedImagesByName;
+    QHash<QString, ProjectMergePageSource> selectedSourcesByName;
     for (int conflictIndex = 0; conflictIndex < plan.conflicts.size(); ++conflictIndex) {
         ProjectMergeConflict& conflict = plan.conflicts[conflictIndex];
         int selectedCandidateIndex = conflict.selectedCandidateIndex;
@@ -148,18 +248,34 @@ labelminus::core::Project ProjectMergeService::mergedProjectWithSelections(Proje
             selectedCandidateIndex = 0;
         }
 
-        labelminus::core::ImageEntry selectedImage = conflict.candidates.at(selectedCandidateIndex).image;
+        const ProjectMergeCandidate& selectedCandidate = conflict.candidates.at(selectedCandidateIndex);
+        labelminus::core::ImageEntry selectedImage = selectedCandidate.image;
         selectedImage.name = conflict.imageName;
         selectedImagesByName.insert(conflict.imageName, std::move(selectedImage));
+        selectedSourcesByName.insert(conflict.imageName,
+                                     pageSourceFromCandidate(conflict.imageName, selectedCandidate));
     }
 
+    QVector<ProjectMergePageSource> finalPageSources;
+    finalPageSources.reserve(plan.mergedProject.images().size());
     for (labelminus::core::ImageEntry& image : plan.mergedProject.images()) {
         const QString imageName = image.name.isEmpty() ? QFileInfo(image.path).fileName() : image.name;
         if (selectedImagesByName.contains(imageName)) {
             image = selectedImagesByName.value(imageName);
         }
+        if (selectedSourcesByName.contains(imageName)) {
+            finalPageSources.append(selectedSourcesByName.value(imageName));
+            continue;
+        }
+        const auto sourceIt = std::find_if(
+            plan.pageSources.cbegin(), plan.pageSources.cend(),
+            [&imageName](const ProjectMergePageSource& pageSource) { return pageSource.imageName == imageName; });
+        if (sourceIt != plan.pageSources.cend()) {
+            finalPageSources.append(*sourceIt);
+        }
     }
 
+    plan.mergedProject.setCommentLines(mergeSourceCommentLines(finalPageSources, outputProjectPath));
     return std::move(plan.mergedProject);
 }
 

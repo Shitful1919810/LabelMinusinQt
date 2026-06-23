@@ -55,5 +55,8 @@
         "fontFamily": "",
         "fontPointSize": 0,
         "opacity": 1
+    },
+    "canvasLabelTextEditor": {
+        "opacity": 1
     }
 }

@@ -378,6 +378,10 @@
         <translation>markerTextBubble must be a JSON object; using default marker text bubble preferences.</translation>
     </message>
     <message>
+        <source>canvasLabelTextEditor must be a JSON object; using default canvas label editor preferences.</source>
+        <translation>canvasLabelTextEditor must be a JSON object; using default canvas label editor preferences.</translation>
+    </message>
+    <message>
         <source>%1 must be a string; using the default value.</source>
         <translation>%1 must be a string; using the default value.</translation>
     </message>
@@ -457,6 +461,10 @@
         <translation>
             <numerusform>Loaded %n page(s). %1 page(s) need a source selection.</numerusform>
         </translation>
+    </message>
+    <message>
+        <source>Open merged project after saving</source>
+        <translation>Open merged project after saving</translation>
     </message>
 </context>
 <context>
@@ -552,6 +560,10 @@
     <message>
         <source>Marker text bubble opacity</source>
         <translation>Marker text bubble opacity</translation>
+    </message>
+    <message>
+        <source>Canvas label editor opacity</source>
+        <translation>Canvas label editor opacity</translation>
     </message>
     <message>
         <source>%1%</source>
@@ -680,6 +692,10 @@
     <message>
         <source>Loaded preference file.</source>
         <translation>Loaded preference file.</translation>
+    </message>
+    <message>
+        <source>Showing current preferences.</source>
+        <translation>Showing current preferences.</translation>
     </message>
     <message>
         <source>Circle</source>

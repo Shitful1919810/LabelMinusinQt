@@ -218,6 +218,33 @@ QKeySequence keySequenceFromJsonValue(const QJsonValue& value, const QString& ke
 
     return sequence;
 }
+
+QString modifiersToString(Qt::KeyboardModifiers modifiers)
+{
+    if (modifiers == Qt::NoModifier) {
+        return QStringLiteral("none");
+    }
+
+    QStringList parts;
+    if (modifiers.testFlag(Qt::ControlModifier)) {
+        parts.append(QStringLiteral("ctrl"));
+    }
+    if (modifiers.testFlag(Qt::ShiftModifier)) {
+        parts.append(QStringLiteral("shift"));
+    }
+    if (modifiers.testFlag(Qt::AltModifier)) {
+        parts.append(QStringLiteral("alt"));
+    }
+    if (modifiers.testFlag(Qt::MetaModifier)) {
+        parts.append(QStringLiteral("meta"));
+    }
+    return parts.join(QLatin1Char('+'));
+}
+
+QString markerShapeToString(MarkerShape markerShape)
+{
+    return markerShape == MarkerShape::Square ? QStringLiteral("square") : QStringLiteral("circle");
+}
 } // namespace
 
 AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& document,
@@ -377,6 +404,21 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
                 preferences.m_markerTextBubbleOpacity, 0.0, 1.0,
                 AppPreferenceWarningType::MarkerTextBubbleOpacityWrongType,
                 AppPreferenceWarningType::MarkerTextBubbleOpacityOutOfRange, warnings);
+        }
+    }
+
+    const QJsonValue canvasLabelTextEditorValue = root.value(QStringLiteral("canvasLabelTextEditor"));
+    if (!canvasLabelTextEditorValue.isUndefined()) {
+        if (!canvasLabelTextEditorValue.isObject()) {
+            warnings.append(makeWarning(AppPreferenceWarningType::CanvasLabelTextEditorNotObject));
+        }
+        else {
+            const QJsonObject canvasLabelTextEditor = canvasLabelTextEditorValue.toObject();
+            preferences.m_canvasLabelTextEditorOpacity = boundedNumberFromJsonValue(
+                canvasLabelTextEditor, QStringLiteral("opacity"), QStringLiteral("canvasLabelTextEditor.opacity"),
+                preferences.m_canvasLabelTextEditorOpacity, 0.0, 1.0,
+                AppPreferenceWarningType::CanvasLabelTextEditorOpacityWrongType,
+                AppPreferenceWarningType::CanvasLabelTextEditorOpacityOutOfRange, warnings);
         }
     }
 
@@ -566,6 +608,74 @@ AppPreferencesLoadResult AppPreferences::loadFromJson(const QByteArray& json)
     return loadFromDocument(document, &parseError);
 }
 
+QJsonDocument AppPreferences::toJsonDocument() const
+{
+    QJsonObject appearance;
+    appearance.insert(QStringLiteral("style"), m_applicationStyle);
+    appearance.insert(QStringLiteral("theme"), m_applicationTheme);
+
+    QJsonObject labelMarker;
+    labelMarker.insert(QStringLiteral("diameter"), m_labelMarkerDiameterPixels);
+    labelMarker.insert(QStringLiteral("fontPointSize"), m_labelMarkerFontPointSize);
+
+    QJsonObject labelTable;
+    labelTable.insert(QStringLiteral("fontFamily"), m_labelTableFontFamily);
+    labelTable.insert(QStringLiteral("fontPointSize"), m_labelTableFontPointSize);
+    labelTable.insert(QStringLiteral("maxTextRows"), m_labelTableMaxTextRows);
+
+    QJsonObject labelTextEditor;
+    labelTextEditor.insert(QStringLiteral("fontFamily"), m_labelTextEditorFontFamily);
+    labelTextEditor.insert(QStringLiteral("fontPointSize"), m_labelTextEditorFontPointSize);
+
+    QJsonObject markerTextBubble;
+    markerTextBubble.insert(QStringLiteral("fontFamily"), m_markerTextBubbleFontFamily);
+    markerTextBubble.insert(QStringLiteral("fontPointSize"), m_markerTextBubbleFontPointSize);
+    markerTextBubble.insert(QStringLiteral("opacity"), m_markerTextBubbleOpacity);
+
+    QJsonObject canvasLabelTextEditor;
+    canvasLabelTextEditor.insert(QStringLiteral("opacity"), m_canvasLabelTextEditorOpacity);
+
+    QJsonObject input;
+    input.insert(QStringLiteral("moveLabelModifier"), modifiersToString(m_moveLabelModifiers));
+    input.insert(QStringLiteral("previousLabelModifier"), modifiersToString(m_previousLabelModifiers));
+    input.insert(QStringLiteral("undoShortcut"), m_undoShortcut.toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("redoShortcut"), m_redoShortcut.toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("nextLabelShortcut"), m_nextLabelShortcut.toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("alternatePreviousLabelShortcut"),
+                 m_alternatePreviousLabelShortcut.toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("alternateNextLabelShortcut"),
+                 m_alternateNextLabelShortcut.toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("previousPageShortcut"), m_previousPageShortcut.toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("nextPageShortcut"), m_nextPageShortcut.toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("editLabelTextShortcut"), m_editLabelTextShortcut.toString(QKeySequence::PortableText));
+    input.insert(QStringLiteral("commitLabelTextShortcut"),
+                 m_commitLabelTextShortcut.toString(QKeySequence::PortableText));
+
+    QJsonArray groupStyles;
+    for (const LabelGroupStyle& groupStyle : m_groupStyles) {
+        QJsonObject style;
+        style.insert(QStringLiteral("groupColor"),
+                     groupStyle.groupColor.isValid() ? groupStyle.groupColor.name() : QString());
+        style.insert(QStringLiteral("markerDiameter"), groupStyle.markerDiameter);
+        style.insert(QStringLiteral("fontPointSize"), groupStyle.fontPointSize);
+        style.insert(QStringLiteral("markerStyle"), markerShapeToString(groupStyle.markerShape));
+        groupStyles.append(style);
+    }
+
+    QJsonObject root;
+    root.insert(QStringLiteral("appearance"), appearance);
+    root.insert(QStringLiteral("backupIntervalSeconds"), m_backupIntervalSeconds);
+    root.insert(QStringLiteral("backupPath"), m_backupPath);
+    root.insert(QStringLiteral("canvasLabelTextEditor"), canvasLabelTextEditor);
+    root.insert(QStringLiteral("groupStyles"), groupStyles);
+    root.insert(QStringLiteral("input"), input);
+    root.insert(QStringLiteral("labelMarker"), labelMarker);
+    root.insert(QStringLiteral("labelTable"), labelTable);
+    root.insert(QStringLiteral("labelTextEditor"), labelTextEditor);
+    root.insert(QStringLiteral("markerTextBubble"), markerTextBubble);
+    return QJsonDocument(root);
+}
+
 double AppPreferences::labelMarkerDiameterPixels() const noexcept
 {
     return m_labelMarkerDiameterPixels;
@@ -614,6 +724,11 @@ double AppPreferences::markerTextBubbleFontPointSize() const noexcept
 double AppPreferences::markerTextBubbleOpacity() const noexcept
 {
     return m_markerTextBubbleOpacity;
+}
+
+double AppPreferences::canvasLabelTextEditorOpacity() const noexcept
+{
+    return m_canvasLabelTextEditorOpacity;
 }
 
 QString AppPreferences::applicationStyle() const

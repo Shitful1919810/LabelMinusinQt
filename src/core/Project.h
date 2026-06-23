@@ -33,9 +33,14 @@ public:
     QString sourceName() const;
     void setSourceName(QString sourceName);
 
+    const QStringList& commentLines() const noexcept;
+    QStringList& commentLines() noexcept;
+    void setCommentLines(QStringList commentLines);
+
 private:
     QVector<ImageEntry> m_images;
     QStringList m_groups;
+    QStringList m_commentLines;
     QString m_filePath;
     QString m_sourceName;
 };

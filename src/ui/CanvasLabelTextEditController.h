@@ -18,6 +18,7 @@ public:
     explicit CanvasLabelTextEditController(QObject* parent = nullptr);
 
     void setCommitShortcut(QKeySequence shortcut);
+    void setEditorOpacity(double opacity);
     bool isEditing() const noexcept;
     bool isEditorObject(QObject* object) const noexcept;
     bool hasEditorFocus() const noexcept;
@@ -41,6 +42,7 @@ signals:
 private:
     QPointer<CanvasLabelTextEditor> m_editor;
     QKeySequence m_commitShortcut{QStringLiteral("Ctrl+Return")};
+    double m_editorOpacity{1.0};
     int m_imageIndex{-1};
     int m_labelIndex{-1};
 };

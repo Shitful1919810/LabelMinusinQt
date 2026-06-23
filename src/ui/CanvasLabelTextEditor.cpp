@@ -1,5 +1,6 @@
 #include "ui/CanvasLabelTextEditor.h"
 
+#include <QGraphicsOpacityEffect>
 #include <QPlainTextEdit>
 #include <QTextCursor>
 #include <QVBoxLayout>
@@ -15,6 +16,9 @@ CanvasLabelTextEditor::CanvasLabelTextEditor(QWidget* parent) : QFrame(parent)
                                  "border: 1px solid palette(mid);"
                                  "border-radius: 3px;"
                                  "}"));
+    m_opacityEffect = new QGraphicsOpacityEffect(this);
+    m_opacityEffect->setOpacity(1.0);
+    setGraphicsEffect(m_opacityEffect);
 
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(6, 6, 6, 6);
@@ -45,6 +49,13 @@ QString CanvasLabelTextEditor::text() const
 void CanvasLabelTextEditor::setEditorFont(const QFont& font)
 {
     m_editor->setFont(font);
+}
+
+void CanvasLabelTextEditor::setEditorOpacity(double opacity)
+{
+    if (m_opacityEffect != nullptr) {
+        m_opacityEffect->setOpacity(std::clamp(opacity, 0.0, 1.0));
+    }
 }
 
 void CanvasLabelTextEditor::moveNearGlobalPosition(const QPoint& globalPosition)

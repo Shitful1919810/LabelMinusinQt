@@ -36,6 +36,8 @@ public:
     void removeRecentProjectPath(const QString& projectPath) const;
     QString lastFileDialogDirectory() const;
     void saveLastFileDialogPath(const QString& path) const;
+    bool shouldOpenMergedProjectAfterSave() const;
+    void saveShouldOpenMergedProjectAfterSave(bool shouldOpen) const;
 
 private:
     static QString canonicalSessionPath(const QString& path);

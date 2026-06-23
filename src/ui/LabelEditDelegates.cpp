@@ -9,6 +9,7 @@
 #include <QPlainTextEdit>
 #include <QPointer>
 #include <QStyle>
+#include <QTextCursor>
 #include <QTextDocument>
 #include <QTimer>
 
@@ -81,7 +82,9 @@ void LabelTextDelegate::setEditorData(QWidget* editor, const QModelIndex& index)
     const QPointer<QPlainTextEdit> guardedEditor(textEdit);
     QTimer::singleShot(0, textEdit, [guardedEditor]() {
         if (guardedEditor != nullptr) {
-            guardedEditor->selectAll();
+            QTextCursor cursor = guardedEditor->textCursor();
+            cursor.movePosition(QTextCursor::End);
+            guardedEditor->setTextCursor(cursor);
         }
     });
     emit const_cast<LabelTextDelegate*>(this)->editorHeightHintChanged(QPersistentModelIndex(index), textEdit,

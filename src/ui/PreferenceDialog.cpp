@@ -154,11 +154,13 @@ const labelminus::core::AppPreferences& defaultPreferences()
 }
 } // namespace
 
-PreferenceDialog::PreferenceDialog(QString preferencePath, QWidget* parent)
-    : QDialog(parent), m_preferencePath(std::move(preferencePath))
+PreferenceDialog::PreferenceDialog(QString preferencePath, labelminus::core::AppPreferences currentPreferences,
+                                   QWidget* parent)
+    : QDialog(parent), m_preferencePath(std::move(preferencePath)), m_currentPreferences(std::move(currentPreferences))
 {
     createUi();
-    loadFromDisk();
+    loadDocument(m_currentPreferences.toJsonDocument());
+    setMessage(tr("Showing current preferences."));
 }
 
 void PreferenceDialog::createUi()
@@ -235,6 +237,9 @@ QWidget* PreferenceDialog::createGeneralPage(QTabWidget* tabWidget)
     auto* markerTextBubbleOpacityWidget = makePercentScrollBarWidget(
         generalPage, m_markerTextBubbleOpacityScrollBar, m_markerTextBubbleOpacityLabel,
         static_cast<int>(std::round(defaultPreferences().markerTextBubbleOpacity() * 100.0)));
+    auto* canvasLabelTextEditorOpacityWidget = makePercentScrollBarWidget(
+        generalPage, m_canvasLabelTextEditorOpacityScrollBar, m_canvasLabelTextEditorOpacityLabel,
+        static_cast<int>(std::round(defaultPreferences().canvasLabelTextEditorOpacity() * 100.0)));
     m_backupPathEdit = new QLineEdit(generalPage);
     m_backupPathEdit->setText(defaultPreferences().backupPath());
     m_backupIntervalSpinBox = new QSpinBox(generalPage);
@@ -250,6 +255,7 @@ QWidget* PreferenceDialog::createGeneralPage(QTabWidget* tabWidget)
     generalLayout->addRow(tr("Text editor font"), textEditorFontWidget);
     generalLayout->addRow(tr("Marker text bubble font"), markerTextBubbleFontWidget);
     generalLayout->addRow(tr("Marker text bubble opacity"), markerTextBubbleOpacityWidget);
+    generalLayout->addRow(tr("Canvas label editor opacity"), canvasLabelTextEditorOpacityWidget);
     generalLayout->addRow(tr("Backup path"), m_backupPathEdit);
     generalLayout->addRow(tr("Backup interval seconds"), m_backupIntervalSpinBox);
     return generalPage;
@@ -359,6 +365,10 @@ void PreferenceDialog::connectPreferenceChangeSignals()
         m_markerTextBubbleOpacityLabel->setText(tr("%1%").arg(value));
         updateJsonPreview();
     });
+    connect(m_canvasLabelTextEditorOpacityScrollBar, &QScrollBar::valueChanged, this, [this](int value) {
+        m_canvasLabelTextEditorOpacityLabel->setText(tr("%1%").arg(value));
+        updateJsonPreview();
+    });
     connect(m_moveModifierComboBox, &QComboBox::currentTextChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_previousLabelModifierComboBox, &QComboBox::currentTextChanged, this,
             &PreferenceDialog::updateJsonPreview);
@@ -409,6 +419,7 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     const QJsonObject labelTable = root.value(QStringLiteral("labelTable")).toObject();
     const QJsonObject labelTextEditor = root.value(QStringLiteral("labelTextEditor")).toObject();
     const QJsonObject markerTextBubble = root.value(QStringLiteral("markerTextBubble")).toObject();
+    const QJsonObject canvasLabelTextEditor = root.value(QStringLiteral("canvasLabelTextEditor")).toObject();
     const QJsonObject input = root.value(QStringLiteral("input")).toObject();
 
     m_markerDiameterSpinBox->setValue(
@@ -470,6 +481,14 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
         0, 100);
     m_markerTextBubbleOpacityScrollBar->setValue(markerTextBubbleOpacity);
     m_markerTextBubbleOpacityLabel->setText(tr("%1%").arg(markerTextBubbleOpacity));
+
+    const int canvasLabelTextEditorOpacity =
+        std::clamp(static_cast<int>(std::round(canvasLabelTextEditor.value(QStringLiteral("opacity"))
+                                                   .toDouble(defaultPreferences().canvasLabelTextEditorOpacity()) *
+                                               100.0)),
+                   0, 100);
+    m_canvasLabelTextEditorOpacityScrollBar->setValue(canvasLabelTextEditorOpacity);
+    m_canvasLabelTextEditorOpacityLabel->setText(tr("%1%").arg(canvasLabelTextEditorOpacity));
 
     m_moveModifierComboBox->setCurrentText(
         input.value(QStringLiteral("moveLabelModifier")).toString(QStringLiteral("ctrl")));
@@ -573,6 +592,10 @@ QJsonDocument PreferenceDialog::documentFromUi() const
     markerTextBubble.insert(QStringLiteral("opacity"),
                             static_cast<double>(m_markerTextBubbleOpacityScrollBar->value()) / 100.0);
 
+    QJsonObject canvasLabelTextEditor;
+    canvasLabelTextEditor.insert(QStringLiteral("opacity"),
+                                 static_cast<double>(m_canvasLabelTextEditorOpacityScrollBar->value()) / 100.0);
+
     QJsonObject input;
     input.insert(QStringLiteral("moveLabelModifier"), m_moveModifierComboBox->currentText().trimmed());
     input.insert(QStringLiteral("previousLabelModifier"), m_previousLabelModifierComboBox->currentText().trimmed());
@@ -620,6 +643,7 @@ QJsonDocument PreferenceDialog::documentFromUi() const
     root.insert(QStringLiteral("labelTable"), labelTable);
     root.insert(QStringLiteral("labelTextEditor"), labelTextEditor);
     root.insert(QStringLiteral("markerTextBubble"), markerTextBubble);
+    root.insert(QStringLiteral("canvasLabelTextEditor"), canvasLabelTextEditor);
     root.insert(QStringLiteral("input"), input);
     root.insert(QStringLiteral("backupPath"), m_backupPathEdit->text().trimmed());
     root.insert(QStringLiteral("backupIntervalSeconds"), m_backupIntervalSpinBox->value());
@@ -832,6 +856,7 @@ void PreferenceDialog::applyPreferences()
 {
     const QByteArray json = documentFromUi().toJson(QJsonDocument::Indented);
     labelminus::core::AppPreferencesLoadResult result = labelminus::core::AppPreferences::loadFromJson(json);
+    m_currentPreferences = result.preferences;
     emit preferencesApplied(result);
     setMessage(result.warnings.isEmpty() ? tr("Preferences applied.")
                                          : tr("Preferences applied with warnings; see the main window status bar."),

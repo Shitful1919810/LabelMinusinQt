@@ -35,6 +35,14 @@ void CanvasLabelTextEditController::setCommitShortcut(QKeySequence shortcut)
     }
 }
 
+void CanvasLabelTextEditController::setEditorOpacity(double opacity)
+{
+    m_editorOpacity = std::clamp(opacity, 0.0, 1.0);
+    if (m_editor != nullptr) {
+        m_editor->setEditorOpacity(m_editorOpacity);
+    }
+}
+
 bool CanvasLabelTextEditController::isEditing() const noexcept
 {
     return m_editor != nullptr;
@@ -66,6 +74,7 @@ void CanvasLabelTextEditController::open(QWidget* parent, int imageIndex, int la
     close();
 
     auto* editor = new CanvasLabelTextEditor(parent);
+    editor->setEditorOpacity(m_editorOpacity);
     editor->setEditorFont(font);
     editor->setText(text);
     editor->editor()->installEventFilter(this);

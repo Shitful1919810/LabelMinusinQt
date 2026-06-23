@@ -127,6 +127,11 @@ Project LabelPlusDocument::parse(const QString& content, const QString& filePath
             continue;
         }
 
+        if (sectionSeparatorCount >= 2 && currentImage == nullptr && currentLabel == nullptr) {
+            project.commentLines().append(line);
+            continue;
+        }
+
         const QRegularExpressionMatch labelMatch = labelLineRegex.match(line);
         if (labelMatch.hasMatch() && currentImage != nullptr) {
             commitText();
@@ -179,6 +184,9 @@ QString LabelPlusDocument::serialize(const Project& project)
     stream << "-\n";
     if (!project.sourceName().isEmpty()) {
         stream << QStringLiteral("关联文件:") << project.sourceName() << "\n";
+    }
+    for (const QString& commentLine : project.commentLines()) {
+        stream << commentLine << '\n';
     }
     stream << '\n';
 

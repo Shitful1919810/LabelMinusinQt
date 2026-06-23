@@ -94,6 +94,7 @@ MainWindow::MainWindow(QWidget* parent)
     });
     m_canvasTextEditController = new CanvasLabelTextEditController(this);
     m_canvasTextEditController->setCommitShortcut(m_preferences.commitLabelTextShortcut());
+    m_canvasTextEditController->setEditorOpacity(m_preferences.canvasLabelTextEditorOpacity());
     connect(m_canvasTextEditController, &CanvasLabelTextEditController::previewTextChanged, this,
             [this](int labelIndex, const QString& text) {
                 if (m_canvas != nullptr) {
@@ -575,19 +576,22 @@ void MainWindow::mergeProjects()
         return;
     }
 
-    labelminus::core::Project mergedProject;
+    QVector<int> selectedCandidateIndexes;
+    bool openMergedProjectAfterSave = m_sessionStateStore.shouldOpenMergedProjectAfterSave();
     if (mergePlan.conflicts.isEmpty()) {
         QMessageBox::information(this, tr("Merge Projects"),
                                  tr("No page conflicts were found. The selected projects can be merged directly."));
-        mergedProject = std::move(mergePlan.mergedProject);
     }
     else {
-        ProjectMergeDialog dialog(std::move(mergePlan), m_preferences, this);
+        ProjectMergeDialog dialog(mergePlan, m_preferences, this);
+        dialog.setShouldOpenMergedProjectAfterSave(openMergedProjectAfterSave);
         dialog.showMaximized();
         if (dialog.exec() != QDialog::Accepted) {
             return;
         }
-        mergedProject = dialog.mergedProject();
+        openMergedProjectAfterSave = dialog.shouldOpenMergedProjectAfterSave();
+        m_sessionStateStore.saveShouldOpenMergedProjectAfterSave(openMergedProjectAfterSave);
+        selectedCandidateIndexes = dialog.selectedCandidateIndexes();
     }
 
     const QString savePath = QFileDialog::getSaveFileName(this, tr("Save merged LabelPlus text"),
@@ -602,6 +606,8 @@ void MainWindow::mergeProjects()
         return;
     }
     saveProjectSessionState();
+    labelminus::core::Project mergedProject = labelminus::services::ProjectMergeService::mergedProjectWithSelections(
+        std::move(mergePlan), selectedCandidateIndexes, savePath);
 
     try {
         labelminus::core::LabelPlusDocument::saveToFile(mergedProject, savePath);
@@ -611,7 +617,12 @@ void MainWindow::mergeProjects()
         return;
     }
 
-    if (!openProjectFile(savePath)) {
+    if (openMergedProjectAfterSave) {
+        if (!openProjectFile(savePath)) {
+            statusBar()->showMessage(tr("Merged project saved to %1").arg(savePath), 4000);
+        }
+    }
+    else {
         statusBar()->showMessage(tr("Merged project saved to %1").arg(savePath), 4000);
     }
 }
@@ -686,7 +697,7 @@ void MainWindow::openRecentProjectFromAction()
 
 void MainWindow::openPreferences()
 {
-    auto* dialog = new PreferenceDialog(labelminus::core::AppPreferences::defaultFilePath(), this);
+    auto* dialog = new PreferenceDialog(labelminus::core::AppPreferences::defaultFilePath(), m_preferences, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(dialog, &PreferenceDialog::preferencesApplied, this, &MainWindow::applyPreferences);
     dialog->show();
@@ -1948,6 +1959,7 @@ void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult res
     }
     if (m_canvasTextEditController != nullptr) {
         m_canvasTextEditController->setCommitShortcut(m_preferences.commitLabelTextShortcut());
+        m_canvasTextEditController->setEditorOpacity(m_preferences.canvasLabelTextEditorOpacity());
     }
 
     const QString styleName = m_preferences.applicationStyle().isEmpty()
@@ -2032,6 +2044,12 @@ QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceW
     case AppPreferenceWarningType::MarkerTextBubbleOpacityWrongType:
         return tr("%1 must be a number between 0 and 1; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::MarkerTextBubbleOpacityOutOfRange:
+        return tr("%1 must be a number between 0 and 1; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::CanvasLabelTextEditorNotObject:
+        return tr("canvasLabelTextEditor must be a JSON object; using default canvas label editor preferences.");
+    case AppPreferenceWarningType::CanvasLabelTextEditorOpacityWrongType:
+        return tr("%1 must be a number between 0 and 1; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::CanvasLabelTextEditorOpacityOutOfRange:
         return tr("%1 must be a number between 0 and 1; using the default value.").arg(warning.key);
     case AppPreferenceWarningType::GroupStylesNotArray:
         return tr("groupStyles must be an array; group styles will use defaults.");

@@ -122,6 +122,7 @@ Current preferences:
 - `markerTextBubble.fontFamily`: optional marker text bubble font family; an empty value keeps the Qt/system default.
 - `markerTextBubble.fontPointSize`: optional marker text bubble font point size; `0` keeps the Qt/system default.
 - `markerTextBubble.opacity`: marker text bubble opacity from `0.0` to `1.0`.
+- `canvasLabelTextEditor.opacity`: marker-adjacent temporary text editor opacity from `0.0` to `1.0`.
 - `input.moveLabelModifier`: modifier key or key combination used to drag label markers.
 - `input.previousLabelModifier`: modifier key or key combination used with `input.nextLabelShortcut` to select the previous visible label.
 - `input.nextLabelShortcut`: main-window shortcut used to select the next visible label.
@@ -144,6 +145,9 @@ the status bar.
 The preference dialog should update the same JSON shape that `AppPreferences` reads and should reuse `AppPreferences`
 defaults instead of duplicating fallback values. User-facing preference text must still go through `tr()` and both
 translation files.
+
+When opened, the preference dialog should show the current runtime `AppPreferences`, including values that were applied
+but not yet saved to `preference.json`. The explicit reload action is the path that refreshes the dialog from disk.
 
 ## Group Styles
 
@@ -209,3 +213,25 @@ Current session state includes:
 
 `SessionStateStore` clamps and validates restored values through `MainWindow`, so external edits to a project file, such
 as deleting pages, should not crash the next launch.
+
+## Merge Source Metadata
+
+Merged LabelPlus projects store per-page source information in the LabelPlus comment area between the `关联文件:` line
+and the first image section. This keeps the output compatible with LabelPlus readers that ignore unknown comment lines
+while still making page-level blame easy to parse.
+
+The block format is JSON Lines with comment prefixes. Consecutive pages from the same source project are compressed into
+one range:
+
+```text
+# LabelMinusMergeSources v2
+# {"firstImage":"001.png","lastImage":"005.png","sourceIndex":1,"sourcePath":"member-a.txt","pageCount":5,"labelCount":42}
+# {"firstImage":"006.png","lastImage":"008.png","sourceIndex":2,"sourcePath":"parts/member-b.txt","pageCount":3,"labelCount":21}
+# EndLabelMinusMergeSources
+```
+
+Each JSON object describes a contiguous range in the merged project's image order. `sourceIndex` is one-based and follows
+the order of files selected for merging. `sourcePath` is written relative to the saved merged project file directory.
+`pageCount` is the number of pages in the range. `labelCount` is the total number of non-deleted labels taken from that
+source across the range. Keep this block line-oriented so normal text diffs can identify changed ranges without
+rewriting a large single JSON object.

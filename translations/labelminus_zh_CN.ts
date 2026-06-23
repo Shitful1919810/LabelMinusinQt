@@ -377,6 +377,10 @@
         <translation>markerTextBubble 必须是 JSON 对象；将使用默认标记文本气泡偏好设置。</translation>
     </message>
     <message>
+        <source>canvasLabelTextEditor must be a JSON object; using default canvas label editor preferences.</source>
+        <translation>canvasLabelTextEditor 必须是 JSON 对象；将使用默认画布标签编辑器偏好设置。</translation>
+    </message>
+    <message>
         <source>%1 must be a string; using the default value.</source>
         <translation>%1 必须是字符串；将使用默认值。</translation>
     </message>
@@ -456,6 +460,10 @@
         <translation>
             <numerusform>已加载 %n 页。%1 页需要选择来源。</numerusform>
         </translation>
+    </message>
+    <message>
+        <source>Open merged project after saving</source>
+        <translation>保存后打开合并工程</translation>
     </message>
 </context>
 <context>
@@ -551,6 +559,10 @@
     <message>
         <source>Marker text bubble opacity</source>
         <translation>标记文本气泡不透明度</translation>
+    </message>
+    <message>
+        <source>Canvas label editor opacity</source>
+        <translation>画布标签编辑器不透明度</translation>
     </message>
     <message>
         <source>%1%</source>
@@ -679,6 +691,10 @@
     <message>
         <source>Loaded preference file.</source>
         <translation>已加载偏好设置文件。</translation>
+    </message>
+    <message>
+        <source>Showing current preferences.</source>
+        <translation>正在显示当前生效的偏好设置。</translation>
     </message>
     <message>
         <source>Circle</source>

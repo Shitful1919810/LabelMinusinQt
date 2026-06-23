@@ -27,6 +27,8 @@ constexpr QLatin1StringView recentProjectsGroup{"recentProjects"};
 constexpr QLatin1StringView recentProjectPathsKey{"paths"};
 constexpr QLatin1StringView fileDialogsGroup{"fileDialogs"};
 constexpr QLatin1StringView lastDirectoryKey{"lastDirectory"};
+constexpr QLatin1StringView mergeGroup{"merge"};
+constexpr QLatin1StringView openMergedProjectAfterSaveKey{"openMergedProjectAfterSave"};
 } // namespace
 
 WindowLayoutState SessionStateStore::loadWindowLayout() const
@@ -173,6 +175,20 @@ void SessionStateStore::saveLastFileDialogPath(const QString& path) const
     QSettings settings;
     settings.beginGroup(fileDialogsGroup);
     settings.setValue(lastDirectoryKey, directory);
+}
+
+bool SessionStateStore::shouldOpenMergedProjectAfterSave() const
+{
+    QSettings settings;
+    settings.beginGroup(mergeGroup);
+    return settings.value(openMergedProjectAfterSaveKey, true).toBool();
+}
+
+void SessionStateStore::saveShouldOpenMergedProjectAfterSave(bool shouldOpen) const
+{
+    QSettings settings;
+    settings.beginGroup(mergeGroup);
+    settings.setValue(openMergedProjectAfterSaveKey, shouldOpen);
 }
 
 QString SessionStateStore::canonicalSessionPath(const QString& path)

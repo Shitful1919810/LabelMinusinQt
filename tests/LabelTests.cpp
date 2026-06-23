@@ -134,6 +134,26 @@ private slots:
         QCOMPARE(plan.mergedProject.images().at(0).labels.first().text(), QStringLiteral("first"));
         QCOMPARE(plan.mergedProject.images().at(1).labels.first().text(), QStringLiteral("second"));
         QCOMPARE(plan.mergedProject.images().at(2).labels.first().text(), QStringLiteral("third"));
+
+        const QString mergedPath = QDir(dirPath).filePath("merged.txt");
+        const labelminus::core::Project merged =
+            labelminus::services::ProjectMergeService::mergedProjectWithSelections(plan, {}, mergedPath);
+        QCOMPARE(merged.commentLines().size(), 4);
+        QCOMPARE(merged.commentLines().first(), QStringLiteral("# LabelMinusMergeSources v2"));
+        QCOMPARE(merged.commentLines().last(), QStringLiteral("# EndLabelMinusMergeSources"));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"firstImage\":\"001.png\"")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"lastImage\":\"002.png\"")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"pageCount\":2")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"labelCount\":2")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"sourceIndex\":1")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"sourcePath\":\"first.txt\"")));
+        QVERIFY(!merged.commentLines().at(1).contains(dirPath));
+        QVERIFY(merged.commentLines().at(2).contains(QStringLiteral("\"firstImage\":\"003.png\"")));
+        QVERIFY(merged.commentLines().at(2).contains(QStringLiteral("\"lastImage\":\"003.png\"")));
+        QVERIFY(merged.commentLines().at(2).contains(QStringLiteral("\"pageCount\":1")));
+        QVERIFY(merged.commentLines().at(2).contains(QStringLiteral("\"sourceIndex\":2")));
+        QVERIFY(merged.commentLines().at(2).contains(QStringLiteral("\"sourcePath\":\"second.txt\"")));
+        QVERIFY(!merged.commentLines().at(2).contains(dirPath));
     }
 
     void projectMergeCreatesConflictForMultipleInvolvedProjects()
@@ -161,10 +181,41 @@ private slots:
         QCOMPARE(plan.conflicts.size(), 1);
         QCOMPARE(plan.conflicts.first().candidates.size(), 2);
 
+        const QString mergedPath = QDir(dirPath).filePath("merged.txt");
         const labelminus::core::Project merged =
-            labelminus::services::ProjectMergeService::mergedProjectWithSelections(plan, {1});
+            labelminus::services::ProjectMergeService::mergedProjectWithSelections(plan, {1}, mergedPath);
         QCOMPARE(merged.images().size(), 1);
         QCOMPARE(merged.images().first().labels.first().text(), QStringLiteral("second"));
+        QCOMPARE(merged.commentLines().size(), 3);
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"firstImage\":\"001.png\"")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"lastImage\":\"001.png\"")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"sourceIndex\":2")));
+        QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"sourcePath\":\"second.txt\"")));
+        QVERIFY(!merged.commentLines().at(1).contains(dirPath));
+    }
+
+    void labelPlusDocumentPreservesCommentLines()
+    {
+        const QString dirPath = QDir::temp().filePath("labelminus_comment_test");
+        QDir().mkpath(dirPath);
+        const QString filePath = QDir(dirPath).filePath("translation.txt");
+
+        labelminus::core::Project project;
+        project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        project.setSourceName(QStringLiteral("source.zip"));
+        project.setCommentLines({QStringLiteral("# LabelMinusMergeSources v1"),
+                                 QStringLiteral("# {\"image\":\"001.png\",\"sourceIndex\":1}"),
+                                 QStringLiteral("# EndLabelMinusMergeSources")});
+        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().last().labels.append(Label(QStringLiteral("text"), QStringLiteral("框内"), {}));
+
+        LabelPlusDocument::saveToFile(project, filePath);
+
+        const auto reloaded = LabelPlusDocument::loadFromFile(filePath);
+        QCOMPARE(reloaded.sourceName(), QStringLiteral("source.zip"));
+        QCOMPARE(reloaded.commentLines(), project.commentLines());
+        QCOMPARE(reloaded.images().size(), 1);
+        QCOMPARE(reloaded.images().first().labels.first().text(), QStringLiteral("text"));
     }
 
     void preferencesReadMarkerFloatingPointSizes()
@@ -197,7 +248,11 @@ private slots:
                << "  },\n"
                << "  \"markerTextBubble\": {\n"
                << "    \"fontFamily\": \"Noto Sans CJK SC\",\n"
-               << "    \"fontPointSize\": 9.5\n"
+               << "    \"fontPointSize\": 9.5,\n"
+               << "    \"opacity\": 0.75\n"
+               << "  },\n"
+               << "  \"canvasLabelTextEditor\": {\n"
+               << "    \"opacity\": 0.6\n"
                << "  },\n"
                << "  \"input\": {\n"
                << "    \"moveLabelModifier\": \"ctrl+shift\",\n"
@@ -241,6 +296,15 @@ private slots:
         QCOMPARE(result.preferences.labelTextEditorFontPointSize(), 12.5);
         QCOMPARE(result.preferences.markerTextBubbleFontFamily(), QStringLiteral("Noto Sans CJK SC"));
         QCOMPARE(result.preferences.markerTextBubbleFontPointSize(), 9.5);
+        QCOMPARE(result.preferences.markerTextBubbleOpacity(), 0.75);
+        QCOMPARE(result.preferences.canvasLabelTextEditorOpacity(), 0.6);
+        const labelminus::core::AppPreferencesLoadResult serializedResult =
+            labelminus::core::AppPreferences::loadFromJson(result.preferences.toJsonDocument().toJson());
+        QVERIFY(serializedResult.warnings.isEmpty());
+        QCOMPARE(serializedResult.preferences.markerTextBubbleOpacity(), 0.75);
+        QCOMPARE(serializedResult.preferences.canvasLabelTextEditorOpacity(), 0.6);
+        QCOMPARE(serializedResult.preferences.alternateNextLabelShortcut().toString(QKeySequence::PortableText),
+                 QStringLiteral("Ctrl+Down"));
         QCOMPARE(result.preferences.applicationStyle(), QStringLiteral("Fusion"));
         QCOMPARE(result.preferences.applicationTheme(), QStringLiteral("breezeDark"));
         QCOMPARE(result.preferences.moveLabelModifiers(), Qt::ControlModifier | Qt::ShiftModifier);

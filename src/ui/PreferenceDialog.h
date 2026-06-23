@@ -24,7 +24,8 @@ class PreferenceDialog final : public QDialog {
     Q_OBJECT
 
 public:
-    explicit PreferenceDialog(QString preferencePath, QWidget* parent = nullptr);
+    PreferenceDialog(QString preferencePath, labelminus::core::AppPreferences currentPreferences,
+                     QWidget* parent = nullptr);
 
 signals:
     void preferencesApplied(labelminus::core::AppPreferencesLoadResult result);
@@ -59,6 +60,7 @@ private:
     void openPreferenceFile();
 
     QString m_preferencePath;
+    labelminus::core::AppPreferences m_currentPreferences;
     QDoubleSpinBox* m_markerDiameterSpinBox{nullptr};
     QDoubleSpinBox* m_markerFontSpinBox{nullptr};
     QSpinBox* m_tableMaxRowsSpinBox{nullptr};
@@ -75,6 +77,8 @@ private:
     QPushButton* m_resetMarkerTextBubbleFontButton{nullptr};
     QScrollBar* m_markerTextBubbleOpacityScrollBar{nullptr};
     QLabel* m_markerTextBubbleOpacityLabel{nullptr};
+    QScrollBar* m_canvasLabelTextEditorOpacityScrollBar{nullptr};
+    QLabel* m_canvasLabelTextEditorOpacityLabel{nullptr};
     QComboBox* m_moveModifierComboBox{nullptr};
     QComboBox* m_previousLabelModifierComboBox{nullptr};
     QKeySequenceEdit* m_undoShortcutEdit{nullptr};
