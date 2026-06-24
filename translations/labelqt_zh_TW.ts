@@ -2,6 +2,17 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="zh_TW">
 <context>
+    <name>ImageCanvas</name>
+    <message>
+        <source>Failed to load image</source>
+        <translation>圖片載入失敗</translation>
+    </message>
+    <message>
+        <source>Loading image...</source>
+        <translation>正在載入圖片...</translation>
+    </message>
+</context>
+<context>
     <name>AutomationController</name>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="73"/>

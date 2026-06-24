@@ -7,6 +7,7 @@
 #include <QFont>
 #include <QGraphicsView>
 #include <QHash>
+#include <QImage>
 #include <QRectF>
 #include <QSet>
 #include <QStringList>
@@ -14,6 +15,7 @@
 
 class QGraphicsItem;
 class QGraphicsRectItem;
+class QGraphicsTextItem;
 class QLabel;
 
 class ImageCanvas final : public QGraphicsView {
@@ -32,6 +34,8 @@ public:
     InteractionMode interactionMode() const noexcept;
     void setPreferences(const labelqt::core::AppPreferences& preferences);
     void setImage(const QString& path, const QVector<labelqt::core::Label>& labels);
+    void setImage(const QString& path, const QImage& image, const QVector<labelqt::core::Label>& labels);
+    void setImageLoading(const QString& path, const QVector<labelqt::core::Label>& labels);
     void setLabels(const QVector<labelqt::core::Label>& labels);
     void setGroups(QStringList groups);
     void setVisibleGroups(QStringList groups);
@@ -73,6 +77,7 @@ protected:
 
 private:
     void clearSceneItems();
+    void showSceneMessage(const QString& message);
     void rebuildLabelItems();
     void applyZoom();
     void updateScenePadding();
@@ -97,6 +102,7 @@ private:
     QGraphicsScene m_scene;
     QGraphicsPixmapItem* m_pixmapItem{nullptr};
     QGraphicsRectItem* m_selectionItem{nullptr};
+    QGraphicsTextItem* m_statusTextItem{nullptr};
     QLabel* m_hoverToolTip{nullptr};
     QVector<labelqt::core::Label> m_labels;
     QVector<QGraphicsItem*> m_labelItems;

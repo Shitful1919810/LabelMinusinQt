@@ -12,6 +12,8 @@ set(LABELQT_SERVICE_SOURCES
     services/ArchiveReader.cpp
     services/AutomationOperationApplier.cpp
     services/AutomationService.cpp
+    services/ImagePageCache.cpp
+    services/ImagePageCache.h
     services/LabelEditController.cpp
     services/LabelNavigator.cpp
     services/ProjectPageOrderService.cpp

@@ -29,6 +29,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QIcon>
+#include <QImage>
 #include <QInputDialog>
 #include <QItemSelection>
 #include <QItemSelectionModel>
@@ -84,10 +85,10 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), m_labelModel(new LabelTableModel(this)), m_labelTextDelegate(new LabelTextDelegate(this)),
       m_labelGroupDelegate(new LabelGroupDelegate(this))
 {
-    const labelqt::core::AppPreferencesLoadResult preferences =
-        labelqt::core::AppPreferences::loadWithDiagnostics();
+    const labelqt::core::AppPreferencesLoadResult preferences = labelqt::core::AppPreferences::loadWithDiagnostics();
     m_preferences = preferences.preferences;
     m_preferenceWarnings = preferences.warnings;
+    connect(&m_imagePageCache, &labelqt::services::ImagePageCache::imageLoaded, this, &MainWindow::handleImageLoaded);
     qApp->installEventFilter(this);
     m_shortcutController = new MainWindowShortcutController(this, this);
     m_shortcutController->setPreferences(m_preferences);
@@ -204,24 +205,24 @@ MainWindow::MainWindow(QWidget* parent)
         [this]() { markDirty(); });
     m_labelEditController =
         std::make_unique<labelqt::services::LabelEditController>(project(), m_undoStack,
-                                                                    labelqt::services::LabelEditCommandTexts{
-                                                                        tr("Add label"),
-                                                                        tr("Edit label text"),
-                                                                        tr("Change label group"),
-                                                                        tr("Move label"),
-                                                                        tr("Delete labels"),
-                                                                        tr("Reorder labels"),
-                                                                        tr("Add group"),
-                                                                        tr("Remove group"),
-                                                                        tr("Add %1 %2 label %3"),
-                                                                        tr("Delete %1 %2 label %3"),
-                                                                        tr("Edit %1 %2 label %3"),
-                                                                        tr("Change %1 %2 label %3"),
-                                                                        tr("Move %1 %2 label %3"),
-                                                                        tr("Reorder labels on %1"),
-                                                                        tr("Add group %1"),
-                                                                        tr("Remove group %1"),
-                                                                    });
+                                                                 labelqt::services::LabelEditCommandTexts{
+                                                                     tr("Add label"),
+                                                                     tr("Edit label text"),
+                                                                     tr("Change label group"),
+                                                                     tr("Move label"),
+                                                                     tr("Delete labels"),
+                                                                     tr("Reorder labels"),
+                                                                     tr("Add group"),
+                                                                     tr("Remove group"),
+                                                                     tr("Add %1 %2 label %3"),
+                                                                     tr("Delete %1 %2 label %3"),
+                                                                     tr("Edit %1 %2 label %3"),
+                                                                     tr("Change %1 %2 label %3"),
+                                                                     tr("Move %1 %2 label %3"),
+                                                                     tr("Reorder labels on %1"),
+                                                                     tr("Add group %1"),
+                                                                     tr("Remove group %1"),
+                                                                 });
     m_labelEditController->setCallbacks(
         [this](int imageIndex, int labelIndex) { refreshLabelEditSelection(imageIndex, labelIndex); },
         [this](int imageIndex, QVector<int> labelIndexes) {
@@ -689,8 +690,7 @@ void MainWindow::newProject()
         QMessageBox::critical(this, tr("New project failed"), result.error);
         return;
     }
-    if (result.status == labelqt::services::NewProjectResult::Status::Created &&
-        openProjectFile(result.projectPath)) {
+    if (result.status == labelqt::services::NewProjectResult::Status::Created && openProjectFile(result.projectPath)) {
         statusBar()->showMessage(tr("Created %1").arg(result.projectPath), 4000);
     }
 }
@@ -1809,9 +1809,8 @@ void MainWindow::selectPreviousVisibleLabelFrom(int imageIndex, int labelIndex)
         return;
     }
 
-    const labelqt::services::LabelNavigationTarget target =
-        labelqt::services::LabelNavigator::previousVisibleLabel(
-            project(), {imageIndex, labelIndex, m_groupFilterComboBox->selectedGroups()});
+    const labelqt::services::LabelNavigationTarget target = labelqt::services::LabelNavigator::previousVisibleLabel(
+        project(), {imageIndex, labelIndex, m_groupFilterComboBox->selectedGroups()});
     if (target.isValid()) {
         selectLabelAndCenter(target.imageIndex, target.labelIndex);
     }
@@ -2053,6 +2052,9 @@ void MainWindow::refreshImageUi()
     const labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr) {
         m_labelModel->setLabels(nullptr);
+        m_pendingImageRequestId = 0;
+        m_pendingImagePath.clear();
+        m_canvas->setImage(QString(), QImage(), {});
         m_textEdit->clear();
         resetPendingTextEdit();
         setEditorEnabled(false);
@@ -2063,13 +2065,68 @@ void MainWindow::refreshImageUi()
     m_imageComboBox->setCurrentIndex(m_currentImageIndex);
     m_previousButton->setEnabled(m_currentImageIndex > 0);
     m_nextButton->setEnabled(m_currentImageIndex >= 0 && m_currentImageIndex < project().images().size() - 1);
-    m_canvas->setImage(image->path, image->labels);
+    displayCachedOrRequestCurrentImage(*image);
     m_labelModel->setLabels(&project().images()[m_currentImageIndex].labels);
     resizeLabelRowsToContents();
     m_textEdit->clear();
     resetPendingTextEdit();
     setEditorEnabled(false);
     m_isUpdatingUi = false;
+}
+
+void MainWindow::displayCachedOrRequestCurrentImage(const labelqt::core::ImageEntry& image)
+{
+    const QSize targetSize = imagePreviewTargetSize();
+    if (auto cachedImage = m_imagePageCache.cachedImage(image.path, targetSize)) {
+        m_pendingImageRequestId = 0;
+        m_pendingImagePath.clear();
+        m_canvas->setImage(cachedImage->path, cachedImage->image, image.labels);
+        preloadAdjacentImages();
+        return;
+    }
+
+    m_canvas->setImageLoading(image.path, image.labels);
+    m_pendingImagePath = image.path;
+    m_pendingImageRequestId = m_imagePageCache.requestImage(image.path, targetSize);
+}
+
+void MainWindow::handleImageLoaded(quint64 requestId, const labelqt::services::ImagePageLoadResult& result)
+{
+    if (requestId == 0 || requestId != m_pendingImageRequestId || result.path != m_pendingImagePath) {
+        return;
+    }
+
+    const labelqt::core::ImageEntry* image = currentImage();
+    if (image == nullptr || image->path != result.path) {
+        return;
+    }
+
+    m_pendingImageRequestId = 0;
+    m_pendingImagePath.clear();
+    m_canvas->setImage(result.path, result.image, image->labels);
+    preloadAdjacentImages();
+}
+
+void MainWindow::preloadAdjacentImages()
+{
+    if (project().isEmpty() || m_currentImageIndex < 0) {
+        return;
+    }
+
+    QStringList paths;
+    const QVector<labelqt::core::ImageEntry>& images = project().images();
+    if (m_currentImageIndex > 0) {
+        paths.append(images.at(m_currentImageIndex - 1).path);
+    }
+    if (m_currentImageIndex + 1 < images.size()) {
+        paths.append(images.at(m_currentImageIndex + 1).path);
+    }
+    m_imagePageCache.preloadImages(paths, imagePreviewTargetSize());
+}
+
+QSize MainWindow::imagePreviewTargetSize() const
+{
+    return m_canvas == nullptr ? QSize() : m_canvas->viewport()->size();
 }
 
 void MainWindow::refreshCanvasLabels()
@@ -2258,8 +2315,7 @@ void MainWindow::restoreProjectSessionState()
         return;
     }
 
-    const labelqt::services::ProjectSessionState state =
-        m_sessionStateStore.loadProjectSession(project().filePath());
+    const labelqt::services::ProjectSessionState state = m_sessionStateStore.loadProjectSession(project().filePath());
     if (!state.isValid) {
         return;
     }

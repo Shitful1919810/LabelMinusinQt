@@ -3,6 +3,7 @@
 #include "core/AppPreferences.h"
 #include "core/UndoStack.h"
 #include "services/AutomationService.h"
+#include "services/ImagePageCache.h"
 #include "services/LabelEditController.h"
 #include "services/ProjectController.h"
 #include "services/ProjectWorkflowController.h"
@@ -17,6 +18,7 @@
 #include <QPersistentModelIndex>
 #include <QPointF>
 #include <QPointer>
+#include <QSize>
 #include <QVariant>
 #include <QVector>
 
@@ -132,6 +134,10 @@ private:
     void replaceProjectImages(QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName,
                               int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter);
     void refreshImageUi();
+    void displayCachedOrRequestCurrentImage(const labelqt::core::ImageEntry& image);
+    void handleImageLoaded(quint64 requestId, const labelqt::services::ImagePageLoadResult& result);
+    void preloadAdjacentImages();
+    QSize imagePreviewTargetSize() const;
     void refreshCanvasLabels();
     void refreshCurrentLabelUi();
     void refreshLabelEditSelection(int imageIndex, int labelIndex);
@@ -211,6 +217,7 @@ private:
     QPushButton* m_previousButton{nullptr};
     QPushButton* m_nextButton{nullptr};
     labelqt::services::ProjectController m_projectController;
+    labelqt::services::ImagePageCache m_imagePageCache;
     std::unique_ptr<labelqt::services::ProjectWorkflowController> m_projectWorkflowController;
     std::unique_ptr<labelqt::services::LabelEditController> m_labelEditController;
     labelqt::core::AppPreferences m_preferences;
@@ -229,4 +236,6 @@ private:
     labelqt::core::UndoStack m_undoStack;
     int m_operationMessageSerial{0};
     bool m_isAutomationRunning{false};
+    quint64 m_pendingImageRequestId{0};
+    QString m_pendingImagePath;
 };

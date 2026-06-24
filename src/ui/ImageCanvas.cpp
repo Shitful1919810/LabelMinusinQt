@@ -5,6 +5,7 @@
 #include <QClipboard>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
+#include <QGraphicsTextItem>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QMouseEvent>
@@ -241,6 +242,11 @@ void ImageCanvas::setPreferences(const labelqt::core::AppPreferences& preference
 
 void ImageCanvas::setImage(const QString& path, const QVector<labelqt::core::Label>& labels)
 {
+    setImage(path, QImage(path), labels);
+}
+
+void ImageCanvas::setImage(const QString& path, const QImage& image, const QVector<labelqt::core::Label>& labels)
+{
     hideHoveredLabelToolTip();
     m_imagePath = path;
     m_labels = labels;
@@ -249,9 +255,13 @@ void ImageCanvas::setImage(const QString& path, const QVector<labelqt::core::Lab
     m_normalizedSelectionRect = {};
     m_isSelectingRegion = false;
 
-    QPixmap pixmap(path);
     clearSceneItems();
-    m_pixmapItem = m_scene.addPixmap(pixmap);
+    if (image.isNull()) {
+        showSceneMessage(tr("Failed to load image"));
+        return;
+    }
+
+    m_pixmapItem = m_scene.addPixmap(QPixmap::fromImage(image));
     m_scene.setSceneRect(m_pixmapItem->boundingRect());
     rebuildLabelItems();
 
@@ -264,12 +274,38 @@ void ImageCanvas::setImage(const QString& path, const QVector<labelqt::core::Lab
     }
 }
 
+void ImageCanvas::setImageLoading(const QString& path, const QVector<labelqt::core::Label>& labels)
+{
+    hideHoveredLabelToolTip();
+    m_imagePath = path;
+    m_labels = labels;
+    m_selectedLabels.clear();
+    m_labelTextPreviews.clear();
+    m_normalizedSelectionRect = {};
+    m_isSelectingRegion = false;
+
+    clearSceneItems();
+    showSceneMessage(tr("Loading image..."));
+}
+
 void ImageCanvas::clearSceneItems()
 {
     m_pixmapItem = nullptr;
     m_selectionItem = nullptr;
+    m_statusTextItem = nullptr;
     m_labelItems.clear();
     m_scene.clear();
+}
+
+void ImageCanvas::showSceneMessage(const QString& message)
+{
+    m_statusTextItem = m_scene.addText(message);
+    m_statusTextItem->setDefaultTextColor(palette().color(QPalette::WindowText));
+    m_statusTextItem->setFlag(QGraphicsItem::ItemIgnoresTransformations);
+    m_statusTextItem->setZValue(20.0);
+    m_statusTextItem->setPos(0.0, 0.0);
+    m_scene.setSceneRect(QRectF(QPointF(0.0, 0.0), QSizeF(1.0, 1.0)));
+    resetTransform();
 }
 
 void ImageCanvas::setLabels(const QVector<labelqt::core::Label>& labels)
