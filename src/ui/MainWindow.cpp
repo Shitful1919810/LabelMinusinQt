@@ -756,7 +756,6 @@ void MainWindow::mergeProjects()
     else {
         ProjectMergeDialog dialog(mergePlan, m_preferences, this);
         dialog.setShouldOpenMergedProjectAfterSave(openMergedProjectAfterSave);
-        dialog.showMaximized();
         if (dialog.exec() != QDialog::Accepted) {
             return;
         }
@@ -768,7 +767,6 @@ void MainWindow::mergeProjects()
     const labelqt::core::Project orderPreviewProject =
         m_projectWorkflowController->mergedProjectPreview(mergePlan, selectedCandidateIndexes);
     PageOrderDialog pageOrderDialog(orderPreviewProject, m_preferences, this);
-    pageOrderDialog.showMaximized();
     if (pageOrderDialog.exec() != QDialog::Accepted) {
         return;
     }
@@ -820,7 +818,6 @@ void MainWindow::reorderPages()
     }
 
     PageOrderDialog dialog(project(), m_preferences, this);
-    dialog.showMaximized();
     if (dialog.exec() != QDialog::Accepted) {
         return;
     }

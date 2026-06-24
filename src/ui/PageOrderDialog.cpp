@@ -1,5 +1,6 @@
 #include "ui/PageOrderDialog.h"
 
+#include "ui/DialogWindowUtils.h"
 #include "ui/ImageCanvas.h"
 #include "ui/PageOrderListModel.h"
 #include "ui/ViewportFittedTableColumns.h"
@@ -49,7 +50,7 @@ void PageOrderDialog::done(int result)
 void PageOrderDialog::buildUi()
 {
     setWindowTitle(tr("Reorder Pages"));
-    resize(1100, 760);
+    labelqt::ui::configureLargeDialogWindow(*this, QSize(1100, 760));
 
     auto* rootLayout = new QVBoxLayout(this);
     auto* hintLabel = new QLabel(tr("Drag pages in the list to change their order."), this);

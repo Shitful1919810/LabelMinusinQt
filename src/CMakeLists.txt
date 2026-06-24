@@ -59,6 +59,8 @@ set(LABELQT_UI_SOURCES
     ui/AutomationShortcutController.cpp
     ui/CanvasLabelTextEditController.cpp
     ui/CanvasLabelTextEditor.cpp
+    ui/DialogWindowUtils.cpp
+    ui/DialogWindowUtils.h
     ui/GroupFilterComboBox.cpp
     ui/ImageCanvas.cpp
     ui/LabelEditDelegates.cpp

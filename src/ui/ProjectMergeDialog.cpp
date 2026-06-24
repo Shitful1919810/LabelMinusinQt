@@ -1,5 +1,6 @@
 #include "ui/ProjectMergeDialog.h"
 
+#include "ui/DialogWindowUtils.h"
 #include "ui/ImageCanvas.h"
 
 #include <QButtonGroup>
@@ -55,7 +56,7 @@ void ProjectMergeDialog::done(int result)
 void ProjectMergeDialog::buildUi()
 {
     setWindowTitle(tr("Merge Projects"));
-    resize(1100, 760);
+    labelqt::ui::configureLargeDialogWindow(*this, QSize(1100, 760));
 
     auto* rootLayout = new QVBoxLayout(this);
     m_summaryLabel = new QLabel(this);
