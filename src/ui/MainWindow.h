@@ -173,6 +173,7 @@ private:
     int labelCountForGroup(const QString& group) const;
     void setEditorEnabled(bool enabled);
     void setAutomationRunning(bool running);
+    bool isProjectEditingBlocked() const noexcept;
     labelqt::core::Project& project() noexcept;
     const labelqt::core::Project& project() const noexcept;
     labelqt::core::ImageEntry* currentImage();

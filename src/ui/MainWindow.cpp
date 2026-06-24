@@ -302,10 +302,6 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
         commitPendingTextEdit();
     }
 
-    if (m_isAutomationRunning) {
-        return QMainWindow::eventFilter(watched, event);
-    }
-
     if (m_automationShortcutController != nullptr &&
         m_automationShortcutController->handleGlobalShortcut(watched, event)) {
         return true;
@@ -649,6 +645,10 @@ void MainWindow::createCentralWidget()
 
 void MainWindow::newProject()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     commitActiveTextInput();
     if (!promptToSaveIfDirty()) {
         return;
@@ -697,6 +697,10 @@ void MainWindow::newProject()
 
 void MainWindow::openProject()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     commitActiveTextInput();
     if (!promptToSaveIfDirty()) {
         return;
@@ -717,6 +721,10 @@ void MainWindow::openProject()
 
 void MainWindow::mergeProjects()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     const QStringList paths = QFileDialog::getOpenFileNames(this, tr("Select LabelPlus projects to merge"),
                                                             m_sessionStateStore.lastFileDialogDirectory(),
                                                             tr("LabelPlus text (*.txt);;All files (*)"));
@@ -801,6 +809,10 @@ void MainWindow::mergeProjects()
 
 void MainWindow::reorderPages()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     commitActiveTextInput();
     if (project().images().isEmpty()) {
         QMessageBox::information(this, tr("Reorder Pages"), tr("There are no pages to reorder."));
@@ -863,6 +875,10 @@ void MainWindow::applyAutomationOperations(const QString& scriptName,
 
 bool MainWindow::openProjectFile(const QString& path)
 {
+    if (isProjectEditingBlocked()) {
+        return false;
+    }
+
     return loadProjectFile(path, true, tr("Loaded %1").arg(path));
 }
 
@@ -905,7 +921,7 @@ bool MainWindow::loadProjectFile(const QString& path, bool showErrors, const QSt
 
 void MainWindow::openRecentProjectFromAction()
 {
-    if (m_isAutomationRunning) {
+    if (isProjectEditingBlocked()) {
         return;
     }
 
@@ -956,6 +972,10 @@ void MainWindow::openPreferences()
 
 bool MainWindow::saveProject()
 {
+    if (isProjectEditingBlocked()) {
+        return false;
+    }
+
     if (project().isEmpty()) {
         return true;
     }
@@ -980,6 +1000,10 @@ bool MainWindow::saveProject()
 
 bool MainWindow::saveProjectAs()
 {
+    if (isProjectEditingBlocked()) {
+        return false;
+    }
+
     if (project().isEmpty()) {
         return true;
     }
@@ -1018,6 +1042,10 @@ bool MainWindow::saveProjectAs()
 
 void MainWindow::addGroup()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     bool ok = false;
     const QString group =
         QInputDialog::getText(this, tr("Add group"), tr("Group name:"), QLineEdit::Normal, QString(), &ok).trimmed();
@@ -1040,6 +1068,10 @@ void MainWindow::addGroup()
 
 void MainWindow::removeGroup()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     const QString group = m_insertGroupComboBox->currentText();
     if (group.isEmpty() || project().groups().size() <= 1) {
         return;
@@ -1151,7 +1183,7 @@ void MainWindow::selectLabel(int index)
         m_labelView->clearSelection();
     }
     m_canvas->setSelectedLabels({index});
-    setEditorEnabled(true);
+    setEditorEnabled(!m_isAutomationRunning);
     m_isUpdatingUi = wasUpdatingUi;
 }
 
@@ -1203,6 +1235,10 @@ void MainWindow::selectLabelFromCanvas(int index, Qt::KeyboardModifiers modifier
 
 void MainWindow::addLabel(QPointF normalizedPosition)
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     if (currentImage() == nullptr || m_labelEditController == nullptr) {
         return;
     }
@@ -1225,6 +1261,10 @@ void MainWindow::addLabel(QPointF normalizedPosition)
 
 void MainWindow::deleteSelectedLabels()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     const QVector<int> labelIndexes = selectedLabelIndexes();
     if (currentImage() == nullptr || labelIndexes.isEmpty() || m_labelEditController == nullptr) {
         return;
@@ -1242,6 +1282,10 @@ void MainWindow::deleteSelectedLabels()
 
 void MainWindow::changeSelectedLabelsGroup(const QString& group)
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     const QVector<int> labelIndexes = selectedLabelIndexes();
     if (currentImage() == nullptr || labelIndexes.isEmpty() || m_labelEditController == nullptr) {
         return;
@@ -1264,6 +1308,10 @@ void MainWindow::changeSelectedLabelsGroup(const QString& group)
 
 void MainWindow::showLabelContextMenu(const QPoint& position)
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     const QModelIndex clickedIndex = m_labelView->indexAt(position);
     if (clickedIndex.isValid() && !m_labelView->selectionModel()->isSelected(clickedIndex)) {
         m_labelView->selectRow(clickedIndex.row());
@@ -1307,6 +1355,10 @@ void MainWindow::showLabelContextMenu(const QPoint& position)
 
 void MainWindow::reorderLabels(QVector<int> sourceIndexes, int visibleDropRow)
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || sourceIndexes.isEmpty() || m_labelEditController == nullptr) {
         return;
@@ -1334,6 +1386,10 @@ void MainWindow::reorderLabels(QVector<int> sourceIndexes, int visibleDropRow)
 
 void MainWindow::updateCurrentLabelText()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     if (m_isUpdatingUi) {
         return;
     }
@@ -1388,7 +1444,7 @@ bool MainWindow::updateCurrentLabelDetails(int index)
     m_currentLabelIndex = index;
     m_textEdit->setPlainText(image->labels.at(index).text());
     m_labelGroupComboBox->setCurrentText(image->labels.at(index).group());
-    setEditorEnabled(true);
+    setEditorEnabled(!m_isAutomationRunning);
     m_isUpdatingUi = wasUpdatingUi;
     return true;
 }
@@ -1528,6 +1584,10 @@ void MainWindow::clearCurrentLabelSelection()
 
 void MainWindow::updateCurrentLabelGroup(int index)
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     if (m_isUpdatingUi || index < 0) {
         return;
     }
@@ -1557,6 +1617,10 @@ void MainWindow::updateCurrentLabelGroup(int index)
 
 void MainWindow::updateLabelFromTable(int sourceIndex, int column, QVariant newValue)
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     commitPendingTextEdit();
 
     labelqt::core::ImageEntry* image = currentImage();
@@ -1618,6 +1682,10 @@ void MainWindow::clearLabelTextPreviewFromTableEditor(QPersistentModelIndex inde
 
 void MainWindow::openCanvasLabelTextEditor(int index, QPoint globalPosition)
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || m_canvas == nullptr || m_canvasTextEditController == nullptr ||
         m_labelEditController == nullptr || index < 0 || index >= image->labels.size() ||
@@ -1655,6 +1723,10 @@ void MainWindow::closeCanvasLabelTextEditor()
 
 void MainWindow::moveLabel(int index, QPointF normalizedPosition)
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || index < 0 || index >= image->labels.size()) {
         return;
@@ -1678,6 +1750,10 @@ void MainWindow::moveLabel(int index, QPointF normalizedPosition)
 
 void MainWindow::undoLastOperation()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     commitCanvasLabelTextEditor();
     commitPendingTextEdit();
     if (!m_undoStack.canUndo()) {
@@ -1689,6 +1765,10 @@ void MainWindow::undoLastOperation()
 
 void MainWindow::redoLastOperation()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     commitCanvasLabelTextEditor();
     commitPendingTextEdit();
     if (!m_undoStack.canRedo()) {
@@ -1841,6 +1921,10 @@ void MainWindow::selectAdjacentVisibleLabelFromShortcut(bool previous)
 
 void MainWindow::editCurrentLabelText()
 {
+    if (isProjectEditingBlocked()) {
+        return;
+    }
+
     if (m_labelView == nullptr || m_labelModel == nullptr || currentImage() == nullptr) {
         return;
     }
@@ -2245,7 +2329,7 @@ void MainWindow::capLabelRowHeight(int row)
 
 void MainWindow::focusLabelTableSelection()
 {
-    if (m_labelView != nullptr) {
+    if (m_labelView != nullptr && m_labelView->isEnabled()) {
         m_labelView->setFocus(Qt::OtherFocusReason);
     }
 }
@@ -2750,33 +2834,38 @@ void MainWindow::setAutomationRunning(bool running)
 {
     m_isAutomationRunning = running;
 
-    setEditorEnabled(!running && !project().isEmpty());
+    const bool hasProject = !project().isEmpty();
+    const bool hasPreviousPage = m_currentImageIndex > 0;
+    const bool hasNextPage = m_currentImageIndex >= 0 && m_currentImageIndex < project().images().size() - 1;
+
+    setEditorEnabled(!running && hasProject);
     if (m_canvas != nullptr) {
-        m_canvas->setEnabled(!running);
+        m_canvas->setReadOnly(running);
+        m_canvas->setEnabled(hasProject);
     }
     if (m_labelView != nullptr) {
         m_labelView->setEnabled(!running);
     }
     if (m_insertGroupComboBox != nullptr) {
-        m_insertGroupComboBox->setEnabled(!running && !project().isEmpty());
+        m_insertGroupComboBox->setEnabled(!running && hasProject);
     }
     if (m_groupFilterComboBox != nullptr) {
-        m_groupFilterComboBox->setEnabled(!running && !project().isEmpty());
+        m_groupFilterComboBox->setEnabled(hasProject);
     }
     if (m_imageComboBox != nullptr) {
-        m_imageComboBox->setEnabled(!running && !project().isEmpty());
+        m_imageComboBox->setEnabled(hasProject);
     }
     if (m_previousButton != nullptr) {
-        m_previousButton->setEnabled(!running && !project().isEmpty());
+        m_previousButton->setEnabled(hasProject && hasPreviousPage);
     }
     if (m_nextButton != nullptr) {
-        m_nextButton->setEnabled(!running && !project().isEmpty());
+        m_nextButton->setEnabled(hasProject && hasNextPage);
     }
     if (m_labelModeButton != nullptr) {
-        m_labelModeButton->setEnabled(!running);
+        m_labelModeButton->setEnabled(hasProject);
     }
     if (m_selectionModeButton != nullptr) {
-        m_selectionModeButton->setEnabled(!running);
+        m_selectionModeButton->setEnabled(hasProject);
     }
     if (m_undoAction != nullptr) {
         m_undoAction->setEnabled(!running && m_undoStack.canUndo());
@@ -2797,20 +2886,25 @@ void MainWindow::setAutomationRunning(bool running)
         m_mergeProjectsAction->setEnabled(!running);
     }
     if (m_reorderPagesAction != nullptr) {
-        m_reorderPagesAction->setEnabled(!running && !project().isEmpty());
+        m_reorderPagesAction->setEnabled(!running && hasProject);
     }
     if (m_saveProjectAction != nullptr) {
-        m_saveProjectAction->setEnabled(!running && !project().isEmpty());
+        m_saveProjectAction->setEnabled(!running && hasProject);
     }
     if (m_saveProjectAsAction != nullptr) {
-        m_saveProjectAsAction->setEnabled(!running && !project().isEmpty());
+        m_saveProjectAsAction->setEnabled(!running && hasProject);
     }
     if (m_previousPageAction != nullptr) {
-        m_previousPageAction->setEnabled(!running && !project().isEmpty());
+        m_previousPageAction->setEnabled(hasProject && hasPreviousPage);
     }
     if (m_nextPageAction != nullptr) {
-        m_nextPageAction->setEnabled(!running && !project().isEmpty());
+        m_nextPageAction->setEnabled(hasProject && hasNextPage);
     }
+}
+
+bool MainWindow::isProjectEditingBlocked() const noexcept
+{
+    return m_isAutomationRunning;
 }
 
 labelqt::core::Project& MainWindow::project() noexcept

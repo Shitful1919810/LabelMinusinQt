@@ -222,6 +222,25 @@ ImageCanvas::InteractionMode ImageCanvas::interactionMode() const noexcept
     return m_interactionMode;
 }
 
+void ImageCanvas::setReadOnly(bool readOnly)
+{
+    if (m_readOnly == readOnly) {
+        return;
+    }
+
+    m_readOnly = readOnly;
+    m_pendingLabelCreate = false;
+    m_pendingLabelMove = false;
+    m_pendingLabelMoveIndex = -1;
+    m_isMovingLabel = false;
+    m_movingLabelIndex = -1;
+}
+
+bool ImageCanvas::isReadOnly() const noexcept
+{
+    return m_readOnly;
+}
+
 void ImageCanvas::setPreferences(const labelqt::core::AppPreferences& preferences)
 {
     m_markerDiameterPixels = preferences.labelMarkerDiameterPixels();
@@ -472,7 +491,7 @@ void ImageCanvas::keyPressEvent(QKeyEvent* event)
         return;
     }
     if (m_interactionMode == InteractionMode::Label && event->key() == Qt::Key_Delete &&
-        event->modifiers() == Qt::NoModifier) {
+        event->modifiers() == Qt::NoModifier && !m_readOnly) {
         emit deleteRequested();
         event->accept();
         return;
@@ -529,7 +548,7 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
                 m_pendingLabelSelectIndex = labelIndex;
                 m_pendingLabelSelectModifiers = event->modifiers();
                 m_labelSelectPressPosition = event->pos();
-                if (hasMoveLabelModifiers(event->modifiers())) {
+                if (!m_readOnly && hasMoveLabelModifiers(event->modifiers())) {
                     m_pendingLabelMove = true;
                     m_pendingLabelMoveIndex = labelIndex;
                 }
@@ -541,7 +560,7 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
         if (!pressedMarker) {
             m_pendingEmptyClick = true;
             m_emptyClickPressPosition = event->pos();
-            if (m_pixmapItem != nullptr && m_pixmapItem->contains(mapToScene(event->pos()))) {
+            if (!m_readOnly && m_pixmapItem != nullptr && m_pixmapItem->contains(mapToScene(event->pos()))) {
                 m_pendingLabelCreate = true;
                 m_labelCreatePressPosition = event->pos();
             }
@@ -558,7 +577,7 @@ void ImageCanvas::mouseDoubleClickEvent(QMouseEvent* event)
         return;
     }
 
-    if (event->button() == Qt::LeftButton) {
+    if (event->button() == Qt::LeftButton && !m_readOnly) {
         setFocus();
         m_pendingLabelCreate = false;
 
@@ -599,14 +618,15 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    if (m_isMovingLabel && m_pixmapItem != nullptr && m_movingLabelIndex >= 0 && m_movingLabelIndex < m_labels.size()) {
+    if (!m_readOnly && m_isMovingLabel && m_pixmapItem != nullptr && m_movingLabelIndex >= 0 &&
+        m_movingLabelIndex < m_labels.size()) {
         m_labels[m_movingLabelIndex].setPosition(normalizedPositionFromScene(mapToScene(event->pos())));
         rebuildLabelItems();
         event->accept();
         return;
     }
 
-    if (m_pendingLabelMove &&
+    if (!m_readOnly && m_pendingLabelMove &&
         (event->pos() - m_labelSelectPressPosition).manhattanLength() >= QApplication::startDragDistance()) {
         m_isMovingLabel = true;
         m_movingLabelIndex = m_pendingLabelMoveIndex;
@@ -663,7 +683,7 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
         return;
     }
 
-    if (event->button() == Qt::LeftButton && m_isMovingLabel) {
+    if (!m_readOnly && event->button() == Qt::LeftButton && m_isMovingLabel) {
         const int labelIndex = m_movingLabelIndex;
         m_isMovingLabel = false;
         m_movingLabelIndex = -1;
@@ -678,7 +698,7 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
     }
 
     const bool shouldCreateLabel =
-        event->button() == Qt::LeftButton && m_pendingLabelCreate &&
+        !m_readOnly && event->button() == Qt::LeftButton && m_pendingLabelCreate &&
         (event->pos() - m_labelCreatePressPosition).manhattanLength() < QApplication::startDragDistance() &&
         m_pixmapItem != nullptr && m_pixmapItem->contains(mapToScene(event->pos()));
     const bool shouldClearLabelSelection =

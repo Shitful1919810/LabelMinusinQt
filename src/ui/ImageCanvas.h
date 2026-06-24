@@ -32,6 +32,8 @@ public:
 
     void setInteractionMode(InteractionMode mode);
     InteractionMode interactionMode() const noexcept;
+    void setReadOnly(bool readOnly);
+    bool isReadOnly() const noexcept;
     void setPreferences(const labelqt::core::AppPreferences& preferences);
     void setImage(const QString& path, const QVector<labelqt::core::Label>& labels);
     void setImage(const QString& path, const QImage& image, const QVector<labelqt::core::Label>& labels);
@@ -120,6 +122,7 @@ private:
     QVector<labelqt::core::LabelGroupStyle> m_groupStyles;
     bool m_hasUserZoom{false};
     bool m_isDestroying{false};
+    bool m_readOnly{false};
     bool m_pendingLabelCreate{false};
     bool m_pendingLabelSelect{false};
     bool m_pendingEmptyClick{false};
