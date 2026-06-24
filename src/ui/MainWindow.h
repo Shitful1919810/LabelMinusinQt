@@ -140,6 +140,7 @@ private:
     void refreshGroupUi();
     void resizeLabelRowsToContents();
     void capLabelRowHeight(int row);
+    void focusLabelTableSelection();
     void restoreLayoutState();
     void saveLayoutState() const;
     void restoreLabelTableColumnWidths();

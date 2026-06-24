@@ -572,6 +572,7 @@ void MainWindow::createCentralWidget()
     connect(m_canvas, &ImageCanvas::labelMoveRequested, this, &MainWindow::moveLabel);
     connect(m_canvas, &ImageCanvas::labelSelected, this, &MainWindow::selectLabel);
     connect(m_canvas, &ImageCanvas::labelClicked, this, &MainWindow::selectLabelFromCanvas);
+    connect(m_canvas, &ImageCanvas::emptyAreaClicked, this, &MainWindow::clearCurrentLabelSelection);
     connect(m_canvas, &ImageCanvas::labelTextEditRequested, this, &MainWindow::openCanvasLabelTextEditor);
     connect(m_canvas, &ImageCanvas::deleteRequested, this, &MainWindow::deleteSelectedLabels);
     connect(m_canvas, &ImageCanvas::zoomPercentChanged, m_zoomSlider, &QSlider::setValue);
@@ -1144,6 +1145,7 @@ void MainWindow::selectLabel(int index)
         m_labelView->scrollTo(rowIndex, QAbstractItemView::EnsureVisible);
         m_labelView->resizeRowToContents(visibleRow);
         capLabelRowHeight(visibleRow);
+        focusLabelTableSelection();
     }
     else {
         m_labelView->clearSelection();
@@ -1969,6 +1971,7 @@ void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes, int prima
         m_labelView->selectionModel()->setCurrentIndex(primaryIndex,
                                                        QItemSelectionModel::Current | QItemSelectionModel::Rows);
         m_labelView->scrollTo(primaryIndex, QAbstractItemView::EnsureVisible);
+        focusLabelTableSelection();
     }
     m_labelView->viewport()->update();
     m_isUpdatingUi = wasUpdatingUi;
@@ -2180,6 +2183,13 @@ void MainWindow::capLabelRowHeight(int row)
         std::max(m_labelView->verticalHeader()->minimumSectionSize(), contentHeight + verticalMargin);
     if (m_labelView->rowHeight(row) > maximumHeight) {
         m_labelView->setRowHeight(row, maximumHeight);
+    }
+}
+
+void MainWindow::focusLabelTableSelection()
+{
+    if (m_labelView != nullptr) {
+        m_labelView->setFocus(Qt::OtherFocusReason);
     }
 }
 

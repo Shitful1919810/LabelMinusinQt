@@ -453,6 +453,7 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
         m_lastMiddlePanPosition = event->pos();
         m_pendingLabelCreate = false;
         m_pendingLabelSelect = false;
+        m_pendingEmptyClick = false;
         m_pendingLabelSelectIndex = -1;
         m_pendingLabelSelectModifiers = Qt::NoModifier;
         m_pendingLabelMove = false;
@@ -475,6 +476,7 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
         setFocus();
         m_pendingLabelCreate = false;
         m_pendingLabelSelect = false;
+        m_pendingEmptyClick = false;
         m_pendingLabelSelectIndex = -1;
         m_pendingLabelSelectModifiers = Qt::NoModifier;
         m_pendingLabelMove = false;
@@ -500,9 +502,10 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
             item = item->parentItem();
         }
 
-        if (!pressedMarker && m_pixmapItem != nullptr) {
-            const QPointF scenePosition = mapToScene(event->pos());
-            if (m_pixmapItem->contains(scenePosition)) {
+        if (!pressedMarker) {
+            m_pendingEmptyClick = true;
+            m_emptyClickPressPosition = event->pos();
+            if (m_pixmapItem != nullptr && m_pixmapItem->contains(mapToScene(event->pos()))) {
                 m_pendingLabelCreate = true;
                 m_labelCreatePressPosition = event->pos();
             }
@@ -586,6 +589,10 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
         (event->pos() - m_labelCreatePressPosition).manhattanLength() >= QApplication::startDragDistance()) {
         m_pendingLabelCreate = false;
     }
+    if (m_pendingEmptyClick &&
+        (event->pos() - m_emptyClickPressPosition).manhattanLength() >= QApplication::startDragDistance()) {
+        m_pendingEmptyClick = false;
+    }
     if (m_pendingLabelSelect &&
         (event->pos() - m_labelSelectPressPosition).manhattanLength() >= QApplication::startDragDistance()) {
         m_pendingLabelSelect = false;
@@ -638,6 +645,10 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
         event->button() == Qt::LeftButton && m_pendingLabelCreate &&
         (event->pos() - m_labelCreatePressPosition).manhattanLength() < QApplication::startDragDistance() &&
         m_pixmapItem != nullptr && m_pixmapItem->contains(mapToScene(event->pos()));
+    const bool shouldClearLabelSelection =
+        event->button() == Qt::LeftButton && m_pendingEmptyClick &&
+        (event->pos() - m_emptyClickPressPosition).manhattanLength() < QApplication::startDragDistance() &&
+        m_selectedLabels.size() >= 2;
     const bool shouldSelectLabel =
         event->button() == Qt::LeftButton && m_pendingLabelSelect &&
         (event->pos() - m_labelSelectPressPosition).manhattanLength() < QApplication::startDragDistance() &&
@@ -645,11 +656,15 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
 
     m_pendingLabelCreate = false;
     m_pendingLabelSelect = false;
+    m_pendingEmptyClick = false;
     m_pendingLabelMove = false;
     m_pendingLabelMoveIndex = -1;
     QGraphicsView::mouseReleaseEvent(event);
 
-    if (shouldCreateLabel) {
+    if (shouldClearLabelSelection) {
+        emit emptyAreaClicked();
+    }
+    else if (shouldCreateLabel) {
         emit labelCreateRequested(normalizedPositionFromScene(mapToScene(event->pos())));
     }
     if (shouldSelectLabel) {

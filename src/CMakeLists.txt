@@ -139,6 +139,14 @@ if(LABELMINUS_ENABLE_STATIC_QT_EXPERIMENT)
     if(NOT WIN32)
         message(FATAL_ERROR "LABELMINUS_ENABLE_STATIC_QT_EXPERIMENT is only supported on Windows.")
     endif()
+    if(QT6_IS_SHARED_LIBS_BUILD)
+        message(FATAL_ERROR
+            "LABELMINUS_ENABLE_STATIC_QT_EXPERIMENT requires a static Qt build, but the current Qt package is shared. "
+            "Install or build static Qt and point CMAKE_PREFIX_PATH/Qt6_DIR to that static Qt before using the "
+            "windows-static-release or windows-vs-static-release preset. A normal Qt installer package will still "
+            "produce an executable that depends on Qt DLLs."
+        )
+    endif()
 
     qt_add_executable(LabelMinusStatic
         WIN32

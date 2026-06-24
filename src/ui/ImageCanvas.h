@@ -53,6 +53,7 @@ signals:
     void labelMoveRequested(int index, QPointF normalizedPosition);
     void labelSelected(int index);
     void labelClicked(int index, Qt::KeyboardModifiers modifiers);
+    void emptyAreaClicked();
     void labelTextEditRequested(int index, QPoint globalPosition);
     void deleteRequested();
     void zoomPercentChanged(int percent);
@@ -115,6 +116,7 @@ private:
     bool m_isDestroying{false};
     bool m_pendingLabelCreate{false};
     bool m_pendingLabelSelect{false};
+    bool m_pendingEmptyClick{false};
     bool m_isMovingLabel{false};
     bool m_pendingLabelMove{false};
     bool m_isSelectingRegion{false};
@@ -125,6 +127,7 @@ private:
     Qt::KeyboardModifiers m_pendingLabelSelectModifiers{Qt::NoModifier};
     QPoint m_labelCreatePressPosition;
     QPoint m_labelSelectPressPosition;
+    QPoint m_emptyClickPressPosition;
     QPoint m_lastMiddlePanPosition;
     QPointF m_selectionStartScenePosition;
     QRectF m_normalizedSelectionRect;
