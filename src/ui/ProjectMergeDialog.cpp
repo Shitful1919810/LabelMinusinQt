@@ -16,8 +16,8 @@
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
-ProjectMergeDialog::ProjectMergeDialog(labelminus::services::ProjectMergePlan mergePlan,
-                                       labelminus::core::AppPreferences preferences, QWidget* parent)
+ProjectMergeDialog::ProjectMergeDialog(labelqt::services::ProjectMergePlan mergePlan,
+                                       labelqt::core::AppPreferences preferences, QWidget* parent)
     : QDialog(parent), m_mergePlan(std::move(mergePlan)), m_preferences(std::move(preferences))
 {
     m_selectedCandidateIndexes.resize(m_mergePlan.conflicts.size());
@@ -95,7 +95,7 @@ void ProjectMergeDialog::buildUi()
 void ProjectMergeDialog::populateConflictList()
 {
     for (int i = 0; i < m_mergePlan.conflicts.size(); ++i) {
-        const labelminus::services::ProjectMergeConflict& conflict = m_mergePlan.conflicts.at(i);
+        const labelqt::services::ProjectMergeConflict& conflict = m_mergePlan.conflicts.at(i);
         auto* item = new QListWidgetItem(
             tr("%1 (%n candidate(s))", nullptr, static_cast<int>(conflict.candidates.size())).arg(conflict.imageName));
         item->setToolTip(conflict.imageName);
@@ -105,7 +105,7 @@ void ProjectMergeDialog::populateConflictList()
 
 QWidget* ProjectMergeDialog::createConflictPage(int conflictIndex)
 {
-    const labelminus::services::ProjectMergeConflict& conflict = m_mergePlan.conflicts.at(conflictIndex);
+    const labelqt::services::ProjectMergeConflict& conflict = m_mergePlan.conflicts.at(conflictIndex);
 
     auto* page = new QWidget(m_conflictStack);
     auto* layout = new QVBoxLayout(page);
@@ -141,7 +141,7 @@ QWidget* ProjectMergeDialog::createConflictPage(int conflictIndex)
 
 QWidget* ProjectMergeDialog::createCandidateWidget(int conflictIndex, int candidateIndex)
 {
-    const labelminus::services::ProjectMergeCandidate& candidate =
+    const labelqt::services::ProjectMergeCandidate& candidate =
         m_mergePlan.conflicts.at(conflictIndex).candidates.at(candidateIndex);
 
     auto* groupBox = new QGroupBox(this);

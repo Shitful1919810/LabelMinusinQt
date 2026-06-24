@@ -2,7 +2,7 @@
 
 #include <QString>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 struct SecretStoreReadResult {
     bool found{false};
@@ -22,4 +22,4 @@ public:
     static SecretStoreWriteResult writeText(const QString& service, const QString& account, const QString& value);
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services

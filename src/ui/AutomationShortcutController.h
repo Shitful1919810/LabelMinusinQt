@@ -16,8 +16,8 @@ class AutomationShortcutController final : public QObject {
 public:
     explicit AutomationShortcutController(QWidget* window, QObject* parent = nullptr);
 
-    void setPreferences(labelminus::core::AppPreferences preferences);
-    void setScripts(QVector<labelminus::services::AutomationScript> scripts);
+    void setPreferences(labelqt::core::AppPreferences preferences);
+    void setScripts(QVector<labelqt::services::AutomationScript> scripts);
     bool handleGlobalShortcut(QObject* watched, QEvent* event);
 
 signals:
@@ -29,6 +29,6 @@ private:
     QString missingScriptIdForSequence(const QKeySequence& sequence) const;
 
     QWidget* m_window{nullptr};
-    labelminus::core::AppPreferences m_preferences;
-    QVector<labelminus::services::AutomationScript> m_scripts;
+    labelqt::core::AppPreferences m_preferences;
+    QVector<labelqt::services::AutomationScript> m_scripts;
 };

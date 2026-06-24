@@ -28,7 +28,7 @@ constexpr int minimumPageOrderImageNameColumnWidth = 160;
 constexpr int minimumPageOrderOriginalIndexColumnWidth = 60;
 } // namespace
 
-PageOrderDialog::PageOrderDialog(const labelminus::core::Project& project, labelminus::core::AppPreferences preferences,
+PageOrderDialog::PageOrderDialog(const labelqt::core::Project& project, labelqt::core::AppPreferences preferences,
                                  QWidget* parent)
     : QDialog(parent), m_project(project), m_preferences(std::move(preferences))
 {
@@ -199,7 +199,7 @@ void PageOrderDialog::updatePreview(const QModelIndex& currentIndex)
         return;
     }
 
-    const labelminus::core::ImageEntry& image = m_project.images().at(sourceIndex);
+    const labelqt::core::ImageEntry& image = m_project.images().at(sourceIndex);
     m_canvas->setImage(image.path, image.labels);
 }
 

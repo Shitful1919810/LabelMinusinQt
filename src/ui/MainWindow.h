@@ -73,7 +73,7 @@ private:
     void reorderPages();
     void showAutomationDiscoveryWarnings(const QStringList& warnings);
     void applyAutomationOperations(const QString& scriptName,
-                                   const QVector<labelminus::services::AutomationOperation>& operations);
+                                   const QVector<labelqt::services::AutomationOperation>& operations);
     void openRecentProjectFromAction();
     void openPreferences();
     bool saveProject();
@@ -124,12 +124,12 @@ private:
     void editCurrentLabelText();
     void openCanvasLabelTextEditorForCurrentLabel();
     void selectLabelAndCenter(int imageIndex, int labelIndex);
-    bool isLabelVisibleByGroupFilter(const labelminus::core::Label& label) const;
+    bool isLabelVisibleByGroupFilter(const labelqt::core::Label& label) const;
     QVector<int> selectedLabelIndexes() const;
     void selectLabelIndexes(const QVector<int>& sourceIndexes, int primarySourceIndex = -1);
     void refreshProjectUi();
     void detachProjectViewsFromProjectData();
-    void replaceProjectImages(QVector<labelminus::core::ImageEntry> images, const QString& preferredImageName,
+    void replaceProjectImages(QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName,
                               int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter);
     void refreshImageUi();
     void refreshCanvasLabels();
@@ -152,8 +152,8 @@ private:
     void applyLabelTableFont();
     void applyTextEditorFont();
     void showPreferenceWarnings();
-    void applyPreferences(labelminus::core::AppPreferencesLoadResult result);
-    QString preferenceWarningText(const labelminus::core::AppPreferenceWarning& warning) const;
+    void applyPreferences(labelqt::core::AppPreferencesLoadResult result);
+    QString preferenceWarningText(const labelqt::core::AppPreferenceWarning& warning) const;
     QStringList defaultProjectGroups() const;
     void markDirty();
     void setDirty(bool dirty);
@@ -167,10 +167,10 @@ private:
     int labelCountForGroup(const QString& group) const;
     void setEditorEnabled(bool enabled);
     void setAutomationRunning(bool running);
-    labelminus::core::Project& project() noexcept;
-    const labelminus::core::Project& project() const noexcept;
-    labelminus::core::ImageEntry* currentImage();
-    const labelminus::core::ImageEntry* currentImage() const;
+    labelqt::core::Project& project() noexcept;
+    const labelqt::core::Project& project() const noexcept;
+    labelqt::core::ImageEntry* currentImage();
+    const labelqt::core::ImageEntry* currentImage() const;
 
     ImageCanvas* m_canvas{nullptr};
     LabelTableModel* m_labelModel{nullptr};
@@ -210,11 +210,11 @@ private:
     QToolButton* m_selectionModeButton{nullptr};
     QPushButton* m_previousButton{nullptr};
     QPushButton* m_nextButton{nullptr};
-    labelminus::services::ProjectController m_projectController;
-    std::unique_ptr<labelminus::services::ProjectWorkflowController> m_projectWorkflowController;
-    std::unique_ptr<labelminus::services::LabelEditController> m_labelEditController;
-    labelminus::core::AppPreferences m_preferences;
-    QVector<labelminus::core::AppPreferenceWarning> m_preferenceWarnings;
+    labelqt::services::ProjectController m_projectController;
+    std::unique_ptr<labelqt::services::ProjectWorkflowController> m_projectWorkflowController;
+    std::unique_ptr<labelqt::services::LabelEditController> m_labelEditController;
+    labelqt::core::AppPreferences m_preferences;
+    QVector<labelqt::core::AppPreferenceWarning> m_preferenceWarnings;
     int m_currentImageIndex{-1};
     int m_currentLabelIndex{-1};
     bool m_isUpdatingUi{false};
@@ -225,8 +225,8 @@ private:
     int m_labelTableMaxTextRows{3};
     QFont m_defaultLabelTableFont;
     QFont m_defaultTextEditFont;
-    labelminus::services::SessionStateStore m_sessionStateStore;
-    labelminus::core::UndoStack m_undoStack;
+    labelqt::services::SessionStateStore m_sessionStateStore;
+    labelqt::core::UndoStack m_undoStack;
     int m_operationMessageSerial{0};
     bool m_isAutomationRunning{false};
 };

@@ -4,14 +4,14 @@
 
 #include <QVector>
 
-namespace labelminus::services {
+namespace labelqt::services {
 namespace {
-bool isVisibleLabel(const labelminus::core::Label& label, const QStringList& visibleGroups)
+bool isVisibleLabel(const labelqt::core::Label& label, const QStringList& visibleGroups)
 {
     return !label.isDeleted() && visibleGroups.contains(label.group());
 }
 
-QVector<int> visibleLabelIndexes(const labelminus::core::ImageEntry& image, const QStringList& visibleGroups)
+QVector<int> visibleLabelIndexes(const labelqt::core::ImageEntry& image, const QStringList& visibleGroups)
 {
     QVector<int> indexes;
     indexes.reserve(image.labels.size());
@@ -23,7 +23,7 @@ QVector<int> visibleLabelIndexes(const labelminus::core::ImageEntry& image, cons
     return indexes;
 }
 
-LabelNavigationTarget firstVisibleLabelInImage(const labelminus::core::Project& project, int imageIndex,
+LabelNavigationTarget firstVisibleLabelInImage(const labelqt::core::Project& project, int imageIndex,
                                                const QStringList& visibleGroups)
 {
     if (imageIndex < 0 || imageIndex >= project.images().size()) {
@@ -34,7 +34,7 @@ LabelNavigationTarget firstVisibleLabelInImage(const labelminus::core::Project& 
     return indexes.isEmpty() ? LabelNavigationTarget{} : LabelNavigationTarget{imageIndex, indexes.first()};
 }
 
-LabelNavigationTarget lastVisibleLabelInImage(const labelminus::core::Project& project, int imageIndex,
+LabelNavigationTarget lastVisibleLabelInImage(const labelqt::core::Project& project, int imageIndex,
                                               const QStringList& visibleGroups)
 {
     if (imageIndex < 0 || imageIndex >= project.images().size()) {
@@ -51,7 +51,7 @@ bool LabelNavigationTarget::isValid() const noexcept
     return imageIndex >= 0 && labelIndex >= 0;
 }
 
-LabelNavigationTarget LabelNavigator::nextVisibleLabel(const labelminus::core::Project& project,
+LabelNavigationTarget LabelNavigator::nextVisibleLabel(const labelqt::core::Project& project,
                                                        const LabelNavigationState& state)
 {
     if (project.isEmpty() || state.imageIndex < 0 || state.imageIndex >= project.images().size()) {
@@ -79,7 +79,7 @@ LabelNavigationTarget LabelNavigator::nextVisibleLabel(const labelminus::core::P
     return {};
 }
 
-LabelNavigationTarget LabelNavigator::previousVisibleLabel(const labelminus::core::Project& project,
+LabelNavigationTarget LabelNavigator::previousVisibleLabel(const labelqt::core::Project& project,
                                                            const LabelNavigationState& state)
 {
     if (project.isEmpty() || state.imageIndex < 0 || state.imageIndex >= project.images().size()) {
@@ -106,4 +106,4 @@ LabelNavigationTarget LabelNavigator::previousVisibleLabel(const labelminus::cor
     return {};
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

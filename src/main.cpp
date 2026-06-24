@@ -17,7 +17,7 @@ void installTranslator(QApplication& app, const QString& language)
 {
     auto* translator = new QTranslator(&app);
 
-    if (labelminus::core::loadApplicationTranslator(*translator, language)) {
+    if (labelqt::core::loadApplicationTranslator(*translator, language)) {
         app.installTranslator(translator);
         return;
     }
@@ -36,13 +36,13 @@ void applyApplicationStyle(const QString& styleName)
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
-    app.setProperty("labelminus.defaultStyle", app.style()->objectName());
-    const labelminus::core::AppPreferencesLoadResult preferences =
-        labelminus::core::AppPreferences::loadWithDiagnostics();
+    app.setProperty("labelqt.defaultStyle", app.style()->objectName());
+    const labelqt::core::AppPreferencesLoadResult preferences =
+        labelqt::core::AppPreferences::loadWithDiagnostics();
     applyApplicationStyle(preferences.preferences.applicationStyle());
-    labelminus::ui::applyApplicationTheme(preferences.preferences.applicationTheme());
-    QApplication::setApplicationName("LabelMinus");
-    QApplication::setOrganizationName("LabelMinus");
+    labelqt::ui::applyApplicationTheme(preferences.preferences.applicationTheme());
+    QApplication::setApplicationName("LabelQt");
+    QApplication::setOrganizationName("LabelQt");
     QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
     installTranslator(app, preferences.preferences.applicationLanguage());
 

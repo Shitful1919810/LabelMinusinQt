@@ -4,7 +4,7 @@
 #include <QStringList>
 #include <QVector>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 struct ApplicationTheme {
     QString id;
@@ -16,4 +16,4 @@ QStringList builtInApplicationThemeIds();
 QString applicationThemeResourcePath(const QString& themeId);
 bool isBuiltInApplicationTheme(const QString& themeId);
 
-} // namespace labelminus::core
+} // namespace labelqt::core

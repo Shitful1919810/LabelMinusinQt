@@ -1,15 +1,15 @@
 #include "services/ArchiveReader.h"
 
-#ifdef LABELMINUS_HAS_LIBARCHIVE
+#ifdef LABELQT_HAS_LIBARCHIVE
 #include <archive.h>
 #include <archive_entry.h>
 #endif
 
 #include <QFileInfo>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
-#ifdef LABELMINUS_HAS_LIBARCHIVE
+#ifdef LABELQT_HAS_LIBARCHIVE
 namespace {
 bool isImageName(const QString& name)
 {
@@ -21,7 +21,7 @@ bool isImageName(const QString& name)
 
 bool ArchiveReader::isAvailable() noexcept
 {
-#ifdef LABELMINUS_HAS_LIBARCHIVE
+#ifdef LABELQT_HAS_LIBARCHIVE
     return true;
 #else
     return false;
@@ -32,7 +32,7 @@ QStringList ArchiveReader::listImages(const QString& archivePath) const
 {
     QStringList images;
 
-#ifdef LABELMINUS_HAS_LIBARCHIVE
+#ifdef LABELQT_HAS_LIBARCHIVE
     archive* reader = archive_read_new();
     archive_read_support_filter_all(reader);
     archive_read_support_format_all(reader);
@@ -60,4 +60,4 @@ QStringList ArchiveReader::listImages(const QString& archivePath) const
     return images;
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

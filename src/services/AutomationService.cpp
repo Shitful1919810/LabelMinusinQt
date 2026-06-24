@@ -16,7 +16,7 @@
 
 #include <algorithm>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 namespace {
 constexpr int automationApiVersion = 1;
@@ -24,7 +24,7 @@ constexpr int automationTimeoutMs = 300000;
 constexpr int automationProcessStopWaitMs = 3000;
 constexpr int automationLogMaxCharacters = 1024 * 1024;
 
-QJsonObject labelToJson(const labelminus::core::Label& label, int labelIndex, int visibleIndex)
+QJsonObject labelToJson(const labelqt::core::Label& label, int labelIndex, int visibleIndex)
 {
     const QPointF position = label.position();
     return {
@@ -34,7 +34,7 @@ QJsonObject labelToJson(const labelminus::core::Label& label, int labelIndex, in
     };
 }
 
-QJsonObject projectToJson(const labelminus::core::Project& project, int currentImageIndex)
+QJsonObject projectToJson(const labelqt::core::Project& project, int currentImageIndex)
 {
     QJsonArray groups;
     for (const QString& group : project.groups()) {
@@ -44,12 +44,12 @@ QJsonObject projectToJson(const labelminus::core::Project& project, int currentI
     QJsonArray imagePaths;
     QJsonArray pages;
     for (int imageIndex = 0; imageIndex < project.images().size(); ++imageIndex) {
-        const labelminus::core::ImageEntry& image = project.images().at(imageIndex);
+        const labelqt::core::ImageEntry& image = project.images().at(imageIndex);
         imagePaths.append(image.path);
         QJsonArray labels;
         int visibleIndex = 0;
         for (int labelIndex = 0; labelIndex < image.labels.size(); ++labelIndex) {
-            const labelminus::core::Label& label = image.labels.at(labelIndex);
+            const labelqt::core::Label& label = image.labels.at(labelIndex);
             if (label.isDeleted()) {
                 continue;
             }
@@ -75,7 +75,7 @@ QJsonObject projectToJson(const labelminus::core::Project& project, int currentI
     };
 }
 
-QJsonObject selectionToJson(const labelminus::core::Project& project, int currentImageIndex,
+QJsonObject selectionToJson(const labelqt::core::Project& project, int currentImageIndex,
                             AutomationSelection selection)
 {
     const bool hasSelection = selection.hasSelection && currentImageIndex >= 0 &&
@@ -92,7 +92,7 @@ QJsonObject selectionToJson(const labelminus::core::Project& project, int curren
     const double bottom = std::clamp(rect.top() + rect.height(), 0.0, 1.0);
     rect = QRectF(QPointF(left, top), QPointF(right, bottom)).normalized();
 
-    const labelminus::core::ImageEntry& image = project.images().at(currentImageIndex);
+    const labelqt::core::ImageEntry& image = project.images().at(currentImageIndex);
     return {
         {QStringLiteral("hasSelection"), true},
         {QStringLiteral("imageIndex"), currentImageIndex},
@@ -112,12 +112,12 @@ QJsonObject selectionToJson(const labelminus::core::Project& project, int curren
     };
 }
 
-QJsonObject contextToJson(const labelminus::core::Project& project, AutomationContext context)
+QJsonObject contextToJson(const labelqt::core::Project& project, AutomationContext context)
 {
     const int currentImageIndex = context.currentImageIndex;
     QJsonObject currentPage{{QStringLiteral("hasPage"), false}};
     if (currentImageIndex >= 0 && currentImageIndex < project.images().size()) {
-        const labelminus::core::ImageEntry& image = project.images().at(currentImageIndex);
+        const labelqt::core::ImageEntry& image = project.images().at(currentImageIndex);
         currentPage = {
             {QStringLiteral("hasPage"), true},
             {QStringLiteral("index"), currentImageIndex},
@@ -130,7 +130,7 @@ QJsonObject contextToJson(const labelminus::core::Project& project, AutomationCo
     QJsonArray selectedLabelIndexes;
     QJsonArray selectedLabels;
     if (currentImageIndex >= 0 && currentImageIndex < project.images().size()) {
-        const labelminus::core::ImageEntry& image = project.images().at(currentImageIndex);
+        const labelqt::core::ImageEntry& image = project.images().at(currentImageIndex);
         for (int labelIndex : context.selectedLabelIndexes) {
             if (labelIndex < 0 || labelIndex >= image.labels.size() || image.labels.at(labelIndex).isDeleted()) {
                 continue;
@@ -148,7 +148,7 @@ QJsonObject contextToJson(const labelminus::core::Project& project, AutomationCo
     };
 }
 
-QJsonObject inputPayload(const labelminus::core::Project& project, int currentImageIndex, const QJsonObject& parameters,
+QJsonObject inputPayload(const labelqt::core::Project& project, int currentImageIndex, const QJsonObject& parameters,
                          AutomationSelection selection, AutomationContext context)
 {
     return {
@@ -179,7 +179,7 @@ QString stringFromJsonValue(const QJsonValue& value)
 QStringList pythonProgramCandidates()
 {
     QStringList programs;
-    const QByteArray configuredPython = qgetenv("LABELMINUS_PYTHON");
+    const QByteArray configuredPython = qgetenv("LABELQT_PYTHON");
     if (!configuredPython.trimmed().isEmpty()) {
         programs.append(QString::fromLocal8Bit(configuredPython));
     }
@@ -233,7 +233,7 @@ QString pythonUnavailableError(const QStringList& candidates, const QString& las
 {
     const QString triedPrograms = candidates.join(QStringLiteral(", "));
     // clang-format off
-    return QCoreApplication::translate("AutomationService", "Python was not found. Install Python 3 or set LABELMINUS_PYTHON to the Python executable path.\n\nTried: %1\nLast error: %2")
+    return QCoreApplication::translate("AutomationService", "Python was not found. Install Python 3 or set LABELQT_PYTHON to the Python executable path.\n\nTried: %1\nLast error: %2")
         .arg(triedPrograms, lastError);
     // clang-format on
 }
@@ -255,7 +255,7 @@ QVector<AutomationParameter> parametersFromManifest(const QJsonObject& manifest)
         parameter.type = object.value(QStringLiteral("type")).toString(QStringLiteral("text"));
         parameter.defaultValue = stringFromJsonValue(object.value(QStringLiteral("default")));
         parameter.secretKey = object.value(QStringLiteral("secretKey")).toString(key);
-        parameter.secretService = object.value(QStringLiteral("service")).toString(QStringLiteral("LabelMinus"));
+        parameter.secretService = object.value(QStringLiteral("service")).toString(QStringLiteral("LabelQt"));
         parameter.secretAccount = object.value(QStringLiteral("account")).toString(parameter.secretKey);
         parameter.secretEnvironment = object.value(QStringLiteral("environment")).toString();
         const QJsonArray options = object.value(QStringLiteral("options")).toArray();
@@ -285,7 +285,7 @@ QVector<AutomationSecret> secretsFromManifest(const QJsonObject& manifest)
         AutomationSecret secret;
         secret.key = key;
         secret.label = object.value(QStringLiteral("label")).toString(key);
-        secret.service = object.value(QStringLiteral("service")).toString(QStringLiteral("LabelMinus"));
+        secret.service = object.value(QStringLiteral("service")).toString(QStringLiteral("LabelQt"));
         secret.account = object.value(QStringLiteral("account")).toString(key);
         secret.environment = environment;
         secret.required = object.value(QStringLiteral("required")).toBool(true);
@@ -554,7 +554,7 @@ AutomationRunner::~AutomationRunner()
     }
 }
 
-void AutomationRunner::start(const AutomationScript& script, const labelminus::core::Project& project,
+void AutomationRunner::start(const AutomationScript& script, const labelqt::core::Project& project,
                              int currentImageIndex, const QJsonObject& parameters, AutomationSelection selection,
                              AutomationContext context, const QMap<QString, QString>& environmentOverrides)
 {
@@ -768,4 +768,4 @@ QStringList AutomationService::scriptsRootCandidates()
     };
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

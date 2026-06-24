@@ -45,7 +45,7 @@ QString labelBubbleHtml(int labelIndex, const QString& text, const QColor& color
 
 class LabelMarkerItem final : public QGraphicsItem {
 public:
-    LabelMarkerItem(int labelIndex, bool selected, labelminus::core::LabelGroupStyle style,
+    LabelMarkerItem(int labelIndex, bool selected, labelqt::core::LabelGroupStyle style,
                     QGraphicsItem* parent = nullptr)
         : QGraphicsItem(parent), m_labelIndex(labelIndex), m_selected(selected), m_style(std::move(style))
     {
@@ -75,7 +75,7 @@ public:
         painter->setPen(QPen(m_selected ? QColor(46, 103, 230) : Qt::white, m_selected ? 3.0 : 1.5));
         painter->setBrush(m_style.groupColor.isValid() ? m_style.groupColor : Qt::black);
         const QRectF shapeRect = boundingRect().adjusted(1.0, 1.0, -1.0, -1.0);
-        if (m_style.markerShape == labelminus::core::MarkerShape::Square) {
+        if (m_style.markerShape == labelqt::core::MarkerShape::Square) {
             painter->drawRect(shapeRect);
         }
         else {
@@ -94,12 +94,12 @@ public:
 private:
     int m_labelIndex;
     bool m_selected;
-    labelminus::core::LabelGroupStyle m_style;
+    labelqt::core::LabelGroupStyle m_style;
 };
 
 class LabelTextBubbleItem final : public QGraphicsItem {
 public:
-    LabelTextBubbleItem(int labelIndex, QString text, labelminus::core::LabelGroupStyle style, QFont bubbleFont,
+    LabelTextBubbleItem(int labelIndex, QString text, labelqt::core::LabelGroupStyle style, QFont bubbleFont,
                         double opacity, QGraphicsItem* parent = nullptr)
         : QGraphicsItem(parent), m_labelIndex(labelIndex), m_text(std::move(text)), m_style(std::move(style)),
           m_bubbleFont(std::move(bubbleFont)), m_opacity(opacity)
@@ -142,7 +142,7 @@ private:
 
     int m_labelIndex;
     QString m_text;
-    labelminus::core::LabelGroupStyle m_style;
+    labelqt::core::LabelGroupStyle m_style;
     QFont m_bubbleFont;
     double m_opacity{1.0};
     QTextDocument m_document;
@@ -221,7 +221,7 @@ ImageCanvas::InteractionMode ImageCanvas::interactionMode() const noexcept
     return m_interactionMode;
 }
 
-void ImageCanvas::setPreferences(const labelminus::core::AppPreferences& preferences)
+void ImageCanvas::setPreferences(const labelqt::core::AppPreferences& preferences)
 {
     m_markerDiameterPixels = preferences.labelMarkerDiameterPixels();
     m_markerFontPointSize = preferences.labelMarkerFontPointSize();
@@ -239,7 +239,7 @@ void ImageCanvas::setPreferences(const labelminus::core::AppPreferences& prefere
     rebuildLabelItems();
 }
 
-void ImageCanvas::setImage(const QString& path, const QVector<labelminus::core::Label>& labels)
+void ImageCanvas::setImage(const QString& path, const QVector<labelqt::core::Label>& labels)
 {
     hideHoveredLabelToolTip();
     m_imagePath = path;
@@ -272,7 +272,7 @@ void ImageCanvas::clearSceneItems()
     m_scene.clear();
 }
 
-void ImageCanvas::setLabels(const QVector<labelminus::core::Label>& labels)
+void ImageCanvas::setLabels(const QVector<labelqt::core::Label>& labels)
 {
     hideHoveredLabelToolTip();
     m_labels = labels;
@@ -719,7 +719,7 @@ void ImageCanvas::rebuildLabelItems()
             continue;
         }
 
-        const labelminus::core::LabelGroupStyle style = styleForGroup(m_labels.at(i).group());
+        const labelqt::core::LabelGroupStyle style = styleForGroup(m_labels.at(i).group());
         auto* marker = new LabelMarkerItem(i, m_selectedLabels.contains(i), style);
         const QPointF position = m_labels.at(i).position();
         marker->setPos(rect.left() + position.x() * rect.width(), rect.top() + position.y() * rect.height());
@@ -784,7 +784,7 @@ void ImageCanvas::notifyViewportStateChanged()
     emit viewportStateChanged(m_zoomPercent, normalizedViewCenter());
 }
 
-bool ImageCanvas::isLabelVisible(const labelminus::core::Label& label) const
+bool ImageCanvas::isLabelVisible(const labelqt::core::Label& label) const
 {
     return !label.isDeleted() && m_visibleGroups.contains(label.group());
 }
@@ -830,7 +830,7 @@ void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, cons
         }
 
         seenLabels.insert(labelIndex);
-        const labelminus::core::Label& label = m_labels.at(labelIndex);
+        const labelqt::core::Label& label = m_labels.at(labelIndex);
         if (!isLabelVisible(label)) {
             continue;
         }
@@ -987,11 +987,11 @@ void ImageCanvas::updateCursorForInteractionMode()
     viewport()->unsetCursor();
 }
 
-labelminus::core::LabelGroupStyle ImageCanvas::styleForGroup(const QString& group) const
+labelqt::core::LabelGroupStyle ImageCanvas::styleForGroup(const QString& group) const
 {
     const int index = static_cast<int>(m_groups.indexOf(group));
     if (index < 0 || index >= static_cast<int>(m_groupStyles.size())) {
-        return {QColor(), m_markerDiameterPixels, m_markerFontPointSize, labelminus::core::MarkerShape::Circle};
+        return {QColor(), m_markerDiameterPixels, m_markerFontPointSize, labelqt::core::MarkerShape::Circle};
     }
     return m_groupStyles.at(index);
 }

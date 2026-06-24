@@ -147,7 +147,7 @@ bool LabelTextDelegate::eventFilter(QObject* object, QEvent* event)
 
 LabelGroupDelegate::LabelGroupDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
 
-void LabelGroupDelegate::setGroups(QStringList groups, QVector<labelminus::core::LabelGroupStyle> groupStyles)
+void LabelGroupDelegate::setGroups(QStringList groups, QVector<labelqt::core::LabelGroupStyle> groupStyles)
 {
     m_groups = std::move(groups);
     m_groupStyles = std::move(groupStyles);

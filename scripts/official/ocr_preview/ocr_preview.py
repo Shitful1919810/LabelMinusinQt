@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelminus_automation import AutomationContext
+from labelqt_automation import AutomationContext
 
 os.environ.setdefault("FLAGS_allocator_strategy", "auto_growth")
 os.environ.setdefault("FLAGS_use_mkldnn", "0")
@@ -94,7 +94,7 @@ def crop_selection(image_path: str, rect: dict[str, Any], temp_dir: str) -> tupl
     x2 = min(width, max(x1 + 1, int(round(max(left, right) * width))))
     y2 = min(height, max(y1 + 1, int(round(max(top, bottom) * height))))
 
-    crop_path = str(Path(temp_dir) / "labelminus_ocr_selection.png")
+    crop_path = str(Path(temp_dir) / "labelqt_ocr_selection.png")
     log_progress(f"Cropping selected region from {image_path}")
     image.crop((x1, y1, x2, y2)).save(crop_path)
     return crop_path, f"selection pixels: left={x1}, top={y1}, right={x2}, bottom={y2}"
@@ -106,8 +106,8 @@ def create_paddle_ocr() -> Any:
     except ImportError as error:
         raise RuntimeError("PaddleOCR is not installed. Run `pip install -r requirements.txt` in this script directory.") from error
 
-    lang = configured_string("language", "LABELMINUS_OCR_LANG", "japan")
-    device = configured_string("device", "LABELMINUS_OCR_DEVICE", "cpu")
+    lang = configured_string("language", "LABELQT_OCR_LANG", "japan")
+    device = configured_string("device", "LABELQT_OCR_DEVICE", "cpu")
     log_progress(f"Initializing PaddleOCR language={lang} device={device}")
     candidates = [
         {
@@ -170,7 +170,7 @@ def runtime_versions() -> str:
 
 
 def resolve_manga_ocr_model_path() -> str:
-    configured_path = configured_string("mangaModelPath", "LABELMINUS_MANGA_OCR_MODEL")
+    configured_path = configured_string("mangaModelPath", "LABELQT_MANGA_OCR_MODEL")
     if configured_path:
         return configured_path
 
@@ -187,15 +187,15 @@ def troubleshooting_text(engine: str) -> str:
         return (
             "For manga-ocr mode, make sure the HuggingFace model kha-white/manga-ocr-base can be downloaded "
             "or is already cached. This script tries to use the local HuggingFace snapshot first; you can also "
-            "set LABELMINUS_MANGA_OCR_MODEL to an explicit local model directory. manga-ocr 0.1.x expects the "
+            "set LABELQT_MANGA_OCR_MODEL to an explicit local model directory. manga-ocr 0.1.x expects the "
             "Transformers 4.x API, so install this script's requirements again if your environment has "
             "Transformers 5.x:\n"
             "pip install -r scripts/official/ocr_preview/requirements.txt\n\n"
             "Optional environment variables:\n"
-            "LABELMINUS_OCR_LANG=japan\n"
-            "LABELMINUS_OCR_DEVICE=cpu\n"
-            "LABELMINUS_OCR_ENGINE=paddle or manga-with-paddle\n"
-            "LABELMINUS_MANGA_OCR_MODEL=/path/to/kha-white/manga-ocr-base"
+            "LABELQT_OCR_LANG=japan\n"
+            "LABELQT_OCR_DEVICE=cpu\n"
+            "LABELQT_OCR_ENGINE=paddle or manga-with-paddle\n"
+            "LABELQT_MANGA_OCR_MODEL=/path/to/kha-white/manga-ocr-base"
         )
 
     return (
@@ -203,9 +203,9 @@ def troubleshooting_text(engine: str) -> str:
         "This script disables oneDNN/MKLDNN by default for the CPU path; if the problem persists, try a different "
         "PaddleOCR/Paddle version combination.\n\n"
         "Optional environment variables:\n"
-        "LABELMINUS_OCR_LANG=japan\n"
-        "LABELMINUS_OCR_DEVICE=cpu\n"
-        "LABELMINUS_OCR_ENGINE=paddle or manga-with-paddle"
+        "LABELQT_OCR_LANG=japan\n"
+        "LABELQT_OCR_DEVICE=cpu\n"
+        "LABELQT_OCR_ENGINE=paddle or manga-with-paddle"
     )
 
 
@@ -549,12 +549,12 @@ def merge_all_regions(regions: list[dict[str, Any]], vertical: bool, right_to_le
 def label_regions_for_target(
     regions: list[dict[str, Any]], selection_rect: dict[str, Any] | None
 ) -> list[dict[str, Any]]:
-    """Return the final text blocks that LabelMinus should preview or add.
+    """Return the final text blocks that LabelQt should preview or add.
 
     Detector output often splits one manga speech bubble into several adjacent
     OCR regions. Earlier steps already merge nearby regions into text blocks.
     When the user OCRs an explicit selection, the selection represents one
-    intended LabelMinus label, so the remaining blocks are merged once more.
+    intended LabelQt label, so the remaining blocks are merged once more.
     Full-page OCR keeps one label per post-processed text block.
     """
     if not selection_rect:
@@ -640,7 +640,7 @@ def ocr_regions(image_path: str, engine: str, temp_dir: str) -> tuple[str, list[
     width, height = image_size(image_path)
     raw_regions = normalize_regions(parse_paddle_regions(run_paddle(image_path)), width, height)
     log_progress(f"PaddleOCR detected {len(raw_regions)} text region(s)")
-    right_to_left = configured_bool("rightToLeft", "LABELMINUS_OCR_RIGHT_TO_LEFT", True)
+    right_to_left = configured_bool("rightToLeft", "LABELQT_OCR_RIGHT_TO_LEFT", True)
 
     if engine in {"manga", "manga-with-paddle", "manga_with_paddle"}:
         detection_vertical = is_vertical_layout(raw_regions)
@@ -690,7 +690,7 @@ def format_regions(
 
 
 def default_label_group(ctx: AutomationContext) -> str:
-    configured_group = configured_string("defaultGroup", "LABELMINUS_OCR_GROUP")
+    configured_group = configured_string("defaultGroup", "LABELQT_OCR_GROUP")
     if configured_group:
         return configured_group
     groups = ctx.groups
@@ -775,12 +775,12 @@ def run_current_target(ctx: AutomationContext, args: argparse.Namespace, engine:
         ctx.write_output(args.output, "OCR Preview", f"Image does not exist:\n{image_path}")
         return
 
-    with tempfile.TemporaryDirectory(prefix="labelminus_ocr_") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="labelqt_ocr_") as temp_dir:
         try:
             _, label_regions, width, height, result_text, _ = process_single_target(
                 image_path, target_kind, selection_rect, engine, temp_dir
             )
-            action = configured_string("action", "LABELMINUS_OCR_ACTION", "preview").lower()
+            action = configured_string("action", "LABELQT_OCR_ACTION", "preview").lower()
             operations: list[dict[str, Any]] | None = None
             if action in {"add-labels", "add_labels"}:
                 operations = operations_for_regions(ctx, ctx.current_page_name, label_regions, width, height, selection_rect)
@@ -788,7 +788,7 @@ def run_current_target(ctx: AutomationContext, args: argparse.Namespace, engine:
                     result_text
                     + "\n\n"
                     + f"Prepared {len(operations)} label operation(s). "
-                    + "Selection OCR is merged into one LabelMinus label; full-page OCR creates one label per text block."
+                    + "Selection OCR is merged into one LabelQt label; full-page OCR creates one label per text block."
                 )
         except Exception as error:
             result_text = (
@@ -800,7 +800,7 @@ def run_current_target(ctx: AutomationContext, args: argparse.Namespace, engine:
 
     title = "OCR Add Labels" if operations is not None else "OCR Preview"
     action_is_preview = operations is None
-    quiet = not action_is_preview and not configured_bool("showResult", "LABELMINUS_OCR_SHOW_RESULT", True)
+    quiet = not action_is_preview and not configured_bool("showResult", "LABELQT_OCR_SHOW_RESULT", True)
     ctx.write_output(args.output, title, result_text, operations=operations, quiet=quiet)
 
 
@@ -820,7 +820,7 @@ def run_page_range(ctx: AutomationContext, args: argparse.Namespace, engine: str
 
     all_operations: list[dict[str, Any]] = []
     summary_lines: list[str] = []
-    with tempfile.TemporaryDirectory(prefix="labelminus_ocr_") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="labelqt_ocr_") as temp_dir:
         for page in target_pages:
             current_page_name = page.name
             image_path = page.image_path
@@ -858,21 +858,21 @@ def run_page_range(ctx: AutomationContext, args: argparse.Namespace, engine: str
         "OCR Page Range Add Labels",
         result_text,
         operations=all_operations,
-        quiet=not configured_bool("showResult", "LABELMINUS_OCR_SHOW_RESULT", True),
+        quiet=not configured_bool("showResult", "LABELQT_OCR_SHOW_RESULT", True),
     )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Preview OCR results for the current LabelMinus page or selection.")
-    parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
+    parser = argparse.ArgumentParser(description="Preview OCR results for the current LabelQt page or selection.")
+    parser.add_argument("--input", required=True, help="Path to the LabelQt automation input JSON.")
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
 
     ctx = AutomationContext.from_file(args.input)
 
-    engine = configured_string("engine", "LABELMINUS_OCR_ENGINE", "paddle").lower()
+    engine = configured_string("engine", "LABELQT_OCR_ENGINE", "paddle").lower()
     log_progress(f"Starting OCR preview engine={engine}")
-    action = configured_string("action", "LABELMINUS_OCR_ACTION", "preview").lower()
+    action = configured_string("action", "LABELQT_OCR_ACTION", "preview").lower()
     if action in {"add-page-range-labels", "add_page_range_labels"}:
         run_page_range(ctx, args, engine)
         return

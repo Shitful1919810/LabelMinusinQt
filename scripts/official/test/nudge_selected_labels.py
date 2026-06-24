@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelminus_automation import AutomationContext, as_float
+from labelqt_automation import AutomationContext, as_float
 
 
 def clamp_unit(value: float) -> float:
@@ -13,7 +13,7 @@ def clamp_unit(value: float) -> float:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Nudge selected label marker positions.")
-    parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
+    parser.add_argument("--input", required=True, help="Path to the LabelQt automation input JSON.")
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
 

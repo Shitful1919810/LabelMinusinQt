@@ -10,7 +10,7 @@
 #include <exception>
 #include <utility>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 namespace {
 QStringList supportedImageNameFilters()
@@ -45,17 +45,17 @@ QString availableProjectPath(const QDir& directory, const QString& baseName)
 }
 } // namespace
 
-labelminus::core::Project& ProjectController::project() noexcept
+labelqt::core::Project& ProjectController::project() noexcept
 {
     return m_project;
 }
 
-const labelminus::core::Project& ProjectController::project() const noexcept
+const labelqt::core::Project& ProjectController::project() const noexcept
 {
     return m_project;
 }
 
-void ProjectController::setProject(labelminus::core::Project project)
+void ProjectController::setProject(labelqt::core::Project project)
 {
     m_project = std::move(project);
     setDirty(false);
@@ -63,12 +63,12 @@ void ProjectController::setProject(labelminus::core::Project project)
 
 void ProjectController::loadFromFile(const QString& path)
 {
-    setProject(labelminus::core::LabelPlusDocument::loadFromFile(path));
+    setProject(labelqt::core::LabelPlusDocument::loadFromFile(path));
 }
 
 void ProjectController::save()
 {
-    labelminus::core::LabelPlusDocument::saveToFile(m_project, m_project.filePath());
+    labelqt::core::LabelPlusDocument::saveToFile(m_project, m_project.filePath());
     setDirty(false);
 }
 
@@ -90,11 +90,11 @@ NewProjectResult ProjectController::createProjectFromImageDirectory(const QStrin
         return {NewProjectResult::Status::NoImages, {}, {}, {}};
     }
 
-    labelminus::core::Project newProject;
+    labelqt::core::Project newProject;
     newProject.setGroups(defaultGroups);
     newProject.setSourceName(directory.dirName());
     for (const QFileInfo& imageFile : imageFiles) {
-        labelminus::core::ImageEntry image;
+        labelqt::core::ImageEntry image;
         image.name = imageFile.fileName();
         image.path = imageFile.absoluteFilePath();
         newProject.images().append(std::move(image));
@@ -111,7 +111,7 @@ NewProjectResult ProjectController::createProjectFromImageDirectory(const QStrin
     newProject.setFilePath(projectPath);
 
     try {
-        labelminus::core::LabelPlusDocument::saveToFile(newProject, projectPath);
+        labelqt::core::LabelPlusDocument::saveToFile(newProject, projectPath);
         return {NewProjectResult::Status::Created, projectPath, {}, {}};
     }
     catch (const std::exception& error) {
@@ -138,7 +138,7 @@ void ProjectController::markDirty() noexcept
     setDirty(true);
 }
 
-AutoBackupResult ProjectController::performAutoBackup(const labelminus::core::AppPreferences& preferences)
+AutoBackupResult ProjectController::performAutoBackup(const labelqt::core::AppPreferences& preferences)
 {
     if (!m_hasPendingBackup || !m_isDirty || m_project.isEmpty() || m_project.filePath().isEmpty()) {
         return {};
@@ -167,7 +167,7 @@ AutoBackupResult ProjectController::performAutoBackup(const labelminus::core::Ap
     }
 
     try {
-        labelminus::core::LabelPlusDocument::saveToFile(m_project, backupPath);
+        labelqt::core::LabelPlusDocument::saveToFile(m_project, backupPath);
         m_hasPendingBackup = false;
         return {AutoBackupResult::Status::Saved, backupPath, {}};
     }
@@ -176,4 +176,4 @@ AutoBackupResult ProjectController::performAutoBackup(const labelminus::core::Ap
     }
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

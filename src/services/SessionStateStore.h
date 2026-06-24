@@ -5,7 +5,7 @@
 #include <QString>
 #include <QStringList>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 struct WindowLayoutState {
     QByteArray geometry;
@@ -49,4 +49,4 @@ private:
     static QString projectSessionGroupName(const QString& path);
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services

@@ -10,7 +10,7 @@
 
 #include <functional>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 struct LabelEditResult {
     bool changed{false};
@@ -46,7 +46,7 @@ public:
     using ProjectChangedCallback = std::function<void()>;
     using DirtyCallback = std::function<void()>;
 
-    LabelEditController(labelminus::core::Project& project, labelminus::core::UndoStack& undoStack,
+    LabelEditController(labelqt::core::Project& project, labelqt::core::UndoStack& undoStack,
                         LabelEditCommandTexts commandTexts);
 
     void setCallbacks(LabelSelectedCallback labelSelected, LabelsSelectedCallback labelsSelected,
@@ -55,7 +55,7 @@ public:
 
     LabelEditResult addGroup(const QString& group);
     LabelEditResult removeGroup(const QString& group, const QString& fallbackGroup);
-    LabelEditResult addLabel(int imageIndex, const labelminus::core::Label& label);
+    LabelEditResult addLabel(int imageIndex, const labelqt::core::Label& label);
     LabelEditResult deleteLabels(int imageIndex, const QVector<int>& labelIndexes);
     LabelEditResult changeLabelsGroup(int imageIndex, const QVector<int>& labelIndexes, const QString& group);
     LabelEditResult reorderLabels(int imageIndex, QVector<int> sourceIndexes, int insertBeforeSourceIndex);
@@ -70,18 +70,18 @@ private:
     void applyLabelText(int imageIndex, int labelIndex, const QString& text);
     void applyLabelGroup(int imageIndex, int labelIndex, const QString& group);
     void applyLabelPosition(int imageIndex, int labelIndex, QPointF normalizedPosition);
-    void applyLabelOrder(int imageIndex, QVector<labelminus::core::Label> labels, QVector<int> selectedIndexes);
+    void applyLabelOrder(int imageIndex, QVector<labelqt::core::Label> labels, QVector<int> selectedIndexes);
     void applyBatchLabelGroups(int imageIndex, QVector<int> labelIndexes, QVector<QString> groups);
     void applyBatchLabelDeleted(int imageIndex, QVector<int> labelIndexes, QVector<bool> deleted);
     void applyGroupsAndLabelGroups(QStringList groups, QVector<QVector<QString>> labelGroups);
     QVector<QVector<QString>> currentLabelGroups() const;
-    labelminus::core::ImageEntry* imageAt(int imageIndex);
-    const labelminus::core::ImageEntry* imageAt(int imageIndex) const;
+    labelqt::core::ImageEntry* imageAt(int imageIndex);
+    const labelqt::core::ImageEntry* imageAt(int imageIndex) const;
     bool hasGroup(const QString& group) const;
     void markDirty();
 
-    labelminus::core::Project& m_project;
-    labelminus::core::UndoStack& m_undoStack;
+    labelqt::core::Project& m_project;
+    labelqt::core::UndoStack& m_undoStack;
     LabelEditCommandTexts m_commandTexts;
     LabelSelectedCallback m_labelSelected;
     LabelsSelectedCallback m_labelsSelected;
@@ -90,4 +90,4 @@ private:
     DirtyCallback m_dirty;
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services

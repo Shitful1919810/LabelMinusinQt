@@ -155,15 +155,15 @@ std::optional<QFont> chooseFontWithQtDialog(QWidget* parent, const QFont& initia
     return font;
 }
 
-const labelminus::core::AppPreferences& defaultPreferences()
+const labelqt::core::AppPreferences& defaultPreferences()
 {
-    static const labelminus::core::AppPreferences preferences;
+    static const labelqt::core::AppPreferences preferences;
     return preferences;
 }
 } // namespace
 
-PreferenceDialog::PreferenceDialog(QString preferencePath, labelminus::core::AppPreferences currentPreferences,
-                                   QVector<labelminus::services::AutomationScript> automationScripts, QWidget* parent)
+PreferenceDialog::PreferenceDialog(QString preferencePath, labelqt::core::AppPreferences currentPreferences,
+                                   QVector<labelqt::services::AutomationScript> automationScripts, QWidget* parent)
     : QDialog(parent), m_preferencePath(std::move(preferencePath)), m_currentPreferences(std::move(currentPreferences)),
       m_automationScripts(std::move(automationScripts))
 {
@@ -231,12 +231,12 @@ QWidget* PreferenceDialog::createGeneralPage(QTabWidget* tabWidget)
     }
     m_applicationThemeComboBox = new QComboBox(generalPage);
     m_applicationThemeComboBox->addItem(tr("Use no application theme"), QString());
-    for (const QString& themeName : labelminus::ui::availableApplicationThemes()) {
+    for (const QString& themeName : labelqt::ui::availableApplicationThemes()) {
         m_applicationThemeComboBox->addItem(themeDisplayName(themeName), themeName);
     }
     m_applicationLanguageComboBox = new QComboBox(generalPage);
     m_applicationLanguageComboBox->addItem(tr("Follow system language"), QString());
-    for (const labelminus::core::ApplicationLanguage& language : labelminus::core::availableApplicationLanguages()) {
+    for (const labelqt::core::ApplicationLanguage& language : labelqt::core::availableApplicationLanguages()) {
         m_applicationLanguageComboBox->addItem(language.displayName, language.localeName);
     }
     m_showAutomationRunLogCheckBox = new QCheckBox(tr("Show automation run log window"), generalPage);
@@ -488,7 +488,7 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     m_automationShortcutTable->setRowCount(0);
     const QJsonObject automationShortcuts = automation.value(QStringLiteral("shortcuts")).toObject();
     QSet<QString> knownScriptIds;
-    for (const labelminus::services::AutomationScript& script : std::as_const(m_automationScripts)) {
+    for (const labelqt::services::AutomationScript& script : std::as_const(m_automationScripts)) {
         knownScriptIds.insert(script.id);
         const int row = m_automationShortcutTable->rowCount();
         m_automationShortcutTable->insertRow(row);
@@ -1000,8 +1000,8 @@ void PreferenceDialog::savePreferences()
     file.write("\n");
     file.close();
 
-    labelminus::core::AppPreferencesLoadResult result =
-        labelminus::core::AppPreferences::loadFromJson(document.toJson(QJsonDocument::Compact));
+    labelqt::core::AppPreferencesLoadResult result =
+        labelqt::core::AppPreferences::loadFromJson(document.toJson(QJsonDocument::Compact));
     m_currentPreferences = result.preferences;
     emit preferencesApplied(result);
     setMessage(result.warnings.isEmpty()

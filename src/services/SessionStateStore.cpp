@@ -7,7 +7,7 @@
 
 #include <algorithm>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 namespace {
 constexpr QLatin1StringView layoutGroup{"layout"};
@@ -244,4 +244,4 @@ QString SessionStateStore::projectSessionGroupName(const QString& path)
     return QString::fromLatin1(hash);
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

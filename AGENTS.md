@@ -1,6 +1,6 @@
 # Agent Guidance
 
-This branch is a C++/Qt port of LabelMinus. Treat the old WPF implementation as removed on purpose.
+This project is an independent C++/Qt implementation of a LabelPlus text project editor. The old WPF implementation is not part of this branch.
 
 ## Encoding
 
@@ -37,7 +37,7 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 
 - Follow `CONTRIBUTING.md` and `docs/architecture.md`.
 - New user-visible UI text must use `tr()`.
-- When adding or changing `tr()` strings, update `translations/labelminus_zh_CN.ts`, `translations/labelminus_zh_TW.ts`, `translations/labelminus_ja_JP.ts` and `translations/labelminus_en_US.ts`.
+- When adding or changing `tr()` strings, update `translations/labelqt_zh_CN.ts`, `translations/labelqt_zh_TW.ts`, `translations/labelqt_ja_JP.ts` and `translations/labelqt_en_US.ts`.
 - Run `scripts/check_translations.sh` after UI text changes.
 - Configurable UI behavior should go through `AppPreferences` and `preference.json`.
 - Reversible project edits must use the Qt-backed `UndoStack`; add undo and redo behavior in the same change that introduces the edit.
@@ -51,5 +51,5 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - User-configurable shortcuts should go through `AppPreferences`, `preference.json` and the preference dialog.
 - Automation script secrets such as API keys must go through QtKeychain-backed keychain storage. Do not write secrets to
   `script.json`, `config.json`, automation `input.json`/`output.json`, logs or preference files.
-- The Windows `LabelMinusStatic` target is experimental and local-only; do not make it an official release artifact without Qt license review.
+- The Windows `LabelQtStatic` target is experimental and local-only; do not make it an official release artifact without Qt license review.
 - Do not commit bundled Qt SDK files, Qt source code or Qt runtime binaries into the repository.

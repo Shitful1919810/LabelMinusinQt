@@ -68,7 +68,7 @@
       "entry": "ocr_preview.py",
       "description": "Run OCR using the configured engine and add recognized text blocks as labels.",
       "environment": {
-        "LABELMINUS_OCR_ACTION": "add-labels"
+        "LABELQT_OCR_ACTION": "add-labels"
       }
     },
     {
@@ -91,7 +91,7 @@
         }
       ],
       "environment": {
-        "LABELMINUS_OCR_ACTION": "add-page-range-labels"
+        "LABELQT_OCR_ACTION": "add-page-range-labels"
       }
     }
   ]

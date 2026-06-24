@@ -22,7 +22,7 @@ void AutomationController::setMenu(QMenu* menu)
     rebuildMenu();
 }
 
-void AutomationController::setPreferences(labelminus::core::AppPreferences preferences)
+void AutomationController::setPreferences(labelqt::core::AppPreferences preferences)
 {
     m_preferences = std::move(preferences);
 }
@@ -35,7 +35,7 @@ void AutomationController::setCallbacks(Callbacks callbacks)
 void AutomationController::refreshScripts()
 {
     QStringList warnings;
-    m_scripts = labelminus::services::AutomationService::discoverScripts(&warnings);
+    m_scripts = labelqt::services::AutomationService::discoverScripts(&warnings);
     emit scriptsChanged(m_scripts);
     if (!warnings.isEmpty()) {
         emit discoveryWarningsFound(warnings);
@@ -43,7 +43,7 @@ void AutomationController::refreshScripts()
     rebuildMenu();
 }
 
-const QVector<labelminus::services::AutomationScript>& AutomationController::scripts() const noexcept
+const QVector<labelqt::services::AutomationScript>& AutomationController::scripts() const noexcept
 {
     return m_scripts;
 }
@@ -111,7 +111,7 @@ void AutomationController::rebuildMenu()
         }
 
         auto addScriptAction = [this](QMenu* menu, int scriptIndex) {
-            const labelminus::services::AutomationScript& script = m_scripts.at(scriptIndex);
+            const labelqt::services::AutomationScript& script = m_scripts.at(scriptIndex);
             QAction* scriptAction = menu->addAction(script.name);
             scriptAction->setObjectName(QStringLiteral("automationScriptAction"));
             scriptAction->setData(scriptIndex);
@@ -132,7 +132,7 @@ void AutomationController::rebuildMenu()
                 continue;
             }
 
-            const labelminus::services::AutomationScript& firstScript = m_scripts.at(scriptIndexes.first());
+            const labelqt::services::AutomationScript& firstScript = m_scripts.at(scriptIndexes.first());
             QMenu* scriptMenu = m_menu->addMenu(firstScript.directoryName);
             scriptMenu->menuAction()->setObjectName(QStringLiteral("automationScriptMenuAction"));
             scriptMenu->setEnabled(!m_running);
@@ -180,7 +180,7 @@ void AutomationController::updateMenuEnabledState()
     updateActions(m_menu->actions(), updateActions);
 }
 
-void AutomationController::runScript(const labelminus::services::AutomationScript& script)
+void AutomationController::runScript(const labelqt::services::AutomationScript& script)
 {
     if (!QFileInfo::exists(script.entryPath)) {
         showMissingScriptMessage(script.id);
@@ -199,8 +199,8 @@ void AutomationController::runScript(const labelminus::services::AutomationScrip
         m_callbacks.commitActiveTextInput();
     }
     const QStringList groups = m_callbacks.groups == nullptr ? QStringList{} : m_callbacks.groups();
-    const QVector<labelminus::core::LabelGroupStyle> groupStyles =
-        m_callbacks.groupStyles == nullptr ? QVector<labelminus::core::LabelGroupStyle>{} : m_callbacks.groupStyles();
+    const QVector<labelqt::core::LabelGroupStyle> groupStyles =
+        m_callbacks.groupStyles == nullptr ? QVector<labelqt::core::LabelGroupStyle>{} : m_callbacks.groupStyles();
     const std::optional<AutomationParameterDialog::Values> values =
         AutomationParameterDialog::getValues(m_window, script, groups, groupStyles);
     if (!values.has_value()) {
@@ -208,20 +208,20 @@ void AutomationController::runScript(const labelminus::services::AutomationScrip
     }
 
     QString automationError;
-    if (!labelminus::services::AutomationService::storeParameterSecrets(script, values->secrets, &automationError)) {
+    if (!labelqt::services::AutomationService::storeParameterSecrets(script, values->secrets, &automationError)) {
         QMessageBox::warning(m_window, tr("Automation"), automationError);
         return;
     }
 
     QMap<QString, QString> secretEnvironment;
-    if (!labelminus::services::AutomationService::secretEnvironment(script, &secretEnvironment, &automationError)) {
+    if (!labelqt::services::AutomationService::secretEnvironment(script, &secretEnvironment, &automationError)) {
         QMessageBox::warning(m_window, tr("Automation"), automationError);
         return;
     }
 
     emit statusMessageRequested(tr("Running automation script: %1").arg(script.name), 0);
 
-    auto* runner = new labelminus::services::AutomationRunner(this);
+    auto* runner = new labelqt::services::AutomationRunner(this);
     AutomationRunDialog* dialog = nullptr;
     if (m_preferences.showAutomationRunLog()) {
         dialog = new AutomationRunDialog(script.name, m_window);
@@ -231,15 +231,15 @@ void AutomationController::runScript(const labelminus::services::AutomationScrip
     m_runDialog = dialog;
 
     if (dialog != nullptr) {
-        connect(dialog, &AutomationRunDialog::cancelRequested, runner, &labelminus::services::AutomationRunner::cancel);
+        connect(dialog, &AutomationRunDialog::cancelRequested, runner, &labelqt::services::AutomationRunner::cancel);
         connect(dialog, &QObject::destroyed, this, [this]() { m_runDialog.clear(); });
-        connect(runner, &labelminus::services::AutomationRunner::standardOutputReceived, dialog,
+        connect(runner, &labelqt::services::AutomationRunner::standardOutputReceived, dialog,
                 &AutomationRunDialog::appendStandardOutput);
-        connect(runner, &labelminus::services::AutomationRunner::standardErrorReceived, dialog,
+        connect(runner, &labelqt::services::AutomationRunner::standardErrorReceived, dialog,
                 &AutomationRunDialog::appendStandardError);
     }
-    connect(runner, &labelminus::services::AutomationRunner::finished, this,
-            [this, runner, dialog, script](const labelminus::services::AutomationRunResult& result) {
+    connect(runner, &labelqt::services::AutomationRunner::finished, this,
+            [this, runner, dialog, script](const labelqt::services::AutomationRunResult& result) {
                 finishScript(runner, dialog, script, result);
             });
 
@@ -249,16 +249,16 @@ void AutomationController::runScript(const labelminus::services::AutomationScrip
     }
 
     const int imageIndex = m_callbacks.currentImageIndex == nullptr ? -1 : m_callbacks.currentImageIndex();
-    const labelminus::services::AutomationSelection selection =
-        m_callbacks.selection == nullptr ? labelminus::services::AutomationSelection{} : m_callbacks.selection();
-    const labelminus::services::AutomationContext context =
-        m_callbacks.context == nullptr ? labelminus::services::AutomationContext{} : m_callbacks.context();
+    const labelqt::services::AutomationSelection selection =
+        m_callbacks.selection == nullptr ? labelqt::services::AutomationSelection{} : m_callbacks.selection();
+    const labelqt::services::AutomationContext context =
+        m_callbacks.context == nullptr ? labelqt::services::AutomationContext{} : m_callbacks.context();
     runner->start(script, m_callbacks.project(), imageIndex, values->parameters, selection, context, secretEnvironment);
 }
 
-void AutomationController::finishScript(labelminus::services::AutomationRunner* runner, AutomationRunDialog* dialog,
-                                        labelminus::services::AutomationScript script,
-                                        const labelminus::services::AutomationRunResult& result)
+void AutomationController::finishScript(labelqt::services::AutomationRunner* runner, AutomationRunDialog* dialog,
+                                        labelqt::services::AutomationScript script,
+                                        const labelqt::services::AutomationRunResult& result)
 {
     setRunning(false);
     if (m_runner == runner) {

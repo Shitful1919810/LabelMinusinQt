@@ -10,7 +10,7 @@
 class QJsonDocument;
 class QJsonParseError;
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 enum class AppPreferenceWarningType {
     FileNotReadable,
@@ -132,6 +132,7 @@ public:
     const QVector<LabelGroupStyle>& groupStyles() const noexcept;
 
 private:
+    static QVector<LabelGroupStyle> defaultGroupStyles();
     static AppPreferencesLoadResult loadFromDocument(const QJsonDocument& document, const QJsonParseError* parseError);
 
     double m_labelMarkerDiameterPixels{20.0};
@@ -163,7 +164,7 @@ private:
     QKeySequence m_commitLabelTextShortcut{QStringLiteral("Ctrl+Return")};
     QString m_backupPath{QStringLiteral("bak")};
     int m_backupIntervalSeconds{60};
-    QVector<LabelGroupStyle> m_groupStyles;
+    QVector<LabelGroupStyle> m_groupStyles{defaultGroupStyles()};
 };
 
 struct AppPreferencesLoadResult {
@@ -171,4 +172,4 @@ struct AppPreferencesLoadResult {
     QVector<AppPreferenceWarning> warnings;
 };
 
-} // namespace labelminus::core
+} // namespace labelqt::core

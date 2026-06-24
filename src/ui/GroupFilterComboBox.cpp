@@ -15,7 +15,7 @@ GroupFilterComboBox::GroupFilterComboBox(QWidget* parent) : QToolButton(parent),
     updateButtonText();
 }
 
-void GroupFilterComboBox::setGroups(const QStringList& groups, QVector<labelminus::core::LabelGroupStyle> groupStyles)
+void GroupFilterComboBox::setGroups(const QStringList& groups, QVector<labelqt::core::LabelGroupStyle> groupStyles)
 {
     m_groups = groups;
     m_groupStyles = std::move(groupStyles);

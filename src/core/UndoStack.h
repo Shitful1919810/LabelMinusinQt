@@ -5,7 +5,7 @@
 
 #include <functional>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 class UndoStack {
 public:
@@ -36,4 +36,4 @@ private:
     std::function<void()> m_changedCallback;
 };
 
-} // namespace labelminus::core
+} // namespace labelqt::core

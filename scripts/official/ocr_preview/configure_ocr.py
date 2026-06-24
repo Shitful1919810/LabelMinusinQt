@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelminus_automation import AutomationContext, as_bool
+from labelqt_automation import AutomationContext, as_bool
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
 
@@ -23,8 +23,8 @@ def read_existing_config() -> dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Configure LabelMinus OCR automation scripts.")
-    parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
+    parser = argparse.ArgumentParser(description="Configure LabelQt OCR automation scripts.")
+    parser.add_argument("--input", required=True, help="Path to the LabelQt automation input JSON.")
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
 

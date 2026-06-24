@@ -1,6 +1,6 @@
 # C++ Code Walkthrough
 
-这份文档面向第一次阅读当前 Qt 移植版代码的人。它不替代 `docs/architecture.md`，而是更偏“从哪里开始看、功能之间怎么串起来”。
+这份文档面向第一次阅读 LabelQt C++/Qt 代码的人。它不替代 `docs/architecture.md`，而是更偏“从哪里开始看、功能之间怎么串起来”。
 
 ## 入口与构建目标
 
@@ -15,9 +15,9 @@
 
 可执行目标在 `src/CMakeLists.txt` 中定义。源码被分为三组：
 
-- `LABELMINUS_CORE_SOURCES`：平台无关的数据、解析、偏好和撤销。
-- `LABELMINUS_SERVICE_SOURCES`：应用服务层，目前包含工程控制、会话状态、压缩包和 OCR 进程占位实现。
-- `LABELMINUS_UI_SOURCES`：Qt Widgets 界面。
+- `LABELQT_CORE_SOURCES`：平台无关的数据、解析、偏好和撤销。
+- `LABELQT_SERVICE_SOURCES`：应用服务层，目前包含工程控制、会话状态、压缩包和 OCR 进程占位实现。
+- `LABELQT_UI_SOURCES`：Qt Widgets 界面。
 
 构建后会把仓库根目录的 `preference.json` 复制到可执行文件目录，便于运行时读取默认偏好。
 
@@ -103,7 +103,7 @@ translations  Qt Linguist .ts 翻译源文件
 - `docs/architecture.md`
 - `tests/LabelTests.cpp`
 
-如果新增了 UI 文本，还要同步 `translations/labelminus_zh_CN.ts` 和 `translations/labelminus_en_US.ts`。
+如果新增了 UI 文本，还要同步 `translations/` 下的四份 `labelqt_*.ts` 翻译文件。
 
 ### `UndoStack`
 
@@ -328,8 +328,10 @@ translations  Qt Linguist .ts 翻译源文件
 
 翻译资源在 `translations/` 下：
 
-- `labelminus_zh_CN.ts`
-- `labelminus_en_US.ts`
+- `labelqt_zh_CN.ts`
+- `labelqt_zh_TW.ts`
+- `labelqt_en_US.ts`
+- `labelqt_ja_JP.ts`
 
 规则：
 

@@ -10,7 +10,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 namespace {
 const QRegularExpression imageLineRegex(R"(>>>>>>>>\[(.*?)\]<<<<<<<<)");
@@ -213,4 +213,4 @@ QString LabelPlusDocument::serialize(const Project& project)
     return output;
 }
 
-} // namespace labelminus::core
+} // namespace labelqt::core

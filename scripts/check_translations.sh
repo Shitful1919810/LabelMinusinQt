@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 repo = pathlib.Path(sys.argv[1])
 src_dir = repo / "src"
-translation_files = sorted((repo / "translations").glob("labelminus_*.ts"))
+translation_files = sorted((repo / "translations").glob("labelqt_*.ts"))
 
 tr_pattern = re.compile(r'\btr\s*\(\s*"((?:\\.|[^"\\])*)"')
 translate_pattern = re.compile(r'\b(?:QCoreApplication::)?translate\s*\(\s*"((?:\\.|[^"\\])*)"\s*,\s*"((?:\\.|[^"\\])*)"')

@@ -1,4 +1,4 @@
-"""Small object-oriented SDK for LabelMinus automation scripts.
+"""Small object-oriented SDK for LabelQt automation scripts.
 
 The SDK is intentionally dependency-free. It wraps the host application's JSON
 contract with a compact API so official scripts can demonstrate a clean style
@@ -16,7 +16,7 @@ JsonObject = dict[str, Any]
 
 
 class OperationBuilder:
-    """Build LabelMinus operations with stable field names."""
+    """Build LabelQt operations with stable field names."""
 
     @staticmethod
     def set_label_text(page: str, label_index: int, text: str) -> JsonObject:
@@ -40,7 +40,7 @@ class OperationBuilder:
 
 
 class Label:
-    """A non-owning wrapper around one LabelMinus label JSON object."""
+    """A non-owning wrapper around one LabelQt label JSON object."""
 
     def __init__(self, data: JsonObject, page_name: str = "") -> None:
         self.data = data
@@ -87,7 +87,7 @@ class Label:
 
 
 class Page:
-    """A non-owning wrapper around one LabelMinus page JSON object."""
+    """A non-owning wrapper around one LabelQt page JSON object."""
 
     def __init__(self, data: JsonObject) -> None:
         self.data = data
@@ -123,7 +123,7 @@ class Page:
 
 
 class AutomationContext:
-    """Read LabelMinus input JSON and write standard output JSON."""
+    """Read LabelQt input JSON and write standard output JSON."""
 
     def __init__(self, payload: JsonObject) -> None:
         self.payload = payload

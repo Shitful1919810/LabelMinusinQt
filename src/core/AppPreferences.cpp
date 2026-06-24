@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 namespace {
 QString preferencePath()
@@ -246,6 +246,15 @@ QString markerShapeToString(MarkerShape markerShape)
     return markerShape == MarkerShape::Square ? QStringLiteral("square") : QStringLiteral("circle");
 }
 } // namespace
+
+QVector<LabelGroupStyle> AppPreferences::defaultGroupStyles()
+{
+    return {
+        {QColor(QStringLiteral("#ef4444")), 20.0, 10.0, MarkerShape::Circle},
+        {QColor(QStringLiteral("#2563eb")), 20.0, 10.0, MarkerShape::Square},
+        {QColor(QStringLiteral("#10b981")), 20.0, 10.0, MarkerShape::Circle},
+    };
+}
 
 AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& document,
                                                           const QJsonParseError* parseError)
@@ -582,6 +591,7 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
         }
         else {
             const QJsonArray groupStyles = groupStylesValue.toArray();
+            preferences.m_groupStyles.clear();
             for (qsizetype i = 0; i < groupStyles.size(); ++i) {
                 if (!groupStyles.at(i).isObject()) {
                     warnings.append(makeWarning(AppPreferenceWarningType::GroupStyleNotObject, {}, {}, i));
@@ -902,4 +912,4 @@ const QVector<LabelGroupStyle>& AppPreferences::groupStyles() const noexcept
     return m_groupStyles;
 }
 
-} // namespace labelminus::core
+} // namespace labelqt::core

@@ -150,7 +150,7 @@ bool CanvasLabelTextEditController::eventFilter(QObject* watched, QEvent* event)
 
     if (event->type() == QEvent::KeyPress) {
         const auto* keyEvent = static_cast<QKeyEvent*>(event);
-        const QKeySequence keySequence(labelminus::ui::normalizedShortcutKeyCombination(*keyEvent));
+        const QKeySequence keySequence(labelqt::ui::normalizedShortcutKeyCombination(*keyEvent));
         if (keySequence.matches(m_commitShortcut) == QKeySequence::ExactMatch) {
             commit();
             return true;

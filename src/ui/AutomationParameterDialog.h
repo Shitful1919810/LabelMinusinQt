@@ -17,7 +17,7 @@ public:
         QMap<QString, QString> secrets;
     };
 
-    static std::optional<Values> getValues(QWidget* parent, const labelminus::services::AutomationScript& script,
+    static std::optional<Values> getValues(QWidget* parent, const labelqt::services::AutomationScript& script,
                                            const QStringList& groups,
-                                           const QVector<labelminus::core::LabelGroupStyle>& groupStyles);
+                                           const QVector<labelqt::core::LabelGroupStyle>& groupStyles);
 };

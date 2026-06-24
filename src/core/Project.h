@@ -6,7 +6,7 @@
 #include <QStringList>
 #include <QVector>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 class ImageEntry {
 public:
@@ -45,4 +45,4 @@ private:
     QString m_sourceName;
 };
 
-} // namespace labelminus::core
+} // namespace labelqt::core

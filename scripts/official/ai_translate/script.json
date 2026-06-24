@@ -14,7 +14,7 @@
           "label": "DeepSeek API key",
           "type": "secret",
           "secretKey": "deepseekApiKey",
-          "service": "LabelMinus",
+          "service": "LabelQt",
           "account": "deepseek_api_key",
           "environment": "DEEPSEEK_API_KEY"
         },
@@ -80,13 +80,13 @@
         }
       ],
       "environment": {
-        "LABELMINUS_TRANSLATION_ACTION": "preview"
+        "LABELQT_TRANSLATION_ACTION": "preview"
       },
       "secrets": [
         {
           "key": "deepseekApiKey",
           "label": "DeepSeek API key",
-          "service": "LabelMinus",
+          "service": "LabelQt",
           "account": "deepseek_api_key",
           "environment": "DEEPSEEK_API_KEY",
           "required": true
@@ -99,13 +99,13 @@
       "entry": "translate.py",
       "description": "Translate labels with DeepSeek and apply the translations to labels.",
       "environment": {
-        "LABELMINUS_TRANSLATION_ACTION": "apply"
+        "LABELQT_TRANSLATION_ACTION": "apply"
       },
       "secrets": [
         {
           "key": "deepseekApiKey",
           "label": "DeepSeek API key",
-          "service": "LabelMinus",
+          "service": "LabelQt",
           "account": "deepseek_api_key",
           "environment": "DEEPSEEK_API_KEY",
           "required": true
@@ -132,13 +132,13 @@
         }
       ],
       "environment": {
-        "LABELMINUS_TRANSLATION_ACTION": "apply-page-range"
+        "LABELQT_TRANSLATION_ACTION": "apply-page-range"
       },
       "secrets": [
         {
           "key": "deepseekApiKey",
           "label": "DeepSeek API key",
-          "service": "LabelMinus",
+          "service": "LabelQt",
           "account": "deepseek_api_key",
           "environment": "DEEPSEEK_API_KEY",
           "required": true

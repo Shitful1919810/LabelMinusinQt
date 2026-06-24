@@ -18,7 +18,7 @@ class PageOrderDialog final : public QDialog {
     Q_OBJECT
 
 public:
-    PageOrderDialog(const labelminus::core::Project& project, labelminus::core::AppPreferences preferences,
+    PageOrderDialog(const labelqt::core::Project& project, labelqt::core::AppPreferences preferences,
                     QWidget* parent = nullptr);
 
     QVector<int> pageOrder() const;
@@ -34,9 +34,9 @@ private:
     void saveTableColumnWidths() const;
     QVector<int> selectedPageSourceIndexes() const;
 
-    const labelminus::core::Project& m_project;
-    labelminus::core::AppPreferences m_preferences;
-    labelminus::services::SessionStateStore m_sessionStateStore;
+    const labelqt::core::Project& m_project;
+    labelqt::core::AppPreferences m_preferences;
+    labelqt::services::SessionStateStore m_sessionStateStore;
     ImageCanvas* m_canvas{nullptr};
     QTableView* m_pageTable{nullptr};
     ViewportFittedTableColumns* m_pageTableColumns{nullptr};

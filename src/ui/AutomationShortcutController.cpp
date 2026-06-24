@@ -15,12 +15,12 @@ AutomationShortcutController::AutomationShortcutController(QWidget* window, QObj
 {
 }
 
-void AutomationShortcutController::setPreferences(labelminus::core::AppPreferences preferences)
+void AutomationShortcutController::setPreferences(labelqt::core::AppPreferences preferences)
 {
     m_preferences = std::move(preferences);
 }
 
-void AutomationShortcutController::setScripts(QVector<labelminus::services::AutomationScript> scripts)
+void AutomationShortcutController::setScripts(QVector<labelqt::services::AutomationScript> scripts)
 {
     m_scripts = std::move(scripts);
 }
@@ -42,7 +42,7 @@ bool AutomationShortcutController::handleGlobalShortcut(QObject* watched, QEvent
         return false;
     }
 
-    const QKeySequence pressedSequence(labelminus::ui::normalizedShortcutKeyCombination(*keyEvent));
+    const QKeySequence pressedSequence(labelqt::ui::normalizedShortcutKeyCombination(*keyEvent));
     const QString scriptId = scriptIdForSequence(pressedSequence);
     if (!scriptId.isEmpty()) {
         if (!isShortcutOverride && !keyEvent->isAutoRepeat()) {
@@ -66,7 +66,7 @@ bool AutomationShortcutController::handleGlobalShortcut(QObject* watched, QEvent
 
 QString AutomationShortcutController::scriptIdForSequence(const QKeySequence& sequence) const
 {
-    for (const labelminus::services::AutomationScript& script : m_scripts) {
+    for (const labelqt::services::AutomationScript& script : m_scripts) {
         const QKeySequence shortcut = m_preferences.automationShortcuts().value(script.id);
         if (!shortcut.isEmpty() && sequence.matches(shortcut) == QKeySequence::ExactMatch) {
             return script.id;

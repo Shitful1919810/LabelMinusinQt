@@ -16,7 +16,7 @@
 class QTemporaryDir;
 class QTimer;
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 struct AutomationParameter {
     QString key;
@@ -104,7 +104,7 @@ public:
     explicit AutomationRunner(QObject* parent = nullptr);
     ~AutomationRunner() override;
 
-    void start(const AutomationScript& script, const labelminus::core::Project& project, int currentImageIndex,
+    void start(const AutomationScript& script, const labelqt::core::Project& project, int currentImageIndex,
                const QJsonObject& parameters = {}, AutomationSelection selection = {}, AutomationContext context = {},
                const QMap<QString, QString>& environmentOverrides = {});
     void cancel();
@@ -113,7 +113,7 @@ public:
 signals:
     void standardOutputReceived(const QString& text);
     void standardErrorReceived(const QString& text);
-    void finished(const labelminus::services::AutomationRunResult& result);
+    void finished(const labelqt::services::AutomationRunResult& result);
 
 private:
     void startNextCandidate();
@@ -138,4 +138,4 @@ private:
     bool m_cancelRequested{false};
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services

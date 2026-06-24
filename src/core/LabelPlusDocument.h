@@ -4,7 +4,7 @@
 
 #include <QString>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 class LabelPlusDocument {
 public:
@@ -16,4 +16,4 @@ private:
     static QString serialize(const Project& project);
 };
 
-} // namespace labelminus::core
+} // namespace labelqt::core

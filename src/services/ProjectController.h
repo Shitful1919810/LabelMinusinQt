@@ -6,7 +6,7 @@
 #include <QString>
 #include <QStringList>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 struct AutoBackupResult {
     enum class Status {
@@ -36,10 +36,10 @@ struct NewProjectResult {
 
 class ProjectController {
 public:
-    labelminus::core::Project& project() noexcept;
-    const labelminus::core::Project& project() const noexcept;
+    labelqt::core::Project& project() noexcept;
+    const labelqt::core::Project& project() const noexcept;
 
-    void setProject(labelminus::core::Project project);
+    void setProject(labelqt::core::Project project);
     void loadFromFile(const QString& path);
     void save();
     void saveAs(const QString& path);
@@ -50,12 +50,12 @@ public:
     void setDirty(bool dirty) noexcept;
     void markDirty() noexcept;
 
-    AutoBackupResult performAutoBackup(const labelminus::core::AppPreferences& preferences);
+    AutoBackupResult performAutoBackup(const labelqt::core::AppPreferences& preferences);
 
 private:
-    labelminus::core::Project m_project;
+    labelqt::core::Project m_project;
     bool m_isDirty{false};
     bool m_hasPendingBackup{false};
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services

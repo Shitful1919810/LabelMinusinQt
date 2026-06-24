@@ -19,7 +19,7 @@ class ProjectMergeDialog final : public QDialog {
     Q_OBJECT
 
 public:
-    ProjectMergeDialog(labelminus::services::ProjectMergePlan mergePlan, labelminus::core::AppPreferences preferences,
+    ProjectMergeDialog(labelqt::services::ProjectMergePlan mergePlan, labelqt::core::AppPreferences preferences,
                        QWidget* parent = nullptr);
 
     QVector<int> selectedCandidateIndexes() const;
@@ -40,8 +40,8 @@ private:
                                   QPointF normalizedCenter);
     void disconnectCandidateCanvases();
 
-    labelminus::services::ProjectMergePlan m_mergePlan;
-    labelminus::core::AppPreferences m_preferences;
+    labelqt::services::ProjectMergePlan m_mergePlan;
+    labelqt::core::AppPreferences m_preferences;
     QVector<int> m_selectedCandidateIndexes;
     QVector<QVector<QPointer<ImageCanvas>>> m_candidateCanvases;
     QLabel* m_summaryLabel{nullptr};

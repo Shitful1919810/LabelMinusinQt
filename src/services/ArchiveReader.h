@@ -3,7 +3,7 @@
 #include <QString>
 #include <QStringList>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 class ArchiveReader {
 public:
@@ -11,4 +11,4 @@ public:
     QStringList listImages(const QString& archivePath) const;
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services

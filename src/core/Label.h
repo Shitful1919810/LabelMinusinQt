@@ -3,7 +3,7 @@
 #include <QPointF>
 #include <QString>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 class Label {
 public:
@@ -29,4 +29,4 @@ private:
     bool m_deleted{false};
 };
 
-} // namespace labelminus::core
+} // namespace labelqt::core

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelminus_automation import AutomationContext, Label, Page
+from labelqt_automation import AutomationContext, Label, Page
 
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
@@ -113,7 +113,7 @@ def prompt_for_labels(
         rules.append(f"User custom translation instructions: {custom_prompt.strip()}")
 
     user_prompt = {
-        "task": "translate_labelminus_labels",
+        "task": "translate_labelqt_labels",
         "page": page_name,
         "targetLanguage": target_language,
         "style": style,
@@ -173,7 +173,7 @@ def prompt_for_page_range(
         rules.append(f"User custom translation instructions: {custom_prompt.strip()}")
 
     user_prompt = {
-        "task": "translate_labelminus_page_range",
+        "task": "translate_labelqt_page_range",
         "targetLanguage": target_language,
         "style": style,
         "rules": rules,
@@ -295,14 +295,14 @@ def preview_text(labels: list[Label], translations: dict[int, dict[str, str]], i
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Translate LabelMinus labels with DeepSeek.")
-    parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
+    parser = argparse.ArgumentParser(description="Translate LabelQt labels with DeepSeek.")
+    parser.add_argument("--input", required=True, help="Path to the LabelQt automation input JSON.")
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
 
     ctx = AutomationContext.from_file(args.input)
 
-    action = os.environ.get("LABELMINUS_TRANSLATION_ACTION", "preview").lower()
+    action = os.environ.get("LABELQT_TRANSLATION_ACTION", "preview").lower()
     parameters = ctx.parameters
     include_analysis = parameters.get("outputMode") == "translationWithAnalysis"
     config = load_config()

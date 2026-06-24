@@ -9,12 +9,12 @@
 #include <utility>
 
 namespace {
-constexpr auto labelRowsMimeType = "application/x-labelminus-label-rows";
+constexpr auto labelRowsMimeType = "application/x-labelqt-label-rows";
 }
 
 LabelTableModel::LabelTableModel(QObject* parent) : QAbstractTableModel(parent) {}
 
-void LabelTableModel::setLabels(QVector<labelminus::core::Label>* labels)
+void LabelTableModel::setLabels(QVector<labelqt::core::Label>* labels)
 {
     beginResetModel();
     m_labels = labels;
@@ -30,7 +30,7 @@ void LabelTableModel::setGroupFilter(QStringList groupFilter)
     endResetModel();
 }
 
-void LabelTableModel::setGroups(QStringList groups, QVector<labelminus::core::LabelGroupStyle> groupStyles)
+void LabelTableModel::setGroups(QStringList groups, QVector<labelqt::core::LabelGroupStyle> groupStyles)
 {
     m_groups = std::move(groups);
     m_groupStyles = std::move(groupStyles);
@@ -94,7 +94,7 @@ QVariant LabelTableModel::data(const QModelIndex& index, int role) const
     }
 
     const int sourceIndex = m_visibleRows.at(index.row());
-    const labelminus::core::Label& label = m_labels->at(sourceIndex);
+    const labelqt::core::Label& label = m_labels->at(sourceIndex);
     if (role == Qt::DisplayRole || role == Qt::EditRole) {
         switch (index.column()) {
         case NumberColumn:
@@ -130,7 +130,7 @@ bool LabelTableModel::setData(const QModelIndex& index, const QVariant& value, i
     }
 
     const int sourceIndex = m_visibleRows.at(index.row());
-    const labelminus::core::Label& label = m_labels->at(sourceIndex);
+    const labelqt::core::Label& label = m_labels->at(sourceIndex);
     QVariant newValue;
 
     switch (index.column()) {
@@ -269,7 +269,7 @@ void LabelTableModel::rebuildVisibleRows()
     }
 
     for (int i = 0; i < static_cast<int>(m_labels->size()); ++i) {
-        const labelminus::core::Label& label = m_labels->at(i);
+        const labelqt::core::Label& label = m_labels->at(i);
         if (!label.isDeleted() && m_groupFilter.contains(label.group())) {
             m_visibleRows.append(i);
         }

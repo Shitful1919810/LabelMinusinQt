@@ -13,8 +13,8 @@
 #include <QTextStream>
 #include <QtTest/QtTest>
 
-using labelminus::core::Label;
-using labelminus::core::LabelPlusDocument;
+using labelqt::core::Label;
+using labelqt::core::LabelPlusDocument;
 
 class LabelTests final : public QObject {
     Q_OBJECT
@@ -30,7 +30,7 @@ private slots:
 
     void labelPlusDocumentRoundTrips()
     {
-        const QString dirPath = QDir::temp().filePath("labelminus_parser_test");
+        const QString dirPath = QDir::temp().filePath("labelqt_parser_test");
         QDir().mkpath(dirPath);
         const QString filePath = QDir(dirPath).filePath("translation.txt");
 
@@ -58,23 +58,23 @@ private slots:
 
     void labelNavigatorMovesAcrossVisibleLabels()
     {
-        labelminus::core::Project project;
+        labelqt::core::Project project;
         project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
         project.images().last().labels.append(Label(QStringLiteral("a"), QStringLiteral("框内"), {}));
         project.images().last().labels.append(Label(QStringLiteral("b"), QStringLiteral("框外"), {}));
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
         project.images().last().labels.append(Label(QStringLiteral("c"), QStringLiteral("框内"), {}));
         project.images().last().labels.append(Label(QStringLiteral("d"), QStringLiteral("框外"), {}));
 
         const QStringList visibleGroups{QStringLiteral("框内"), QStringLiteral("框外")};
-        const auto next = labelminus::services::LabelNavigator::nextVisibleLabel(project, {0, 1, visibleGroups});
+        const auto next = labelqt::services::LabelNavigator::nextVisibleLabel(project, {0, 1, visibleGroups});
         QVERIFY(next.isValid());
         QCOMPARE(next.imageIndex, 1);
         QCOMPARE(next.labelIndex, 0);
 
         const auto previous =
-            labelminus::services::LabelNavigator::previousVisibleLabel(project, {1, 0, visibleGroups});
+            labelqt::services::LabelNavigator::previousVisibleLabel(project, {1, 0, visibleGroups});
         QVERIFY(previous.isValid());
         QCOMPARE(previous.imageIndex, 0);
         QCOMPARE(previous.labelIndex, 1);
@@ -82,23 +82,23 @@ private slots:
 
     void labelNavigatorRespectsVisibleGroups()
     {
-        labelminus::core::Project project;
+        labelqt::core::Project project;
         project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
         project.images().last().labels.append(Label(QStringLiteral("a"), QStringLiteral("框外"), {}));
         project.images().last().labels.append(Label(QStringLiteral("b"), QStringLiteral("框内"), {}));
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
         project.images().last().labels.append(Label(QStringLiteral("c"), QStringLiteral("框外"), {}));
         project.images().last().labels.append(Label(QStringLiteral("d"), QStringLiteral("框内"), {}));
 
         const QStringList visibleGroups{QStringLiteral("框内")};
-        const auto next = labelminus::services::LabelNavigator::nextVisibleLabel(project, {0, 1, visibleGroups});
+        const auto next = labelqt::services::LabelNavigator::nextVisibleLabel(project, {0, 1, visibleGroups});
         QVERIFY(next.isValid());
         QCOMPARE(next.imageIndex, 1);
         QCOMPARE(next.labelIndex, 1);
 
         const auto previous =
-            labelminus::services::LabelNavigator::previousVisibleLabel(project, {1, 1, visibleGroups});
+            labelqt::services::LabelNavigator::previousVisibleLabel(project, {1, 1, visibleGroups});
         QVERIFY(previous.isValid());
         QCOMPARE(previous.imageIndex, 0);
         QCOMPARE(previous.labelIndex, 1);
@@ -116,7 +116,7 @@ private slots:
             }
         })";
 
-        const labelminus::core::AppPreferencesLoadResult result = labelminus::core::AppPreferences::loadFromJson(json);
+        const labelqt::core::AppPreferencesLoadResult result = labelqt::core::AppPreferences::loadFromJson(json);
 
         QCOMPARE(result.preferences.automationShortcuts().size(), 1);
         QCOMPARE(result.preferences.automationShortcuts().value(QStringLiteral("official:test:word_count")),
@@ -126,11 +126,11 @@ private slots:
 
     void automationOperationApplierAddsLabelsWithUndo()
     {
-        labelminus::core::Project project;
+        labelqt::core::Project project;
         project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
 
-        labelminus::services::AutomationOperation operation;
+        labelqt::services::AutomationOperation operation;
         operation.type = QStringLiteral("addLabel");
         operation.page = QStringLiteral("001.png");
         operation.group = QStringLiteral("框内");
@@ -138,63 +138,63 @@ private slots:
         operation.x = 0.75;
         operation.y = 0.25;
 
-        const auto plan = labelminus::services::AutomationOperationApplier::plan(project, {operation});
+        const auto plan = labelqt::services::AutomationOperationApplier::plan(project, {operation});
         QVERIFY(plan.hasChanges());
         QCOMPARE(plan.changeCount(), 1);
 
-        labelminus::services::AutomationOperationApplier::apply(project, plan, true);
+        labelqt::services::AutomationOperationApplier::apply(project, plan, true);
         QCOMPARE(project.images().first().labels.size(), 1);
         QCOMPARE(project.images().first().labels.first().text(), QStringLiteral("识别文本"));
         QCOMPARE(project.images().first().labels.first().group(), QStringLiteral("框内"));
         QCOMPARE(project.images().first().labels.first().position().x(), 0.75);
         QCOMPARE(project.images().first().labels.first().position().y(), 0.25);
 
-        labelminus::services::AutomationOperationApplier::apply(project, plan, false);
+        labelqt::services::AutomationOperationApplier::apply(project, plan, false);
         QCOMPARE(project.images().first().labels.size(), 0);
 
-        labelminus::services::AutomationOperationApplier::apply(project, plan, true);
+        labelqt::services::AutomationOperationApplier::apply(project, plan, true);
         QCOMPARE(project.images().first().labels.size(), 1);
         QCOMPARE(project.images().first().labels.first().text(), QStringLiteral("识别文本"));
     }
 
     void automationOperationApplierEditsAndDeletesLabelsWithUndo()
     {
-        labelminus::core::Project project;
+        labelqt::core::Project project;
         project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
         project.images().last().labels.append(Label(QStringLiteral("原文本"), QStringLiteral("框内"), {0.2, 0.3}));
         project.images().last().labels.append(Label(QStringLiteral("删除我"), QStringLiteral("框外"), {0.4, 0.5}));
 
-        labelminus::services::AutomationOperation textOperation;
+        labelqt::services::AutomationOperation textOperation;
         textOperation.type = QStringLiteral("setLabelText");
         textOperation.page = QStringLiteral("001.png");
         textOperation.labelIndex = 0;
         textOperation.text = QStringLiteral("新文本");
 
-        labelminus::services::AutomationOperation positionOperation;
+        labelqt::services::AutomationOperation positionOperation;
         positionOperation.type = QStringLiteral("setLabelPosition");
         positionOperation.page = QStringLiteral("001.png");
         positionOperation.labelIndex = 0;
         positionOperation.x = 0.8;
         positionOperation.y = 0.9;
 
-        labelminus::services::AutomationOperation deleteOperation;
+        labelqt::services::AutomationOperation deleteOperation;
         deleteOperation.type = QStringLiteral("deleteLabel");
         deleteOperation.page = QStringLiteral("001.png");
         deleteOperation.labelIndex = 1;
 
-        const auto plan = labelminus::services::AutomationOperationApplier::plan(
+        const auto plan = labelqt::services::AutomationOperationApplier::plan(
             project, {textOperation, positionOperation, deleteOperation});
         QVERIFY(plan.hasChanges());
         QCOMPARE(plan.changeCount(), 3);
 
-        labelminus::services::AutomationOperationApplier::apply(project, plan, true);
+        labelqt::services::AutomationOperationApplier::apply(project, plan, true);
         QCOMPARE(project.images().first().labels.at(0).text(), QStringLiteral("新文本"));
         QCOMPARE(project.images().first().labels.at(0).position().x(), 0.8);
         QCOMPARE(project.images().first().labels.at(0).position().y(), 0.9);
         QVERIFY(project.images().first().labels.at(1).isDeleted());
 
-        labelminus::services::AutomationOperationApplier::apply(project, plan, false);
+        labelqt::services::AutomationOperationApplier::apply(project, plan, false);
         QCOMPARE(project.images().first().labels.at(0).text(), QStringLiteral("原文本"));
         QCOMPARE(project.images().first().labels.at(0).position().x(), 0.2);
         QCOMPARE(project.images().first().labels.at(0).position().y(), 0.3);
@@ -203,19 +203,19 @@ private slots:
 
     void projectMergeUsesSingleInvolvedPageAutomatically()
     {
-        const QString dirPath = QDir::temp().filePath("labelminus_merge_single_test");
+        const QString dirPath = QDir::temp().filePath("labelqt_merge_single_test");
         QDir().mkpath(dirPath);
 
-        labelminus::core::Project firstProject;
+        labelqt::core::Project firstProject;
         firstProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        firstProject.images().append(labelqt::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
         firstProject.images().last().labels.append(Label(QStringLiteral("second"), QStringLiteral("框外"), {}));
-        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        firstProject.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
         firstProject.images().last().labels.append(Label(QStringLiteral("first"), QStringLiteral("框内"), {}));
 
-        labelminus::core::Project secondProject;
+        labelqt::core::Project secondProject;
         secondProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        secondProject.images().append(labelminus::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
+        secondProject.images().append(labelqt::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
         secondProject.images().last().labels.append(Label(QStringLiteral("third"), QStringLiteral("框外"), {}));
 
         const QString firstPath = QDir(dirPath).filePath("first.txt");
@@ -223,7 +223,7 @@ private slots:
         LabelPlusDocument::saveToFile(firstProject, firstPath);
         LabelPlusDocument::saveToFile(secondProject, secondPath);
 
-        const auto plan = labelminus::services::ProjectMergeService::createPlan({firstPath, secondPath});
+        const auto plan = labelqt::services::ProjectMergeService::createPlan({firstPath, secondPath});
 
         QVERIFY(plan.conflicts.isEmpty());
         QCOMPARE(plan.mergedProject.images().size(), 3);
@@ -235,11 +235,11 @@ private slots:
         QCOMPARE(plan.mergedProject.images().at(2).labels.first().text(), QStringLiteral("third"));
 
         const QString mergedPath = QDir(dirPath).filePath("merged.txt");
-        const labelminus::core::Project merged =
-            labelminus::services::ProjectMergeService::mergedProjectWithSelections(plan, {}, mergedPath);
+        const labelqt::core::Project merged =
+            labelqt::services::ProjectMergeService::mergedProjectWithSelections(plan, {}, mergedPath);
         QCOMPARE(merged.commentLines().size(), 4);
-        QCOMPARE(merged.commentLines().first(), QStringLiteral("# LabelMinusMergeSources v2"));
-        QCOMPARE(merged.commentLines().last(), QStringLiteral("# EndLabelMinusMergeSources"));
+        QCOMPARE(merged.commentLines().first(), QStringLiteral("# LabelQtMergeSources v2"));
+        QCOMPARE(merged.commentLines().last(), QStringLiteral("# EndLabelQtMergeSources"));
         QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"firstImage\":\"001.png\"")));
         QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"lastImage\":\"002.png\"")));
         QVERIFY(merged.commentLines().at(1).contains(QStringLiteral("\"pageCount\":2")));
@@ -257,17 +257,17 @@ private slots:
 
     void projectMergeCreatesConflictForMultipleInvolvedProjects()
     {
-        const QString dirPath = QDir::temp().filePath("labelminus_merge_conflict_test");
+        const QString dirPath = QDir::temp().filePath("labelqt_merge_conflict_test");
         QDir().mkpath(dirPath);
 
-        labelminus::core::Project firstProject;
+        labelqt::core::Project firstProject;
         firstProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        firstProject.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
         firstProject.images().last().labels.append(Label(QStringLiteral("first"), QStringLiteral("框内"), {}));
 
-        labelminus::core::Project secondProject;
+        labelqt::core::Project secondProject;
         secondProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        secondProject.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        secondProject.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
         secondProject.images().last().labels.append(Label(QStringLiteral("second"), QStringLiteral("框外"), {}));
 
         const QString firstPath = QDir(dirPath).filePath("first.txt");
@@ -275,14 +275,14 @@ private slots:
         LabelPlusDocument::saveToFile(firstProject, firstPath);
         LabelPlusDocument::saveToFile(secondProject, secondPath);
 
-        const auto plan = labelminus::services::ProjectMergeService::createPlan({firstPath, secondPath});
+        const auto plan = labelqt::services::ProjectMergeService::createPlan({firstPath, secondPath});
 
         QCOMPARE(plan.conflicts.size(), 1);
         QCOMPARE(plan.conflicts.first().candidates.size(), 2);
 
         const QString mergedPath = QDir(dirPath).filePath("merged.txt");
-        const labelminus::core::Project merged =
-            labelminus::services::ProjectMergeService::mergedProjectWithSelections(plan, {1}, mergedPath);
+        const labelqt::core::Project merged =
+            labelqt::services::ProjectMergeService::mergedProjectWithSelections(plan, {1}, mergedPath);
         QCOMPARE(merged.images().size(), 1);
         QCOMPARE(merged.images().first().labels.first().text(), QStringLiteral("second"));
         QCOMPARE(merged.commentLines().size(), 3);
@@ -295,19 +295,19 @@ private slots:
 
     void projectMergeAppliesFinalPageOrderBeforeSourceComments()
     {
-        const QString dirPath = QDir::temp().filePath("labelminus_merge_page_order_test");
+        const QString dirPath = QDir::temp().filePath("labelqt_merge_page_order_test");
         QDir().mkpath(dirPath);
 
-        labelminus::core::Project firstProject;
+        labelqt::core::Project firstProject;
         firstProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        firstProject.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
         firstProject.images().last().labels.append(Label(QStringLiteral("first"), QStringLiteral("框内"), {}));
-        firstProject.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        firstProject.images().append(labelqt::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
         firstProject.images().last().labels.append(Label(QStringLiteral("second"), QStringLiteral("框内"), {}));
 
-        labelminus::core::Project secondProject;
+        labelqt::core::Project secondProject;
         secondProject.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
-        secondProject.images().append(labelminus::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
+        secondProject.images().append(labelqt::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
         secondProject.images().last().labels.append(Label(QStringLiteral("third"), QStringLiteral("框外"), {}));
 
         const QString firstPath = QDir(dirPath).filePath("first.txt");
@@ -315,10 +315,10 @@ private slots:
         LabelPlusDocument::saveToFile(firstProject, firstPath);
         LabelPlusDocument::saveToFile(secondProject, secondPath);
 
-        const auto plan = labelminus::services::ProjectMergeService::createPlan({firstPath, secondPath});
+        const auto plan = labelqt::services::ProjectMergeService::createPlan({firstPath, secondPath});
         const QString mergedPath = QDir(dirPath).filePath("merged.txt");
-        const labelminus::core::Project merged =
-            labelminus::services::ProjectMergeService::mergedProjectWithSelections(plan, {}, mergedPath, {2, 0, 1});
+        const labelqt::core::Project merged =
+            labelqt::services::ProjectMergeService::mergedProjectWithSelections(plan, {}, mergedPath, {2, 0, 1});
 
         QCOMPARE(merged.images().size(), 3);
         QCOMPARE(merged.images().at(0).name, QStringLiteral("003.png"));
@@ -335,17 +335,17 @@ private slots:
 
     void projectPageOrderServiceReordersImages()
     {
-        labelminus::core::Project project;
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
+        labelqt::core::Project project;
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
 
-        QVERIFY(labelminus::services::ProjectPageOrderService::isValidOrder({2, 0, 1}, 3));
-        QVERIFY(labelminus::services::ProjectPageOrderService::isValidOrder({2, 0}, 3));
-        QVERIFY(!labelminus::services::ProjectPageOrderService::isValidOrder({2, 2, 1}, 3));
-        QVERIFY(labelminus::services::ProjectPageOrderService::isIdentityOrder({0, 1, 2}));
+        QVERIFY(labelqt::services::ProjectPageOrderService::isValidOrder({2, 0, 1}, 3));
+        QVERIFY(labelqt::services::ProjectPageOrderService::isValidOrder({2, 0}, 3));
+        QVERIFY(!labelqt::services::ProjectPageOrderService::isValidOrder({2, 2, 1}, 3));
+        QVERIFY(labelqt::services::ProjectPageOrderService::isIdentityOrder({0, 1, 2}));
 
-        labelminus::services::ProjectPageOrderService::reorderImages(project, {2, 0});
+        labelqt::services::ProjectPageOrderService::reorderImages(project, {2, 0});
         QCOMPARE(project.images().size(), 2);
         QCOMPARE(project.images().at(0).name, QStringLiteral("003.png"));
         QCOMPARE(project.images().at(1).name, QStringLiteral("001.png"));
@@ -353,17 +353,17 @@ private slots:
 
     void labelPlusDocumentPreservesCommentLines()
     {
-        const QString dirPath = QDir::temp().filePath("labelminus_comment_test");
+        const QString dirPath = QDir::temp().filePath("labelqt_comment_test");
         QDir().mkpath(dirPath);
         const QString filePath = QDir(dirPath).filePath("translation.txt");
 
-        labelminus::core::Project project;
+        labelqt::core::Project project;
         project.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
         project.setSourceName(QStringLiteral("source.zip"));
-        project.setCommentLines({QStringLiteral("# LabelMinusMergeSources v1"),
+        project.setCommentLines({QStringLiteral("# LabelQtMergeSources v1"),
                                  QStringLiteral("# {\"image\":\"001.png\",\"sourceIndex\":1}"),
-                                 QStringLiteral("# EndLabelMinusMergeSources")});
-        project.images().append(labelminus::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+                                 QStringLiteral("# EndLabelQtMergeSources")});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
         project.images().last().labels.append(Label(QStringLiteral("text"), QStringLiteral("框内"), {}));
 
         LabelPlusDocument::saveToFile(project, filePath);
@@ -377,7 +377,7 @@ private slots:
 
     void preferencesReadMarkerFloatingPointSizes()
     {
-        const QString dirPath = QDir::temp().filePath("labelminus_preferences_test");
+        const QString dirPath = QDir::temp().filePath("labelqt_preferences_test");
         QDir().mkpath(dirPath);
         const QString filePath = QDir(dirPath).filePath("preference.json");
 
@@ -441,7 +441,7 @@ private slots:
                << "}\n";
         file.close();
 
-        const auto result = labelminus::core::AppPreferences::loadFromFile(filePath);
+        const auto result = labelqt::core::AppPreferences::loadFromFile(filePath);
 
         QVERIFY(result.warnings.isEmpty());
         QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 4.5);
@@ -455,8 +455,8 @@ private slots:
         QCOMPARE(result.preferences.markerTextBubbleFontPointSize(), 9.5);
         QCOMPARE(result.preferences.markerTextBubbleOpacity(), 0.75);
         QCOMPARE(result.preferences.canvasLabelTextEditorOpacity(), 0.6);
-        const labelminus::core::AppPreferencesLoadResult serializedResult =
-            labelminus::core::AppPreferences::loadFromJson(result.preferences.toJsonDocument().toJson());
+        const labelqt::core::AppPreferencesLoadResult serializedResult =
+            labelqt::core::AppPreferences::loadFromJson(result.preferences.toJsonDocument().toJson());
         QVERIFY(serializedResult.warnings.isEmpty());
         QCOMPARE(serializedResult.preferences.markerTextBubbleOpacity(), 0.75);
         QCOMPARE(serializedResult.preferences.canvasLabelTextEditorOpacity(), 0.6);
@@ -484,12 +484,28 @@ private slots:
         QCOMPARE(result.preferences.groupStyles().at(0).groupColor, QColor(QStringLiteral("#ff3835")));
         QCOMPARE(result.preferences.groupStyles().at(1).markerDiameter, 5.5);
         QCOMPARE(result.preferences.groupStyles().at(1).fontPointSize, 3.5);
-        QVERIFY(result.preferences.groupStyles().at(1).markerShape == labelminus::core::MarkerShape::Square);
+        QVERIFY(result.preferences.groupStyles().at(1).markerShape == labelqt::core::MarkerShape::Square);
+    }
+
+    void appPreferencesUsesDefaultGroupStyles()
+    {
+        const labelqt::core::AppPreferencesLoadResult result = labelqt::core::AppPreferences::loadFromJson("{}");
+
+        QVERIFY(result.warnings.isEmpty());
+        QCOMPARE(result.preferences.groupStyles().size(), 3);
+        QCOMPARE(result.preferences.groupStyles().at(0).groupColor, QColor(QStringLiteral("#ef4444")));
+        QCOMPARE(result.preferences.groupStyles().at(0).markerDiameter, 20.0);
+        QCOMPARE(result.preferences.groupStyles().at(0).fontPointSize, 10.0);
+        QVERIFY(result.preferences.groupStyles().at(0).markerShape == labelqt::core::MarkerShape::Circle);
+        QCOMPARE(result.preferences.groupStyles().at(1).groupColor, QColor(QStringLiteral("#2563eb")));
+        QVERIFY(result.preferences.groupStyles().at(1).markerShape == labelqt::core::MarkerShape::Square);
+        QCOMPARE(result.preferences.groupStyles().at(2).groupColor, QColor(QStringLiteral("#10b981")));
+        QVERIFY(result.preferences.groupStyles().at(2).markerShape == labelqt::core::MarkerShape::Circle);
     }
 
     void preferencesWarnOnInvalidJson()
     {
-        const QString dirPath = QDir::temp().filePath("labelminus_preferences_test");
+        const QString dirPath = QDir::temp().filePath("labelqt_preferences_test");
         QDir().mkpath(dirPath);
         const QString filePath = QDir(dirPath).filePath("broken-preference.json");
 
@@ -498,7 +514,7 @@ private slots:
         file.write("{");
         file.close();
 
-        const auto result = labelminus::core::AppPreferences::loadFromFile(filePath);
+        const auto result = labelqt::core::AppPreferences::loadFromFile(filePath);
 
         QVERIFY(!result.warnings.isEmpty());
         QCOMPARE(result.preferences.labelMarkerDiameterPixels(), 20.0);
@@ -527,6 +543,8 @@ private slots:
                  QStringLiteral("Ctrl+Return"));
         QCOMPARE(result.preferences.backupPath(), QStringLiteral("bak"));
         QCOMPARE(result.preferences.backupIntervalSeconds(), 60);
+        QCOMPARE(result.preferences.groupStyles().size(), 3);
+        QCOMPARE(result.preferences.groupStyles().at(0).groupColor, QColor(QStringLiteral("#ef4444")));
     }
 };
 

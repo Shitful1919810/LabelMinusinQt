@@ -1,6 +1,6 @@
-# LabelMinus 自动化脚本开发指南
+# LabelQt 自动化脚本开发指南
 
-LabelMinus 的自动化脚本采用“外部 Python 进程 + JSON 文件交换”的模式。脚本不嵌入主程序，也不直接修改 `.txt` 工程文件；它读取主程序导出的 `input.json`，再写回 `output.json`。如果需要修改工程，脚本输出结构化 `operations`，由 C++ 侧校验、应用并注册撤销/重做。
+LabelQt 的自动化脚本采用“外部 Python 进程 + JSON 文件交换”的模式。脚本不嵌入主程序，也不直接修改 `.txt` 工程文件；它读取主程序导出的 `input.json`，再写回 `output.json`。如果需要修改工程，脚本输出结构化 `operations`，由 C++ 侧校验、应用并注册撤销/重做。
 
 ## 目录结构
 
@@ -28,7 +28,7 @@ scripts/official/my_tool/
 官方提供一个轻量辅助库：
 
 ```text
-scripts/official/sdk/labelminus_automation.py
+scripts/official/sdk/labelqt_automation.py
 ```
 
 它不是独立 Python 包，不需要安装。官方示例脚本通过相对路径导入：
@@ -38,7 +38,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelminus_automation import AutomationContext
+from labelqt_automation import AutomationContext
 ```
 
 脚本通常先创建 `AutomationContext`，再通过属性和方法读取工程快照、构造操作并写出结果：
@@ -219,7 +219,7 @@ python run.py --input /tmp/input.json --output /tmp/output.json
   "label": "DeepSeek API key",
   "type": "secret",
   "secretKey": "deepseekApiKey",
-  "service": "LabelMinus",
+  "service": "LabelQt",
   "account": "deepseek_api_key",
   "environment": "DEEPSEEK_API_KEY"
 }

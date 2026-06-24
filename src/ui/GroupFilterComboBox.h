@@ -15,7 +15,7 @@ class GroupFilterComboBox final : public QToolButton {
 public:
     explicit GroupFilterComboBox(QWidget* parent = nullptr);
 
-    void setGroups(const QStringList& groups, QVector<labelminus::core::LabelGroupStyle> groupStyles = {});
+    void setGroups(const QStringList& groups, QVector<labelqt::core::LabelGroupStyle> groupStyles = {});
     QStringList selectedGroups() const;
     bool isAllSelected() const;
 
@@ -31,7 +31,7 @@ private:
     QColor colorForGroup(const QString& group) const;
 
     QStringList m_groups;
-    QVector<labelminus::core::LabelGroupStyle> m_groupStyles;
+    QVector<labelqt::core::LabelGroupStyle> m_groupStyles;
     QSet<QString> m_selectedGroups;
     QMenu m_menu;
 };

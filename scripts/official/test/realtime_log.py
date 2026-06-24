@@ -5,12 +5,12 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelminus_automation import AutomationContext
+from labelqt_automation import AutomationContext
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Emit stdout and stderr lines for automation log testing.")
-    parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
+    parser.add_argument("--input", required=True, help="Path to the LabelQt automation input JSON.")
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
     ctx = AutomationContext.from_file(args.input)

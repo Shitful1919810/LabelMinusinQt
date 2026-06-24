@@ -9,13 +9,13 @@ endif()
 file(REMOVE_RECURSE "${DEST_DIR}")
 file(MAKE_DIRECTORY "${DEST_DIR}")
 
-file(GLOB_RECURSE LABELMINUS_SCRIPT_ENTRIES
+file(GLOB_RECURSE LABELQT_SCRIPT_ENTRIES
     RELATIVE "${SOURCE_DIR}"
     LIST_DIRECTORIES true
     "${SOURCE_DIR}/*"
 )
 
-foreach(entry IN LISTS LABELMINUS_SCRIPT_ENTRIES)
+foreach(entry IN LISTS LABELQT_SCRIPT_ENTRIES)
     if(entry MATCHES "(^|/)__pycache__(/|$)"
         OR entry MATCHES "\\.py[co]$"
         OR entry MATCHES "(^|/)config\\.json$")

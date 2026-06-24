@@ -18,7 +18,7 @@
 namespace {
 constexpr auto pathEditorObjectName = "automationParameterLineEdit";
 
-void applyGroupStyles(QComboBox* comboBox, const QVector<labelminus::core::LabelGroupStyle>& groupStyles)
+void applyGroupStyles(QComboBox* comboBox, const QVector<labelqt::core::LabelGroupStyle>& groupStyles)
 {
     for (int i = 0; i < comboBox->count() && i < groupStyles.size(); ++i) {
         const QColor color = groupStyles.at(i).groupColor;
@@ -67,8 +67,8 @@ QWidget* createPathEditor(QWidget* parent, const QString& defaultValue, const QS
     return container;
 }
 
-QWidget* createEditor(QWidget* parent, const labelminus::services::AutomationParameter& parameter,
-                      const QStringList& groups, const QVector<labelminus::core::LabelGroupStyle>& groupStyles)
+QWidget* createEditor(QWidget* parent, const labelqt::services::AutomationParameter& parameter,
+                      const QStringList& groups, const QVector<labelqt::core::LabelGroupStyle>& groupStyles)
 {
     const QString parameterType = parameter.type.toLower();
     if (parameterType == QStringLiteral("group")) {
@@ -127,7 +127,7 @@ QWidget* createEditor(QWidget* parent, const labelminus::services::AutomationPar
 }
 
 AutomationParameterDialog::Values
-collectValues(const QVector<QPair<labelminus::services::AutomationParameter, QWidget*>>& editors)
+collectValues(const QVector<QPair<labelqt::services::AutomationParameter, QWidget*>>& editors)
 {
     AutomationParameterDialog::Values values;
     for (const auto& [parameter, editor] : editors) {
@@ -161,9 +161,9 @@ collectValues(const QVector<QPair<labelminus::services::AutomationParameter, QWi
 } // namespace
 
 std::optional<AutomationParameterDialog::Values>
-AutomationParameterDialog::getValues(QWidget* parent, const labelminus::services::AutomationScript& script,
+AutomationParameterDialog::getValues(QWidget* parent, const labelqt::services::AutomationScript& script,
                                      const QStringList& groups,
-                                     const QVector<labelminus::core::LabelGroupStyle>& groupStyles)
+                                     const QVector<labelqt::core::LabelGroupStyle>& groupStyles)
 {
     if (script.parameters.isEmpty()) {
         return Values{};
@@ -175,9 +175,9 @@ AutomationParameterDialog::getValues(QWidget* parent, const labelminus::services
     auto* formLayout = new QFormLayout;
     layout->addLayout(formLayout);
 
-    QVector<QPair<labelminus::services::AutomationParameter, QWidget*>> editors;
+    QVector<QPair<labelqt::services::AutomationParameter, QWidget*>> editors;
     editors.reserve(script.parameters.size());
-    for (const labelminus::services::AutomationParameter& parameter : script.parameters) {
+    for (const labelqt::services::AutomationParameter& parameter : script.parameters) {
         QWidget* editor = createEditor(&dialog, parameter, groups, groupStyles);
         formLayout->addRow(parameter.label, editor);
         editors.append({parameter, editor});

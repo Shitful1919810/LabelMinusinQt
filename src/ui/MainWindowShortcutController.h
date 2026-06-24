@@ -23,13 +23,13 @@ public:
 
     explicit MainWindowShortcutController(QWidget* window, QObject* parent = nullptr);
 
-    void setPreferences(labelminus::core::AppPreferences preferences);
+    void setPreferences(labelqt::core::AppPreferences preferences);
     void setCallbacks(Callbacks callbacks);
     bool handleGlobalShortcut(QObject* watched, QEvent* event);
     bool handleLabelViewShortcut(QEvent* event);
 
 private:
     QWidget* m_window{nullptr};
-    labelminus::core::AppPreferences m_preferences;
+    labelqt::core::AppPreferences m_preferences;
     Callbacks m_callbacks;
 };

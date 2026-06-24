@@ -10,10 +10,10 @@
 #include <utility>
 
 namespace {
-const char* pageOrderMimeType = "application/x-labelminus-page-order-rows";
+const char* pageOrderMimeType = "application/x-labelqt-page-order-rows";
 }
 
-PageOrderListModel::PageOrderListModel(const labelminus::core::Project& project, QObject* parent)
+PageOrderListModel::PageOrderListModel(const labelqt::core::Project& project, QObject* parent)
     : QAbstractTableModel(parent), m_project(project)
 {
     m_order.reserve(project.images().size());
@@ -139,7 +139,7 @@ QVariant PageOrderListModel::data(const QModelIndex& index, int role) const
         return {};
     }
 
-    const labelminus::core::ImageEntry& image = m_project.images().at(sourceIndex);
+    const labelqt::core::ImageEntry& image = m_project.images().at(sourceIndex);
     const QString pageName = image.name.isEmpty() ? image.path : image.name;
     switch (role) {
     case Qt::DisplayRole:

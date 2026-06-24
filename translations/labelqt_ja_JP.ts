@@ -1,102 +1,102 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.1" language="zh_CN">
+<TS version="2.1" language="ja_JP">
 <context>
     <name>AutomationController</name>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="73"/>
         <source>Automation script is no longer available: %1</source>
-        <translation>自动化脚本已不可用：%1</translation>
+        <translation>自動化スクリプトは利用できなくなりました: %1</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="84"/>
         <source>Canceling automation script...</source>
-        <translation>正在中断自动化脚本...</translation>
+        <translation>自動化スクリプトをキャンセルしています...</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="94"/>
         <source>Cancel Running Script</source>
-        <translation>中断正在运行的脚本</translation>
+        <translation>実行中のスクリプトをキャンセル</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="101"/>
         <source>No automation scripts found</source>
-        <translation>未找到自动化脚本</translation>
+        <translation>自動化スクリプトが見つかりません</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="149"/>
         <source>Refresh Scripts</source>
-        <translation>刷新脚本</translation>
+        <translation>スクリプトを再読み込み</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="196"/>
         <location filename="../src/ui/AutomationController.cpp" line="214"/>
         <location filename="../src/ui/AutomationController.cpp" line="220"/>
         <source>Automation</source>
-        <translation>自动化</translation>
+        <translation>自動化</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="196"/>
         <source>Open a project before running automation scripts.</source>
-        <translation>请先打开工程，再运行自动化脚本。</translation>
+        <translation>自動化スクリプトを実行する前にプロジェクトを開いてください。</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="224"/>
         <source>Running automation script: %1</source>
-        <translation>正在运行自动化脚本：%1</translation>
+        <translation>自動化スクリプトを実行中: %1</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="278"/>
         <source>Automation script was canceled.</source>
-        <translation>自动化脚本已被中断。</translation>
+        <translation>自動化スクリプトをキャンセルしました。</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="280"/>
         <source>The automation script failed.</source>
-        <translation>自动化脚本运行失败。</translation>
+        <translation>自動化スクリプトが失敗しました。</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="285"/>
         <source>Automation failed</source>
-        <translation>自动化失败</translation>
+        <translation>自動化に失敗</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="287"/>
         <source>Automation script failed: %1</source>
-        <translation>自动化脚本失败：%1</translation>
+        <translation>自動化スクリプトに失敗: %1</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationController.cpp" line="304"/>
         <source>Automation script finished: %1</source>
-        <translation>自动化脚本已完成：%1</translation>
+        <translation>自動化スクリプトが完了: %1</translation>
     </message>
 </context>
 <context>
     <name>AutomationParameterDialog</name>
     <message>
+        <location filename="../src/ui/AutomationParameterDialog.cpp" line="173"/>
+        <source>Automation Parameters</source>
+        <translation>自動化パラメーター</translation>
+    </message>
+    <message>
         <location filename="../src/ui/AutomationParameterDialog.cpp" line="47"/>
         <source>Browse...</source>
-        <translation>浏览...</translation>
+        <translation>参照...</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationParameterDialog.cpp" line="56"/>
         <source>Choose Directory</source>
-        <translation>选择目录</translation>
+        <translation>フォルダーを選択</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationParameterDialog.cpp" line="60"/>
         <source>Choose File</source>
-        <translation>选择文件</translation>
+        <translation>ファイルを選択</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationParameterDialog.cpp" line="115"/>
         <source>Leave empty to keep the stored secret</source>
-        <translation>留空以保留已保存的密钥</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/AutomationParameterDialog.cpp" line="173"/>
-        <source>Automation Parameters</source>
-        <translation>自动化参数</translation>
+        <translation>空欄のままにすると保存済みのシークレットを保持します</translation>
     </message>
 </context>
 <context>
@@ -104,43 +104,43 @@
     <message>
         <location filename="../src/ui/AutomationRunDialog.cpp" line="23"/>
         <source>Automation Running</source>
-        <translation>自动化运行中</translation>
+        <translation>自動化実行中</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationRunDialog.cpp" line="28"/>
         <source>Running automation script: %1</source>
-        <translation>正在运行自动化脚本：%1</translation>
+        <translation>自動化スクリプトを実行中: %1</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationRunDialog.cpp" line="38"/>
         <source>Cancel</source>
-        <translation>取消</translation>
+        <translation>キャンセル</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationRunDialog.cpp" line="39"/>
         <source>Close</source>
-        <translation>关闭</translation>
+        <translation>閉じる</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationRunDialog.cpp" line="63"/>
         <source>Automation script finished.</source>
-        <translation>自动化脚本已完成。</translation>
+        <translation>自動化スクリプトが完了しました。</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationRunDialog.cpp" line="63"/>
         <source>Automation script failed.</source>
-        <translation>自动化脚本失败。</translation>
+        <translation>自動化スクリプトが失敗しました。</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationRunDialog.cpp" line="71"/>
         <source>Canceling automation script...</source>
-        <translation>正在中断自动化脚本...</translation>
+        <translation>自動化スクリプトをキャンセルしています...</translation>
     </message>
     <message>
         <location filename="../src/ui/AutomationRunDialog.cpp" line="93"/>
         <source>[Large automation log chunk was truncated.]
 </source>
-        <translation>[大段自动化日志已被截断。]
+        <translation>[大きな自動化ログのチャンクを切り詰めました。]
 </translation>
     </message>
 </context>
@@ -148,51 +148,51 @@
     <name>AutomationService</name>
     <message>
         <location filename="../src/services/AutomationService.cpp" line="236"/>
-        <source>Python was not found. Install Python 3 or set LABELMINUS_PYTHON to the Python executable path.
+        <source>Python was not found. Install Python 3 or set LABELQT_PYTHON to the Python executable path.
 
 Tried: %1
 Last error: %2</source>
-        <translation>未找到 Python。请安装 Python 3，或将 LABELMINUS_PYTHON 设置为 Python 可执行文件路径。
+        <translation>Python が見つかりません。Python 3 をインストールするか、環境変数 LABELQT_PYTHON に Python 実行ファイルのパスを設定してください。
 
-已尝试：%1
-最后错误：%2</translation>
+試行: %1
+最後のエラー: %2</translation>
     </message>
     <message>
         <location filename="../src/services/AutomationService.cpp" line="373"/>
         <source>[Earlier automation log output was truncated.]
 </source>
-        <translation>[较早的自动化日志输出已被截断。]
+        <translation>[以前の自動化ログ出力を切り詰めました。]
 </translation>
     </message>
     <message>
         <location filename="../src/services/AutomationService.cpp" line="386"/>
         <source>Skipped automation script %1: missing entry.</source>
-        <translation>已跳过自动化脚本 %1：缺少 entry。</translation>
+        <translation>自動化スクリプト %1 をスキップしました: entry がありません。</translation>
     </message>
     <message>
         <location filename="../src/services/AutomationService.cpp" line="397"/>
         <source>Skipped automation script %1: entry file does not exist.</source>
-        <translation>已跳过自动化脚本 %1：入口文件不存在。</translation>
+        <translation>自動化スクリプト %1 をスキップしました: エントリーファイルが存在しません。</translation>
     </message>
     <message>
         <location filename="../src/services/AutomationService.cpp" line="447"/>
         <source>Skipped automation script directory %1: %2</source>
-        <translation>已跳过自动化脚本目录 %1：%2</translation>
+        <translation>自動化スクリプトディレクトリ %1 をスキップしました: %2</translation>
     </message>
     <message>
         <location filename="../src/services/AutomationService.cpp" line="498"/>
         <source>Failed to store automation secret %1: %2</source>
-        <translation>无法保存自动化密钥 %1：%2</translation>
+        <translation>自動化シークレット %1 を保存できませんでした: %2</translation>
     </message>
     <message>
         <location filename="../src/services/AutomationService.cpp" line="518"/>
         <source>Failed to read automation secret %1: %2</source>
-        <translation>无法读取自动化密钥 %1：%2</translation>
+        <translation>自動化シークレット %1 を読み込めませんでした: %2</translation>
     </message>
     <message>
         <location filename="../src/services/AutomationService.cpp" line="527"/>
         <source>Automation secret %1 is not configured. Run the script&apos;s configuration first.</source>
-        <translation>尚未配置自动化密钥 %1。请先运行该脚本的配置项。</translation>
+        <translation>自動化シークレット %1 が設定されていません。先にこのスクリプトの設定を実行してください。</translation>
     </message>
 </context>
 <context>
@@ -200,28 +200,28 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/GroupFilterComboBox.cpp" line="50"/>
         <source>Select All</source>
-        <translation>全选</translation>
+        <translation>すべて選択</translation>
     </message>
     <message>
         <location filename="../src/ui/GroupFilterComboBox.cpp" line="53"/>
         <source>Clear</source>
-        <translation>清空</translation>
+        <translation>クリア</translation>
     </message>
     <message>
         <location filename="../src/ui/GroupFilterComboBox.cpp" line="117"/>
         <source>No groups</source>
-        <translation>无分组</translation>
+        <translation>グループなし</translation>
     </message>
     <message>
         <location filename="../src/ui/GroupFilterComboBox.cpp" line="120"/>
         <source>All groups</source>
-        <translation>全部分组</translation>
+        <translation>すべてのグループ</translation>
     </message>
     <message numerus="yes">
         <location filename="../src/ui/GroupFilterComboBox.cpp" line="126"/>
         <source>%n group(s)</source>
         <translation>
-            <numerusform>%n 个分组</numerusform>
+            <numerusform>%n グループ</numerusform>
         </translation>
     </message>
 </context>
@@ -230,12 +230,12 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/LabelTableModel.cpp" line="298"/>
         <source>Text</source>
-        <translation>文本</translation>
+        <translation>テキスト</translation>
     </message>
     <message>
         <location filename="../src/ui/LabelTableModel.cpp" line="300"/>
         <source>Group</source>
-        <translation>类别</translation>
+        <translation>グループ</translation>
     </message>
 </context>
 <context>
@@ -243,208 +243,208 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="326"/>
         <source>&amp;New Project...</source>
-        <translation>新建工程(&amp;N)...</translation>
+        <translation>新規プロジェクト(&amp;N)...</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="330"/>
         <source>&amp;Open LabelPlus Text...</source>
-        <translation>打开 LabelPlus 文本(&amp;O)...</translation>
+        <translation>LabelPlus テキストを開く(&amp;O)...</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="334"/>
         <source>&amp;Merge Projects...</source>
-        <translation>合并工程(&amp;M)...</translation>
+        <translation>プロジェクトをマージ(&amp;M)...</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="340"/>
         <source>&amp;Save</source>
-        <translation>保存(&amp;S)</translation>
+        <translation>上書き保存(&amp;S)</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="344"/>
         <source>Save &amp;As...</source>
-        <translation>另存为(&amp;A)...</translation>
+        <translation>名前を付けて保存(&amp;A)...</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="348"/>
         <source>&amp;Undo</source>
-        <translation>撤销(&amp;U)</translation>
+        <translation>元に戻す(&amp;U)</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="351"/>
         <source>&amp;Redo</source>
-        <translation>重做(&amp;R)</translation>
+        <translation>やり直し(&amp;R)</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="364"/>
         <source>&amp;Preferences...</source>
-        <translation>偏好设置(&amp;P)...</translation>
+        <translation>設定(&amp;P)...</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="368"/>
         <source>&amp;Quit</source>
-        <translation>退出(&amp;Q)</translation>
+        <translation>終了(&amp;Q)</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="378"/>
         <source>&amp;File</source>
-        <translation>文件(&amp;F)</translation>
+        <translation>ファイル(&amp;F)</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="392"/>
         <source>&amp;Edit</source>
-        <translation>编辑(&amp;E)</translation>
+        <translation>編集(&amp;E)</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="398"/>
         <source>&amp;Automation</source>
-        <translation>自动化(&amp;A)</translation>
+        <translation>自動化(&amp;A)</translation>
     </message>
     <message numerus="yes">
         <location filename="../src/ui/MainWindow.cpp" line="823"/>
         <source>Skipped %n invalid automation script(s): %1</source>
         <translation>
-            <numerusform>已跳过 %n 个无效自动化脚本：%1</numerusform>
+            <numerusform>%n 件の無効な自動化スクリプトをスキップしました: %1</numerusform>
         </translation>
     </message>
     <message>
         <source>No automation scripts found</source>
-        <translation type="vanished">未找到自动化脚本</translation>
+        <translation type="vanished">自動化スクリプトが見つかりません</translation>
     </message>
     <message>
         <source>Cancel Running Script</source>
-        <translation type="vanished">中断正在运行的脚本</translation>
+        <translation type="vanished">実行中のスクリプトをキャンセル</translation>
     </message>
     <message>
         <source>Refresh Scripts</source>
-        <translation type="vanished">刷新脚本</translation>
+        <translation type="vanished">スクリプトを再読み込み</translation>
     </message>
     <message>
         <source>Automation</source>
-        <translation type="vanished">自动化</translation>
+        <translation type="vanished">自動化</translation>
     </message>
     <message>
         <source>Open a project before running automation scripts.</source>
-        <translation type="vanished">请先打开工程，再运行自动化脚本。</translation>
+        <translation type="vanished">自動化スクリプトを実行する前にプロジェクトを開いてください。</translation>
     </message>
     <message>
         <source>Running automation script: %1</source>
-        <translation type="vanished">正在运行自动化脚本：%1</translation>
+        <translation type="vanished">自動化スクリプトを実行中: %1</translation>
     </message>
     <message>
         <source>Automation failed</source>
-        <translation type="vanished">自动化失败</translation>
+        <translation type="vanished">自動化に失敗</translation>
     </message>
     <message>
         <source>The automation script failed.</source>
-        <translation type="vanished">自动化脚本运行失败。</translation>
+        <translation type="vanished">自動化スクリプトが失敗しました。</translation>
     </message>
     <message>
         <source>Automation script failed: %1</source>
-        <translation type="vanished">自动化脚本失败：%1</translation>
+        <translation type="vanished">自動化スクリプトに失敗: %1</translation>
     </message>
     <message>
         <source>Automation script finished: %1</source>
-        <translation type="vanished">自动化脚本已完成：%1</translation>
+        <translation type="vanished">自動化スクリプトが完了: %1</translation>
     </message>
     <message>
         <source>Canceling automation script...</source>
-        <translation type="vanished">正在中断自动化脚本...</translation>
+        <translation type="vanished">自動化スクリプトをキャンセルしています...</translation>
     </message>
     <message>
         <source>Automation script was canceled.</source>
-        <translation type="vanished">自动化脚本已被中断。</translation>
+        <translation type="vanished">自動化スクリプトをキャンセルしました。</translation>
     </message>
     <message>
         <source>Automation script is no longer available: %1</source>
-        <translation type="vanished">自动化脚本已不可用：%1</translation>
+        <translation type="vanished">自動化スクリプトは利用できなくなりました: %1</translation>
     </message>
     <message>
         <source>Automation Parameters</source>
-        <translation type="vanished">自动化参数</translation>
+        <translation type="vanished">自動化パラメータ</translation>
     </message>
     <message>
         <source>Browse...</source>
-        <translation type="vanished">浏览...</translation>
+        <translation type="vanished">参照...</translation>
     </message>
     <message>
         <source>Choose Directory</source>
-        <translation type="vanished">选择目录</translation>
+        <translation type="vanished">フォルダを選択</translation>
     </message>
     <message>
         <source>Choose File</source>
-        <translation type="vanished">选择文件</translation>
+        <translation type="vanished">ファイルを選択</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="846"/>
         <source>Run automation script</source>
-        <translation>运行自动化脚本</translation>
+        <translation>自動化スクリプトを実行</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="846"/>
         <location filename="../src/ui/MainWindow.cpp" line="847"/>
         <source>Automation script %1</source>
-        <translation>自动化脚本 %1</translation>
+        <translation>自動化スクリプト %1</translation>
     </message>
     <message>
         <source>Undo automation: %1</source>
-        <translation type="vanished">撤销自动化：%1</translation>
+        <translation type="vanished">自動化を元に戻す: %1</translation>
     </message>
     <message>
         <source>Redo automation: %1</source>
-        <translation type="vanished">重做自动化：%1</translation>
+        <translation type="vanished">自動化をやり直し: %1</translation>
     </message>
     <message numerus="yes">
         <location filename="../src/ui/MainWindow.cpp" line="849"/>
         <source>Automation applied %n change(s).</source>
         <translation>
-            <numerusform>自动化已应用 %n 处修改。</numerusform>
+            <numerusform>自動化により %n 件の変更を適用しました。</numerusform>
         </translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="382"/>
         <source>Recent Projects</source>
-        <translation>最近打开的工程</translation>
+        <translation>最近使用したプロジェクト</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="428"/>
         <source>Zoom</source>
-        <translation>缩放</translation>
+        <translation>ズーム</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="465"/>
         <source>Insert group</source>
-        <translation>插入分组</translation>
+        <translation>挿入先グループ</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="436"/>
         <source>Label mode</source>
-        <translation>标签模式</translation>
+        <translation>ラベルモード</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="437"/>
         <source>Selection mode</source>
-        <translation>选区模式</translation>
+        <translation>範囲選択モード</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="471"/>
         <source>Previous</source>
-        <translation>上一页</translation>
+        <translation>前のページ</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="472"/>
         <source>Next</source>
-        <translation>下一页</translation>
+        <translation>次のページ</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="354"/>
         <source>Previous page</source>
-        <translation>上一页</translation>
+        <translation>前のページ</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="359"/>
         <source>Next page</source>
-        <translation>下一页</translation>
+        <translation>次のページ</translation>
     </message>
     <message>
         <source>+</source>
@@ -459,83 +459,83 @@ Last error: %2</source>
         <location filename="../src/ui/MainWindow.cpp" line="459"/>
         <location filename="../src/ui/MainWindow.cpp" line="1012"/>
         <source>Add group</source>
-        <translation>新增分组</translation>
+        <translation>グループを追加</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="214"/>
         <location filename="../src/ui/MainWindow.cpp" line="1063"/>
         <source>Remove group</source>
-        <translation>删除分组</translation>
+        <translation>グループを削除</translation>
     </message>
     <message numerus="yes">
         <location filename="../src/ui/MainWindow.cpp" line="1066"/>
         <source>Do you want to remove the %1 group? %n label(s) in this group will be moved to %2.</source>
         <translation>
-            <numerusform>是否要删除 %1 类别？此类别下的 %n 条 label 将移动到 %2。</numerusform>
+            <numerusform>グループ「%1」を削除しますか？このグループの %n 件のラベルは %2 に移動されます。</numerusform>
         </translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="460"/>
         <source>Remove selected group</source>
-        <translation>删除当前分组</translation>
+        <translation>選択中のグループを削除</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="490"/>
         <source>Group</source>
-        <translation>分组</translation>
+        <translation>グループ</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="550"/>
         <source>Label group</source>
-        <translation>标签分组</translation>
+        <translation>ラベルのグループ</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="556"/>
         <source>Selected label text</source>
-        <translation>当前标签文本</translation>
+        <translation>選択中ラベルのテキスト</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="696"/>
         <source>Open LabelPlus text</source>
-        <translation>打开 LabelPlus 文本</translation>
+        <translation>LabelPlus テキストを開く</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="709"/>
         <source>Select LabelPlus projects to merge</source>
-        <translation>选择要合并的 LabelPlus 工程</translation>
+        <translation>結合する LabelPlus プロジェクトを選択</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="722"/>
         <location filename="../src/ui/MainWindow.cpp" line="777"/>
         <source>Merge failed</source>
-        <translation>合并失败</translation>
+        <translation>結合に失敗しました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="727"/>
         <location filename="../src/ui/MainWindow.cpp" line="734"/>
         <source>Merge Projects</source>
-        <translation>合并工程</translation>
+        <translation>プロジェクトをマージ</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="727"/>
         <source>No image pages were found in the selected projects.</source>
-        <translation>选中的工程中没有找到图片页面。</translation>
+        <translation>選択したプロジェクトに画像ページが見つかりません。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="735"/>
         <source>No page conflicts were found. The selected projects can be merged directly.</source>
-        <translation>没有发现页面冲突。选中的工程可以直接合并。</translation>
+        <translation>ページの競合はありません。選択したプロジェクトはそのままマージできます。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="757"/>
         <source>Save merged LabelPlus text</source>
-        <translation>保存合并后的 LabelPlus 文本</translation>
+        <translation>マージ後の LabelPlus テキストを保存</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="783"/>
         <location filename="../src/ui/MainWindow.cpp" line="787"/>
         <source>Merged project saved to %1</source>
-        <translation>合并后的工程已保存到 %1</translation>
+        <translation>マージ後のプロジェクトを %1 に保存しました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="697"/>
@@ -543,291 +543,291 @@ Last error: %2</source>
         <location filename="../src/ui/MainWindow.cpp" line="759"/>
         <location filename="../src/ui/MainWindow.cpp" line="986"/>
         <source>LabelPlus text (*.txt);;All files (*)</source>
-        <translation>LabelPlus 文本 (*.txt);;所有文件 (*)</translation>
+        <translation>LabelPlus テキスト (*.txt);;すべてのファイル (*)</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="647"/>
         <source>Select image folder</source>
-        <translation>选择图片文件夹</translation>
+        <translation>画像フォルダを選択</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="674"/>
         <location filename="../src/ui/MainWindow.cpp" line="678"/>
         <source>New project failed</source>
-        <translation>新建工程失败</translation>
+        <translation>新規プロジェクトの作成に失敗しました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="674"/>
         <source>No supported image files were found in this folder.</source>
-        <translation>该文件夹中没有找到支持的图片文件。</translation>
+        <translation>このフォルダには対応している画像ファイルが見つかりません。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="653"/>
         <source>New Translation</source>
-        <translation>新建翻译</translation>
+        <translation>新規翻訳</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="658"/>
         <source>Project file already exists</source>
-        <translation>工程文件已存在</translation>
+        <translation>プロジェクトファイルが既に存在します</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="659"/>
         <source>%1 already exists. Create the project with the next available name instead?</source>
-        <translation>%1 已存在。是否改用下一个可用名称创建工程？</translation>
+        <translation>%1 は既に存在します。代わりに次の利用可能な名前でプロジェクトを作成しますか？</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="662"/>
         <source>Try another name</source>
-        <translation>尝试其他名称</translation>
+        <translation>別の名前を使う</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="663"/>
         <source>Cancel</source>
-        <translation>取消</translation>
+        <translation>キャンセル</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="683"/>
         <source>Created %1</source>
-        <translation>已创建 %1</translation>
+        <translation>%1 を作成しました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="855"/>
         <source>Loaded %1</source>
-        <translation>已加载 %1</translation>
+        <translation>%1 を読み込みました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="869"/>
         <source>Loaded recent project: %1</source>
-        <translation>已加载最近一次工程：%1</translation>
+        <translation>最近使用したプロジェクトを読み込みました: %1</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="889"/>
         <location filename="../src/ui/MainWindow.cpp" line="920"/>
         <source>Open failed</source>
-        <translation>打开失败</translation>
+        <translation>開けませんでした</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="920"/>
         <source>%1 does not exist.</source>
-        <translation>%1 不存在。</translation>
+        <translation>%1 は存在しません。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2551"/>
         <source>No recent projects</source>
-        <translation>无最近工程</translation>
+        <translation>最近使用したプロジェクトはありません</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2562"/>
         <source>%1 (missing)</source>
-        <translation>%1（缺失）</translation>
+        <translation>%1（見つかりません）</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="961"/>
         <location filename="../src/ui/MainWindow.cpp" line="998"/>
         <source>Saved %1</source>
-        <translation>已保存 %1</translation>
+        <translation>%1 を保存しました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="965"/>
         <location filename="../src/ui/MainWindow.cpp" line="1003"/>
         <source>Save failed</source>
-        <translation>保存失败</translation>
+        <translation>保存に失敗しました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="985"/>
         <source>Save LabelPlus text</source>
-        <translation>保存 LabelPlus 文本</translation>
+        <translation>LabelPlus テキストを保存</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="1012"/>
         <source>Group name:</source>
-        <translation>分组名称：</translation>
+        <translation>グループ名:</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="207"/>
         <source>Add label</source>
-        <translation>新增标签</translation>
+        <translation>ラベルを追加</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="208"/>
         <source>Edit label text</source>
-        <translation>编辑标签文本</translation>
+        <translation>ラベルテキストを編集</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="209"/>
         <source>Change label group</source>
-        <translation>修改标签分组</translation>
+        <translation>ラベルのグループを変更</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="210"/>
         <source>Move label</source>
-        <translation>移动标签</translation>
+        <translation>ラベルを移動</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="212"/>
         <source>Reorder labels</source>
-        <translation>调整标签顺序</translation>
+        <translation>ラベルを並べ替え</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="215"/>
         <source>Add %1 %2 label %3</source>
-        <translation>新增 %1 的 %2 标签 %3</translation>
+        <translation>%1 の %2 ラベル %3 を追加</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="216"/>
         <source>Delete %1 %2 label %3</source>
-        <translation>删除 %1 的 %2 标签 %3</translation>
+        <translation>%1 の %2 ラベル %3 を削除</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="217"/>
         <source>Edit %1 %2 label %3</source>
-        <translation>编辑 %1 的 %2 标签 %3</translation>
+        <translation>%1 の %2 ラベル %3 を編集</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="218"/>
         <source>Change %1 %2 label %3</source>
-        <translation>修改 %1 的 %2 标签 %3</translation>
+        <translation>%1 の %2 ラベル %3 を変更</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="219"/>
         <source>Move %1 %2 label %3</source>
-        <translation>移动 %1 的 %2 标签 %3</translation>
+        <translation>%1 の %2 ラベル %3 を移動</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="220"/>
         <source>Reorder labels on %1</source>
-        <translation>调整 %1 的标签顺序</translation>
+        <translation>%1 のラベルを並べ替え</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="221"/>
         <source>Add group %1</source>
-        <translation>新增分组 %1</translation>
+        <translation>グループ %1 を追加</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="222"/>
         <source>Remove group %1</source>
-        <translation>删除分组 %1</translation>
+        <translation>グループ %1 を削除</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="196"/>
         <source>Reorder pages</source>
-        <translation>调整页面顺序</translation>
+        <translation>ページを並べ替え</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="337"/>
         <source>Reorder &amp;Pages...</source>
-        <translation>调整页面顺序(&amp;P)...</translation>
+        <translation>ページを並べ替え(&amp;P)...</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="795"/>
         <source>Reorder Pages</source>
-        <translation>调整页面顺序</translation>
+        <translation>ページの並べ替え</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="795"/>
         <source>There are no pages to reorder.</source>
-        <translation>没有可调整顺序的页面。</translation>
+        <translation>並べ替えるページがありません。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="1615"/>
         <source>Undo:</source>
-        <translation>撤销：</translation>
+        <translation>元に戻す:</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="1626"/>
         <source>Redo:</source>
-        <translation>重做：</translation>
+        <translation>やり直し:</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="211"/>
         <source>Delete labels</source>
-        <translation>删除标签</translation>
+        <translation>ラベルを削除</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="1233"/>
         <source>Delete selected labels</source>
-        <translation>删除选中的标签</translation>
+        <translation>選択中のラベルを削除</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2515"/>
         <source>Unsaved changes</source>
-        <translation>有未保存的修改</translation>
+        <translation>未保存の変更があります</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2515"/>
         <source>The current project has unsaved changes. Do you want to save them?</source>
-        <translation>当前工程有未保存的修改。是否保存？</translation>
+        <translation>現在のプロジェクトには未保存の変更があります。保存しますか？</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="1168"/>
         <source>The insert group is hidden by the current filter.</source>
-        <translation>当前插入分组已被筛选隐藏。</translation>
+        <translation>挿入先グループは現在のフィルターで非表示になっています。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="254"/>
         <source>Ready</source>
-        <translation>就绪</translation>
+        <translation>準備完了</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2317"/>
         <source>Preference warnings</source>
-        <translation>偏好设置警告</translation>
+        <translation>設定の警告</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2254"/>
         <source>Auto backup failed: could not create %1</source>
-        <translation>自动备份失败：无法创建 %1</translation>
+        <translation>自動バックアップ失敗: %1 を作成できません</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2250"/>
         <source>Auto backed up %1</source>
-        <translation>已自动备份 %1</translation>
+        <translation>%1 を自動バックアップしました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2257"/>
         <source>Auto backup failed: %1</source>
-        <translation>自动备份失败：%1</translation>
+        <translation>自動バックアップ失敗: %1</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2372"/>
         <source>Preferences applied</source>
-        <translation>偏好设置已应用</translation>
+        <translation>設定を適用しました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2369"/>
         <source>Language Changed</source>
-        <translation>语言已更改</translation>
+        <translation>言語が変更されました</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2370"/>
         <source>The language change will take effect after restarting the application.</source>
-        <translation>语言更改将在重启应用程序后生效。</translation>
+        <translation>言語の変更はアプリケーションの再起動後に反映されます。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2381"/>
         <source>Could not read preference.json; using default preferences.</source>
-        <translation>无法读取 preference.json；将使用默认偏好设置。</translation>
+        <translation>preference.json を読み込めません。デフォルト設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2383"/>
         <source>preference.json is not valid JSON: %1; using default preferences.</source>
-        <translation>preference.json 不是有效 JSON：%1；将使用默认偏好设置。</translation>
+        <translation>preference.json が有効な JSON ではありません: %1。デフォルト設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2385"/>
         <source>preference.json must contain a JSON object; using default preferences.</source>
-        <translation>preference.json 必须包含一个 JSON 对象；将使用默认偏好设置。</translation>
+        <translation>preference.json は JSON オブジェクトである必要があります。デフォルト設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2387"/>
         <source>appearance must be a JSON object; using default appearance preferences.</source>
-        <translation>appearance 必须是 JSON 对象；将使用默认外观偏好设置。</translation>
+        <translation>appearance は JSON オブジェクトである必要があります。デフォルトの外観設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2403"/>
         <source>labelMarker must be a JSON object; using default marker preferences.</source>
-        <translation>labelMarker 必须是 JSON 对象；将使用默认标记偏好设置。</translation>
+        <translation>labelMarker は JSON オブジェクトである必要があります。デフォルトのマーカー設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2405"/>
@@ -835,12 +835,12 @@ Last error: %2</source>
         <location filename="../src/ui/MainWindow.cpp" line="2453"/>
         <location filename="../src/ui/MainWindow.cpp" line="2455"/>
         <source>%1 must be a positive number; using the default value.</source>
-        <translation>%1 必须是正数；将使用默认值。</translation>
+        <translation>%1 は正の数値である必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2409"/>
         <source>labelTable must be a JSON object; using default label table preferences.</source>
-        <translation>labelTable 必须是 JSON 对象；将使用默认标签表格偏好设置。</translation>
+        <translation>labelTable は JSON オブジェクトである必要があります。デフォルトのラベルテーブル設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2411"/>
@@ -848,22 +848,22 @@ Last error: %2</source>
         <location filename="../src/ui/MainWindow.cpp" line="2476"/>
         <location filename="../src/ui/MainWindow.cpp" line="2478"/>
         <source>%1 must be a positive integer; using the default value.</source>
-        <translation>%1 必须是正整数；将使用默认值。</translation>
+        <translation>%1 は正の整数である必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2421"/>
         <source>labelTextEditor must be a JSON object; using default text editor preferences.</source>
-        <translation>labelTextEditor 必须是 JSON 对象；将使用默认文本编辑器偏好设置。</translation>
+        <translation>labelTextEditor は JSON オブジェクトである必要があります。デフォルトのテキストエディタ設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2429"/>
         <source>markerTextBubble must be a JSON object; using default marker text bubble preferences.</source>
-        <translation>markerTextBubble 必须是 JSON 对象；将使用默认标记文本气泡偏好设置。</translation>
+        <translation>markerTextBubble は JSON オブジェクトである必要があります。デフォルトのマーカーテキストバブル設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2441"/>
         <source>canvasLabelTextEditor must be a JSON object; using default canvas label editor preferences.</source>
-        <translation>canvasLabelTextEditor 必须是 JSON 对象；将使用默认画布标签编辑器偏好设置。</translation>
+        <translation>canvasLabelTextEditor は JSON オブジェクトである必要があります。デフォルトのキャンバスラベルエディタ設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2389"/>
@@ -871,49 +871,49 @@ Last error: %2</source>
         <location filename="../src/ui/MainWindow.cpp" line="2423"/>
         <location filename="../src/ui/MainWindow.cpp" line="2431"/>
         <source>%1 must be a string; using the default value.</source>
-        <translation>%1 必须是字符串；将使用默认值。</translation>
+        <translation>%1 は文字列である必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <source>Failed to store automation secret %1: %2</source>
-        <translation type="vanished">无法保存自动化密钥 %1：%2</translation>
+        <translation type="vanished">自動化シークレット %1 を保存できませんでした: %2</translation>
     </message>
     <message>
         <source>Failed to read automation secret %1: %2</source>
-        <translation type="vanished">无法读取自动化密钥 %1：%2</translation>
+        <translation type="vanished">自動化シークレット %1 を読み込めませんでした: %2</translation>
     </message>
     <message>
         <source>Automation secret %1 is not configured. Run the script&apos;s configuration first.</source>
-        <translation type="vanished">尚未配置自动化密钥 %1。请先运行该脚本的配置项。</translation>
+        <translation type="vanished">自動化シークレット %1 が設定されていません。先にこのスクリプトの設定を実行してください。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2391"/>
         <source>%1 must name a built-in theme; using no application theme.</source>
-        <translation>%1 必须指定内置主题；将不使用应用程序主题。</translation>
+        <translation>%1 は組み込みテーマ名である必要があります。アプリケーションテーマを適用しません。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2393"/>
         <source>%1 must be a string; using the system language.</source>
-        <translation>%1 必须是字符串；将使用系统语言。</translation>
+        <translation>%1 は文字列である必要があります。システム言語を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2395"/>
         <source>automation must be a JSON object; using default automation preferences.</source>
-        <translation>automation 必须是 JSON 对象；将使用默认自动化偏好设置。</translation>
+        <translation>automation は JSON オブジェクトである必要があります。デフォルトの自動化設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2397"/>
         <source>%1 must be true or false; using the default value.</source>
-        <translation>%1 必须是 true 或 false；将使用默认值。</translation>
+        <translation>%1 は true または false である必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2399"/>
         <source>%1 must be a JSON object; ignoring automation shortcuts.</source>
-        <translation>%1 必须是 JSON 对象；将忽略自动化快捷键。</translation>
+        <translation>%1 は JSON オブジェクトである必要があります。自動化ショートカットを無視します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2401"/>
         <source>%1 must be a valid shortcut string; ignoring this automation shortcut.</source>
-        <translation>%1 必须是有效的快捷键字符串；将忽略这条自动化快捷键。</translation>
+        <translation>%1 は有効なショートカット文字列である必要があります。この自動化ショートカットを無視します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2417"/>
@@ -923,7 +923,7 @@ Last error: %2</source>
         <location filename="../src/ui/MainWindow.cpp" line="2433"/>
         <location filename="../src/ui/MainWindow.cpp" line="2435"/>
         <source>%1 must be zero or a positive number; using the default value.</source>
-        <translation>%1 必须是零或正数；将使用默认值。</translation>
+        <translation>%1 はゼロまたは正の数値である必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2437"/>
@@ -931,71 +931,71 @@ Last error: %2</source>
         <location filename="../src/ui/MainWindow.cpp" line="2443"/>
         <location filename="../src/ui/MainWindow.cpp" line="2445"/>
         <source>%1 must be a number between 0 and 1; using the default value.</source>
-        <translation>%1 必须是 0 到 1 之间的数字；将使用默认值。</translation>
+        <translation>%1 は 0 から 1 の間の数値である必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2447"/>
         <source>groupStyles must be an array; group styles will use defaults.</source>
-        <translation>groupStyles 必须是数组；分组样式将使用默认值。</translation>
+        <translation>groupStyles は配列である必要があります。グループスタイルはデフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2449"/>
         <source>groupStyles[%1] must be a JSON object; this group style will use defaults.</source>
-        <translation>groupStyles[%1] 必须是 JSON 对象；该分组样式将使用默认值。</translation>
+        <translation>groupStyles[%1] は JSON オブジェクトである必要があります。このグループスタイルはデフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2451"/>
         <source>groupStyles[%1].groupColor is not a valid color; this color was skipped.</source>
-        <translation>groupStyles[%1].groupColor 不是有效颜色；已跳过该颜色。</translation>
+        <translation>groupStyles[%1].groupColor が有効な色ではありません。この色はスキップされました。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2457"/>
         <source>groupStyles[%1].markerStyle must be circle or square; using the default value.</source>
-        <translation>groupStyles[%1].markerStyle 必须是 circle 或 square；将使用默认值。</translation>
+        <translation>groupStyles[%1].markerStyle は circle または square である必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2459"/>
         <source>input must be a JSON object; using default input preferences.</source>
-        <translation>input 必须是 JSON 对象；将使用默认输入偏好设置。</translation>
+        <translation>input は JSON オブジェクトである必要があります。デフォルトの入力設定を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2462"/>
         <source>%1 must be a modifier name or modifier combination; using the default value.</source>
-        <translation>%1 必须是修饰键名称或修饰键组合；将使用默认值。</translation>
+        <translation>%1 は修飾キー名または修飾キーの組み合わせである必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2472"/>
         <source>%1 must be a valid key sequence; using the default value.</source>
-        <translation>%1 必须是有效快捷键；将使用默认值。</translation>
+        <translation>%1 は有効なキーシーケンスである必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2474"/>
         <source>%1 must be a non-empty string; using the default value.</source>
-        <translation>%1 必须是非空字符串；将使用默认值。</translation>
+        <translation>%1 は空でない文字列である必要があります。デフォルト値を使用します。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2481"/>
         <source>Unknown preference warning.</source>
-        <translation>未知偏好设置警告。</translation>
+        <translation>不明な設定警告です。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2486"/>
         <source>Inside frame</source>
-        <translation>框内</translation>
+        <translation>枠内</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="2486"/>
         <source>Outside frame</source>
-        <translation>框外</translation>
+        <translation>枠外</translation>
     </message>
     <message>
         <source>Selection copied to clipboard.</source>
-        <translation type="vanished">选区图像已复制到剪贴板。</translation>
+        <translation type="vanished">選択範囲の画像をクリップボードにコピーしました。</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="630"/>
         <source>Image copied to clipboard.</source>
-        <translation>图像已复制到剪贴板。</translation>
+        <translation>画像をクリップボードにコピーしました。</translation>
     </message>
 </context>
 <context>
@@ -1003,27 +1003,27 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/PageOrderDialog.cpp" line="51"/>
         <source>Reorder Pages</source>
-        <translation>调整页面顺序</translation>
+        <translation>ページの並べ替え</translation>
     </message>
     <message>
         <location filename="../src/ui/PageOrderDialog.cpp" line="55"/>
         <source>Drag pages in the list to change their order.</source>
-        <translation>在列表中拖动页面即可改变顺序。</translation>
+        <translation>リスト内のページをドラッグして順序を並べ替えます。</translation>
     </message>
     <message>
         <location filename="../src/ui/PageOrderDialog.cpp" line="82"/>
         <source>Move selected pages up</source>
-        <translation>上移选中页面</translation>
+        <translation>選択中のページを上へ移動</translation>
     </message>
     <message>
         <location filename="../src/ui/PageOrderDialog.cpp" line="83"/>
         <source>Move selected pages down</source>
-        <translation>下移选中页面</translation>
+        <translation>選択中のページを下へ移動</translation>
     </message>
     <message>
         <location filename="../src/ui/PageOrderDialog.cpp" line="84"/>
         <source>Remove selected pages from the project</source>
-        <translation>从工程中移除选中页面</translation>
+        <translation>選択中のページをプロジェクトから除外</translation>
     </message>
 </context>
 <context>
@@ -1031,12 +1031,12 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/PageOrderListModel.cpp" line="167"/>
         <source>Image</source>
-        <translation>图片文件名</translation>
+        <translation>画像ファイル</translation>
     </message>
     <message>
         <location filename="../src/ui/PageOrderListModel.cpp" line="169"/>
         <source>Original #</source>
-        <translation>原顺序</translation>
+        <translation>元の順序</translation>
     </message>
 </context>
 <context>
@@ -1044,110 +1044,110 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="177"/>
         <source>Preferences</source>
-        <translation>偏好设置</translation>
+        <translation>設定</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="182"/>
         <source>Preference file: %1</source>
-        <translation>偏好设置文件：%1</translation>
+        <translation>設定ファイル: %1</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="264"/>
         <source>Default marker diameter</source>
-        <translation>默认标记直径</translation>
+        <translation>デフォルトのマーカー直径</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="265"/>
         <source>Default marker font size</source>
-        <translation>默认标记字号</translation>
+        <translation>デフォルトのマーカーフォントサイズ</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="227"/>
         <source>Use system default</source>
-        <translation>使用系统默认</translation>
+        <translation>システム既定値を使用</translation>
     </message>
     <message>
         <source>Application style</source>
-        <translation type="vanished">应用程序风格</translation>
+        <translation type="vanished">アプリケーションのスタイル</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="266"/>
         <source>Qt widget style</source>
-        <translation>Qt 控件风格</translation>
+        <translation>Qt ウィジェットスタイル</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="233"/>
         <source>Use no application theme</source>
-        <translation>不使用应用程序主题</translation>
+        <translation>アプリケーションテーマを使用しない</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="135"/>
         <source>Breeze Dark</source>
-        <translation>Breeze 深色</translation>
+        <translation>Breeze ダーク</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="138"/>
         <source>Breeze Light</source>
-        <translation>Breeze 浅色</translation>
+        <translation>Breeze ライト</translation>
     </message>
     <message>
         <source>Application theme</source>
-        <translation type="vanished">应用程序主题</translation>
+        <translation type="vanished">アプリケーションのテーマ</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="267"/>
         <source>Breeze stylesheet theme</source>
-        <translation>Breeze 样式表主题</translation>
+        <translation>Breeze スタイルシートテーマ</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="238"/>
         <source>Follow system language</source>
-        <translation>跟随系统语言</translation>
+        <translation>システム言語に従う</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="268"/>
         <source>Language</source>
-        <translation>语言</translation>
+        <translation>言語</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="269"/>
         <source>Automation</source>
-        <translation>自动化</translation>
+        <translation>自動化</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="242"/>
         <source>Show automation run log window</source>
-        <translation>显示自动化运行日志窗口</translation>
+        <translation>自動化の実行ログウィンドウを表示</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="189"/>
         <source>Automation shortcuts</source>
-        <translation>自动化快捷键</translation>
+        <translation>自動化ショートカット</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="328"/>
         <source>Assign shortcuts to automation scripts. Leave a shortcut empty to disable it.</source>
-        <translation>为自动化脚本分配快捷键。留空表示禁用。</translation>
+        <translation>自動化スクリプトにショートカットを割り当てます。空欄にすると無効になります。</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="334"/>
         <source>Automation script</source>
-        <translation>自动化脚本</translation>
+        <translation>自動化スクリプト</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="334"/>
         <source>Shortcut</source>
-        <translation>快捷键</translation>
+        <translation>ショートカット</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="496"/>
         <source>Official</source>
-        <translation>官方</translation>
+        <translation>公式</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="496"/>
         <source>Custom</source>
-        <translation>自定义</translation>
+        <translation>カスタム</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="497"/>
@@ -1157,68 +1157,68 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="516"/>
         <source>Missing script: %1</source>
-        <translation>缺失脚本：%1</translation>
+        <translation>見つからないスクリプト: %1</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="977"/>
         <source>%1 is already assigned to %2; clear one automation shortcut before saving.</source>
-        <translation>%1 已分配给 %2；请先清空其中一个自动化快捷键再保存。</translation>
+        <translation>%1 はすでに %2 に割り当てられています。保存する前にどちらかの自動化ショートカットをクリアしてください。</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="270"/>
         <source>Maximum label table text rows</source>
-        <translation>标签列表文本最大行数</translation>
+        <translation>ラベル一覧で表示する最大行数</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="83"/>
         <source>Choose Font...</source>
-        <translation>选择字体...</translation>
+        <translation>フォントを選択...</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="84"/>
         <source>Use Default</source>
-        <translation>使用默认</translation>
+        <translation>デフォルトを使用</translation>
     </message>
     <message>
         <source>Default font</source>
-        <translation type="vanished">默认字体</translation>
+        <translation type="vanished">デフォルトフォント</translation>
     </message>
     <message>
         <source>Default size</source>
-        <translation type="vanished">默认字号</translation>
+        <translation type="vanished">デフォルトサイズ</translation>
     </message>
     <message>
         <source>Text editor font family</source>
-        <translation type="vanished">文本编辑器字体</translation>
+        <translation type="vanished">テキストエディタのフォントファミリー</translation>
     </message>
     <message>
         <source>Text editor font size</source>
-        <translation type="vanished">文本编辑器字号</translation>
+        <translation type="vanished">テキストエディタのフォントサイズ</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="272"/>
         <source>Text editor font</source>
-        <translation>文本编辑器字体</translation>
+        <translation>テキストエディタのフォント</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="271"/>
         <source>Label table font</source>
-        <translation>标签列表字体</translation>
+        <translation>ラベルテーブルのフォント</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="273"/>
         <source>Marker text bubble font</source>
-        <translation>标记文本气泡字体</translation>
+        <translation>マーカー吹き出しのフォント</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="274"/>
         <source>Marker text bubble opacity</source>
-        <translation>标记文本气泡不透明度</translation>
+        <translation>マーカー吹き出しの不透明度</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="275"/>
         <source>Canvas label editor opacity</source>
-        <translation>画布标签编辑器不透明度</translation>
+        <translation>キャンバス上のラベル編集欄の不透明度</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="408"/>
@@ -1231,127 +1231,127 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="307"/>
         <source>Move-label modifier</source>
-        <translation>移动标签修饰键</translation>
+        <translation>ラベル移動の修飾キー</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="308"/>
         <source>Previous label modifier</source>
-        <translation>上一个标签修饰键</translation>
+        <translation>前のラベルへ戻る修飾キー</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="309"/>
         <source>Undo</source>
-        <translation>撤销</translation>
+        <translation>元に戻す</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="310"/>
         <source>Redo</source>
-        <translation>重做</translation>
+        <translation>やり直し</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="314"/>
         <source>Switch label</source>
-        <translation>切换标签</translation>
+        <translation>ラベルを切り替える</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="315"/>
         <source>Previous label</source>
-        <translation>上一个标签</translation>
+        <translation>前のラベル</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="316"/>
         <source>Next label</source>
-        <translation>下一个标签</translation>
+        <translation>次のラベル</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="317"/>
         <source>Previous page</source>
-        <translation>上一页</translation>
+        <translation>前のページ</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="318"/>
         <source>Next page</source>
-        <translation>下一页</translation>
+        <translation>次のページ</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="311"/>
         <source>Edit label text</source>
-        <translation>编辑标签文本</translation>
+        <translation>ラベルテキストを編集</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="312"/>
         <source>Commit label text</source>
-        <translation>提交标签文本</translation>
+        <translation>ラベルテキストを確定</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="188"/>
         <source>Key mappings</source>
-        <translation>按键映射</translation>
+        <translation>キー割り当て</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="276"/>
         <source>Backup path</source>
-        <translation>备份路径</translation>
+        <translation>バックアップパス</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="277"/>
         <source>Backup interval seconds</source>
-        <translation>备份间隔秒数</translation>
+        <translation>バックアップ間隔（秒）</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="187"/>
         <source>General</source>
-        <translation>常规</translation>
+        <translation>一般</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="354"/>
         <source>Color</source>
-        <translation>颜色</translation>
+        <translation>色</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="354"/>
         <source>Marker diameter</source>
-        <translation>标记直径</translation>
+        <translation>マーカー直径</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="354"/>
         <source>Font size</source>
-        <translation>字号</translation>
+        <translation>フォントサイズ</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="354"/>
         <source>Marker style</source>
-        <translation>标记形状</translation>
+        <translation>マーカー形状</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="362"/>
         <source>Add group style</source>
-        <translation>新增分组样式</translation>
+        <translation>グループスタイルを追加</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="363"/>
         <source>Remove selected styles</source>
-        <translation>删除选中样式</translation>
+        <translation>選択中のスタイルを削除</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="190"/>
         <source>Group styles</source>
-        <translation>分组样式</translation>
+        <translation>グループスタイル</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="191"/>
         <source>JSON preview</source>
-        <translation>JSON 预览</translation>
+        <translation>JSON プレビュー</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="201"/>
         <source>Reload</source>
-        <translation>重新加载</translation>
+        <translation>再読み込み</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="202"/>
         <source>Open in Text Editor</source>
-        <translation>用文本编辑器打开</translation>
+        <translation>テキストエディタで開く</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="203"/>
@@ -1361,91 +1361,91 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="204"/>
         <source>Close</source>
-        <translation>关闭</translation>
+        <translation>閉じる</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="440"/>
         <source>Could not read preference file; showing defaults.</source>
-        <translation>无法读取偏好设置文件；将显示默认值。</translation>
+        <translation>設定ファイルを読み込めません。デフォルト値を表示します。</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="448"/>
         <source>Preference file is invalid; showing defaults.</source>
-        <translation>偏好设置文件无效；将显示默认值。</translation>
+        <translation>設定ファイルが無効です。デフォルト値を表示します。</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="454"/>
         <source>Loaded preference file.</source>
-        <translation>已加载偏好设置文件。</translation>
+        <translation>設定ファイルを読み込みました。</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="172"/>
         <source>Showing current preferences.</source>
-        <translation>正在显示当前生效的偏好设置。</translation>
+        <translation>現在の設定を表示しています。</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="796"/>
         <source>Circle</source>
-        <translation>圆形</translation>
+        <translation>円形</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="797"/>
         <source>Square</source>
-        <translation>方形</translation>
+        <translation>四角形</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="834"/>
         <source>Choose group color</source>
-        <translation>选择分组颜色</translation>
+        <translation>グループの色を選択</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="887"/>
         <source>Choose text editor font</source>
-        <translation>选择文本编辑器字体</translation>
+        <translation>テキストエディタのフォントを選択</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="848"/>
         <source>Choose label table font</source>
-        <translation>选择标签列表字体</translation>
+        <translation>ラベルテーブルのフォントを選択</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="927"/>
         <source>Choose marker text bubble font</source>
-        <translation>选择标记文本气泡字体</translation>
+        <translation>マーカー吹き出しのフォントを選択</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="874"/>
         <location filename="../src/ui/PreferenceDialog.cpp" line="913"/>
         <location filename="../src/ui/PreferenceDialog.cpp" line="953"/>
         <source>Default font and size</source>
-        <translation>默认字体和字号</translation>
+        <translation>デフォルトのフォントとサイズ</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="880"/>
         <location filename="../src/ui/PreferenceDialog.cpp" line="919"/>
         <location filename="../src/ui/PreferenceDialog.cpp" line="959"/>
         <source>%1, %2 pt</source>
-        <translation>%1，%2 磅</translation>
+        <translation>%1、%2 pt</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="995"/>
         <source>Could not save preference file.</source>
-        <translation>无法保存偏好设置文件。</translation>
+        <translation>設定ファイルを保存できません。</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="1008"/>
         <source>Preferences saved and applied.</source>
-        <translation>偏好设置已保存并应用。</translation>
+        <translation>設定を保存して適用しました。</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="1009"/>
         <source>Preferences saved and applied with warnings; see the main window status bar.</source>
-        <translation>偏好设置已保存并应用，但存在警告；请查看主窗口状态栏。</translation>
+        <translation>設定を保存して適用しましたが、警告があります。メインウィンドウのステータスバーを確認してください。</translation>
     </message>
     <message>
         <location filename="../src/ui/PreferenceDialog.cpp" line="1016"/>
         <source>Could not open preference file in the system text editor.</source>
-        <translation>无法使用系统文本编辑器打开偏好设置文件。</translation>
+        <translation>システムのテキストエディタで設定ファイルを開けません。</translation>
     </message>
 </context>
 <context>
@@ -1453,38 +1453,38 @@ Last error: %2</source>
     <message>
         <location filename="../src/ui/ProjectMergeDialog.cpp" line="57"/>
         <source>Merge Projects</source>
-        <translation>合并工程</translation>
+        <translation>プロジェクトをマージ</translation>
     </message>
     <message numerus="yes">
         <location filename="../src/ui/ProjectMergeDialog.cpp" line="100"/>
         <source>%1 (%n candidate(s))</source>
         <translation>
-            <numerusform>%1（%n 个候选）</numerusform>
+            <numerusform>%1（候補 %n 件）</numerusform>
         </translation>
     </message>
     <message>
         <location filename="../src/ui/ProjectMergeDialog.cpp" line="112"/>
         <source>Choose the project to use for %1.</source>
-        <translation>选择 %1 要采用的工程。</translation>
+        <translation>%1 に使うプロジェクトを選択してください。</translation>
     </message>
     <message numerus="yes">
         <location filename="../src/ui/ProjectMergeDialog.cpp" line="152"/>
         <source>%1 - %n label(s)</source>
         <translation>
-            <numerusform>%1 - %n 条 label</numerusform>
+            <numerusform>%1 - ラベル %n 件</numerusform>
         </translation>
     </message>
     <message numerus="yes">
         <location filename="../src/ui/ProjectMergeDialog.cpp" line="186"/>
         <source>Loaded %n page(s). %1 page(s) need a source selection.</source>
         <translation>
-            <numerusform>已加载 %n 页。%1 页需要选择来源。</numerusform>
+            <numerusform>%n ページを読み込みました。%1 ページで採用元の選択が必要です。</numerusform>
         </translation>
     </message>
     <message>
         <location filename="../src/ui/ProjectMergeDialog.cpp" line="88"/>
         <source>Open merged project after saving</source>
-        <translation>保存后打开合并工程</translation>
+        <translation>保存後にマージ後のプロジェクトを開く</translation>
     </message>
 </context>
 <context>
@@ -1492,12 +1492,12 @@ Last error: %2</source>
     <message>
         <location filename="../src/main.cpp" line="50"/>
         <source>LabelPlus text project editor.</source>
-        <translation>LabelPlus 文本工程编辑器。</translation>
+        <translation>LabelPlus テキストプロジェクトエディター。</translation>
     </message>
     <message>
         <location filename="../src/main.cpp" line="54"/>
         <source>LabelPlus text project to open.</source>
-        <translation>要打开的 LabelPlus 文本工程。</translation>
+        <translation>開く LabelPlus テキストプロジェクト。</translation>
     </message>
 </context>
 </TS>

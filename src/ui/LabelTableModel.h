@@ -24,9 +24,9 @@ public:
 
     explicit LabelTableModel(QObject* parent = nullptr);
 
-    void setLabels(QVector<labelminus::core::Label>* labels);
+    void setLabels(QVector<labelqt::core::Label>* labels);
     void setGroupFilter(QStringList groupFilter);
-    void setGroups(QStringList groups, QVector<labelminus::core::LabelGroupStyle> groupStyles);
+    void setGroups(QStringList groups, QVector<labelqt::core::LabelGroupStyle> groupStyles);
     void refresh();
     void labelChanged(int row);
     int sourceIndexForRow(int row) const;
@@ -55,9 +55,9 @@ private:
     void rebuildVisibleRows();
     QColor colorForGroup(const QString& group) const;
 
-    QVector<labelminus::core::Label>* m_labels{nullptr};
+    QVector<labelqt::core::Label>* m_labels{nullptr};
     QVector<int> m_visibleRows;
     QSet<QString> m_groupFilter;
     QStringList m_groups;
-    QVector<labelminus::core::LabelGroupStyle> m_groupStyles;
+    QVector<labelqt::core::LabelGroupStyle> m_groupStyles;
 };

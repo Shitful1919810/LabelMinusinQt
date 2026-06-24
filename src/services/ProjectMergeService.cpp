@@ -12,15 +12,15 @@
 #include <algorithm>
 #include <utility>
 
-namespace labelminus::services {
+namespace labelqt::services {
 namespace {
 struct LoadedProject {
     QString path;
-    labelminus::core::Project project;
+    labelqt::core::Project project;
 };
 
 struct PageMergeData {
-    labelminus::core::ImageEntry firstImage;
+    labelqt::core::ImageEntry firstImage;
     int firstProjectIndex{-1};
     QString firstProjectPath;
     QVector<ProjectMergeCandidate> candidates;
@@ -38,10 +38,10 @@ QString displayPath(const QString& path)
     return QFileInfo(path).absoluteFilePath();
 }
 
-labelminus::core::ImageEntry withoutDeletedLabels(labelminus::core::ImageEntry image)
+labelqt::core::ImageEntry withoutDeletedLabels(labelqt::core::ImageEntry image)
 {
     image.labels.erase(std::remove_if(image.labels.begin(), image.labels.end(),
-                                      [](const labelminus::core::Label& label) { return label.isDeleted(); }),
+                                      [](const labelqt::core::Label& label) { return label.isDeleted(); }),
                        image.labels.end());
     return image;
 }
@@ -81,7 +81,7 @@ QStringList mergeSourceCommentLines(const QVector<ProjectMergePageSource>& pageS
 {
     QStringList lines;
     lines.reserve(pageSources.size() + 2);
-    lines.append(QStringLiteral("# LabelMinusMergeSources v2"));
+    lines.append(QStringLiteral("# LabelQtMergeSources v2"));
 
     auto appendRange = [&lines, &outputProjectPath](const ProjectMergePageSource& firstPageSource,
                                                     const QString& lastImageName, int pageCount, int labelCount) {
@@ -128,7 +128,7 @@ QStringList mergeSourceCommentLines(const QVector<ProjectMergePageSource>& pageS
         appendRange(rangeFirstPageSource, rangeLastImageName, rangePageCount, rangeLabelCount);
     }
 
-    lines.append(QStringLiteral("# EndLabelMinusMergeSources"));
+    lines.append(QStringLiteral("# EndLabelQtMergeSources"));
     return lines;
 }
 } // namespace
@@ -144,7 +144,7 @@ ProjectMergePlan ProjectMergeService::createPlan(const QStringList& projectPaths
     for (const QString& path : projectPaths) {
         LoadedProject loaded;
         loaded.path = displayPath(path);
-        loaded.project = labelminus::core::LabelPlusDocument::loadFromFile(path);
+        loaded.project = labelqt::core::LabelPlusDocument::loadFromFile(path);
         loadedProjects.append(std::move(loaded));
     }
 
@@ -162,7 +162,7 @@ ProjectMergePlan ProjectMergeService::createPlan(const QStringList& projectPaths
             plan.mergedProject.setSourceName(loaded.project.sourceName());
         }
 
-        for (const labelminus::core::ImageEntry& image : loaded.project.images()) {
+        for (const labelqt::core::ImageEntry& image : loaded.project.images()) {
             const QString imageName = image.name.isEmpty() ? QFileInfo(image.path).fileName() : image.name;
             if (imageName.isEmpty()) {
                 continue;
@@ -204,7 +204,7 @@ ProjectMergePlan ProjectMergeService::createPlan(const QStringList& projectPaths
 
     for (const QString& imageName : imageOrder) {
         PageMergeData& pageData = pageDataByName[imageName];
-        labelminus::core::ImageEntry mergedImage = pageData.firstImage;
+        labelqt::core::ImageEntry mergedImage = pageData.firstImage;
         mergedImage.name = imageName;
         mergedImage.labels.clear();
 
@@ -231,12 +231,12 @@ ProjectMergePlan ProjectMergeService::createPlan(const QStringList& projectPaths
     return plan;
 }
 
-labelminus::core::Project ProjectMergeService::mergedProjectWithSelections(ProjectMergePlan plan,
+labelqt::core::Project ProjectMergeService::mergedProjectWithSelections(ProjectMergePlan plan,
                                                                            const QVector<int>& selectedCandidateIndexes,
                                                                            const QString& outputProjectPath,
                                                                            const QVector<int>& imageOrder)
 {
-    QHash<QString, labelminus::core::ImageEntry> selectedImagesByName;
+    QHash<QString, labelqt::core::ImageEntry> selectedImagesByName;
     QHash<QString, ProjectMergePageSource> selectedSourcesByName;
     for (int conflictIndex = 0; conflictIndex < plan.conflicts.size(); ++conflictIndex) {
         ProjectMergeConflict& conflict = plan.conflicts[conflictIndex];
@@ -249,7 +249,7 @@ labelminus::core::Project ProjectMergeService::mergedProjectWithSelections(Proje
         }
 
         const ProjectMergeCandidate& selectedCandidate = conflict.candidates.at(selectedCandidateIndex);
-        labelminus::core::ImageEntry selectedImage = selectedCandidate.image;
+        labelqt::core::ImageEntry selectedImage = selectedCandidate.image;
         selectedImage.name = conflict.imageName;
         selectedImagesByName.insert(conflict.imageName, std::move(selectedImage));
         selectedSourcesByName.insert(conflict.imageName,
@@ -258,7 +258,7 @@ labelminus::core::Project ProjectMergeService::mergedProjectWithSelections(Proje
 
     QVector<ProjectMergePageSource> finalPageSources;
     finalPageSources.reserve(plan.mergedProject.images().size());
-    for (labelminus::core::ImageEntry& image : plan.mergedProject.images()) {
+    for (labelqt::core::ImageEntry& image : plan.mergedProject.images()) {
         const QString imageName = image.name.isEmpty() ? QFileInfo(image.path).fileName() : image.name;
         if (selectedImagesByName.contains(imageName)) {
             image = selectedImagesByName.value(imageName);
@@ -293,10 +293,10 @@ labelminus::core::Project ProjectMergeService::mergedProjectWithSelections(Proje
     return std::move(plan.mergedProject);
 }
 
-int ProjectMergeService::visibleLabelCount(const labelminus::core::ImageEntry& image)
+int ProjectMergeService::visibleLabelCount(const labelqt::core::ImageEntry& image)
 {
     int count = 0;
-    for (const labelminus::core::Label& label : image.labels) {
+    for (const labelqt::core::Label& label : image.labels) {
         if (!label.isDeleted()) {
             ++count;
         }
@@ -304,4 +304,4 @@ int ProjectMergeService::visibleLabelCount(const labelminus::core::ImageEntry& i
     return count;
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

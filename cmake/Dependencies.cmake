@@ -5,8 +5,8 @@ find_package(Qt6Keychain REQUIRED)
 qt_standard_project_setup()
 
 find_package(LibArchive QUIET)
-if(NOT LibArchive_FOUND AND LABELMINUS_REQUIRE_LIBARCHIVE)
-    message(FATAL_ERROR "libarchive was not found. Install libarchive-dev/libarchive-devel or disable LABELMINUS_REQUIRE_LIBARCHIVE.")
+if(NOT LibArchive_FOUND AND LABELQT_REQUIRE_LIBARCHIVE)
+    message(FATAL_ERROR "libarchive was not found. Install libarchive-dev/libarchive-devel or disable LABELQT_REQUIRE_LIBARCHIVE.")
 endif()
 
 if(LibArchive_FOUND)

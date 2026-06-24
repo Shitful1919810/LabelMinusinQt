@@ -2,7 +2,7 @@
 
 #include <QKeyEvent>
 
-namespace labelminus::ui {
+namespace labelqt::ui {
 
 constexpr Qt::KeyboardModifiers shortcutModifierMask =
     Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier;
@@ -18,4 +18,4 @@ inline QKeyCombination normalizedShortcutKeyCombination(const QKeyEvent& event)
     return QKeyCombination(modifiers, key);
 }
 
-} // namespace labelminus::ui
+} // namespace labelqt::ui

@@ -26,11 +26,11 @@ class PreferenceDialog final : public QDialog {
     Q_OBJECT
 
 public:
-    PreferenceDialog(QString preferencePath, labelminus::core::AppPreferences currentPreferences,
-                     QVector<labelminus::services::AutomationScript> automationScripts, QWidget* parent = nullptr);
+    PreferenceDialog(QString preferencePath, labelqt::core::AppPreferences currentPreferences,
+                     QVector<labelqt::services::AutomationScript> automationScripts, QWidget* parent = nullptr);
 
 signals:
-    void preferencesApplied(labelminus::core::AppPreferencesLoadResult result);
+    void preferencesApplied(labelqt::core::AppPreferencesLoadResult result);
 
 private:
     void createUi();
@@ -63,8 +63,8 @@ private:
     void openPreferenceFile();
 
     QString m_preferencePath;
-    labelminus::core::AppPreferences m_currentPreferences;
-    QVector<labelminus::services::AutomationScript> m_automationScripts;
+    labelqt::core::AppPreferences m_currentPreferences;
+    QVector<labelqt::services::AutomationScript> m_automationScripts;
     QDoubleSpinBox* m_markerDiameterSpinBox{nullptr};
     QDoubleSpinBox* m_markerFontSpinBox{nullptr};
     QSpinBox* m_tableMaxRowsSpinBox{nullptr};

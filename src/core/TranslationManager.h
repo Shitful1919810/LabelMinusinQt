@@ -5,7 +5,7 @@
 
 class QTranslator;
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 struct ApplicationLanguage {
     QString localeName;
@@ -15,4 +15,4 @@ struct ApplicationLanguage {
 QVector<ApplicationLanguage> availableApplicationLanguages();
 bool loadApplicationTranslator(QTranslator& translator, const QString& localeName);
 
-} // namespace labelminus::core
+} // namespace labelqt::core

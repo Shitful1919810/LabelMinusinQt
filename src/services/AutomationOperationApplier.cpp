@@ -2,26 +2,26 @@
 
 #include <algorithm>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 namespace {
-int imageIndexForPage(const labelminus::core::Project& project, const QString& page)
+int imageIndexForPage(const labelqt::core::Project& project, const QString& page)
 {
     const auto imageIt =
         std::find_if(project.images().cbegin(), project.images().cend(),
-                     [&page](const labelminus::core::ImageEntry& image) { return image.name == page; });
+                     [&page](const labelqt::core::ImageEntry& image) { return image.name == page; });
     if (imageIt == project.images().cend()) {
         return -1;
     }
     return static_cast<int>(std::distance(project.images().cbegin(), imageIt));
 }
 
-bool isExistingEditableLabel(const labelminus::core::Project& project, int imageIndex, int labelIndex)
+bool isExistingEditableLabel(const labelqt::core::Project& project, int imageIndex, int labelIndex)
 {
     if (imageIndex < 0 || imageIndex >= project.images().size()) {
         return false;
     }
-    const labelminus::core::ImageEntry& image = project.images().at(imageIndex);
+    const labelqt::core::ImageEntry& image = project.images().at(imageIndex);
     return labelIndex >= 0 && labelIndex < image.labels.size() && !image.labels.at(labelIndex).isDeleted();
 }
 } // namespace
@@ -38,7 +38,7 @@ int AutomationOperationApplyPlan::changeCount() const noexcept
                             labelPositionChanges.size() + labelDeletedChanges.size());
 }
 
-AutomationOperationApplyPlan AutomationOperationApplier::plan(const labelminus::core::Project& project,
+AutomationOperationApplyPlan AutomationOperationApplier::plan(const labelqt::core::Project& project,
                                                               const QVector<AutomationOperation>& operations)
 {
     AutomationOperationApplyPlan result;
@@ -47,7 +47,7 @@ AutomationOperationApplyPlan AutomationOperationApplier::plan(const labelminus::
 
     QVector<int> nextLabelIndexes;
     nextLabelIndexes.reserve(project.images().size());
-    for (const labelminus::core::ImageEntry& image : project.images()) {
+    for (const labelqt::core::ImageEntry& image : project.images()) {
         nextLabelIndexes.append(static_cast<int>(image.labels.size()));
     }
 
@@ -66,7 +66,7 @@ AutomationOperationApplyPlan AutomationOperationApplier::plan(const labelminus::
 
             result.labelAdditions.append(
                 {imageIndex, nextLabelIndexes[imageIndex],
-                 labelminus::core::Label(operation.text, operation.group, QPointF(operation.x, operation.y))});
+                 labelqt::core::Label(operation.text, operation.group, QPointF(operation.x, operation.y))});
             ++nextLabelIndexes[imageIndex];
             continue;
         }
@@ -76,8 +76,8 @@ AutomationOperationApplyPlan AutomationOperationApplier::plan(const labelminus::
             ++result.ignoredOperationCount;
             continue;
         }
-        const labelminus::core::ImageEntry& image = project.images().at(imageIndex);
-        const labelminus::core::Label& label = image.labels.at(operation.labelIndex);
+        const labelqt::core::ImageEntry& image = project.images().at(imageIndex);
+        const labelqt::core::Label& label = image.labels.at(operation.labelIndex);
 
         if (operation.type == QStringLiteral("setLabelGroup")) {
             if (!project.groups().contains(operation.group)) {
@@ -99,7 +99,7 @@ AutomationOperationApplyPlan AutomationOperationApplier::plan(const labelminus::
 
         if (operation.type == QStringLiteral("setLabelPosition")) {
             const QPointF newPosition(operation.x, operation.y);
-            if (label.position() != labelminus::core::Label(label.text(), label.group(), newPosition).position()) {
+            if (label.position() != labelqt::core::Label(label.text(), label.group(), newPosition).position()) {
                 result.labelPositionChanges.append(
                     {imageIndex, operation.labelIndex, label.position(), QPointF(operation.x, operation.y)});
             }
@@ -117,7 +117,7 @@ AutomationOperationApplyPlan AutomationOperationApplier::plan(const labelminus::
     return result;
 }
 
-void AutomationOperationApplier::apply(labelminus::core::Project& project, const AutomationOperationApplyPlan& plan,
+void AutomationOperationApplier::apply(labelqt::core::Project& project, const AutomationOperationApplyPlan& plan,
                                        bool redo)
 {
     if (redo) {
@@ -125,7 +125,7 @@ void AutomationOperationApplier::apply(labelminus::core::Project& project, const
             if (addition.imageIndex < 0 || addition.imageIndex >= project.images().size()) {
                 continue;
             }
-            labelminus::core::ImageEntry& image = project.images()[addition.imageIndex];
+            labelqt::core::ImageEntry& image = project.images()[addition.imageIndex];
             if (addition.labelIndex < 0 || addition.labelIndex > image.labels.size()) {
                 continue;
             }
@@ -138,7 +138,7 @@ void AutomationOperationApplier::apply(labelminus::core::Project& project, const
             if (addition.imageIndex < 0 || addition.imageIndex >= project.images().size()) {
                 continue;
             }
-            labelminus::core::ImageEntry& image = project.images()[addition.imageIndex];
+            labelqt::core::ImageEntry& image = project.images()[addition.imageIndex];
             if (addition.labelIndex < 0 || addition.labelIndex >= image.labels.size()) {
                 continue;
             }
@@ -150,7 +150,7 @@ void AutomationOperationApplier::apply(labelminus::core::Project& project, const
         if (change.imageIndex < 0 || change.imageIndex >= project.images().size()) {
             continue;
         }
-        labelminus::core::ImageEntry& image = project.images()[change.imageIndex];
+        labelqt::core::ImageEntry& image = project.images()[change.imageIndex];
         if (change.labelIndex < 0 || change.labelIndex >= image.labels.size()) {
             continue;
         }
@@ -161,7 +161,7 @@ void AutomationOperationApplier::apply(labelminus::core::Project& project, const
         if (change.imageIndex < 0 || change.imageIndex >= project.images().size()) {
             continue;
         }
-        labelminus::core::ImageEntry& image = project.images()[change.imageIndex];
+        labelqt::core::ImageEntry& image = project.images()[change.imageIndex];
         if (change.labelIndex < 0 || change.labelIndex >= image.labels.size()) {
             continue;
         }
@@ -172,7 +172,7 @@ void AutomationOperationApplier::apply(labelminus::core::Project& project, const
         if (change.imageIndex < 0 || change.imageIndex >= project.images().size()) {
             continue;
         }
-        labelminus::core::ImageEntry& image = project.images()[change.imageIndex];
+        labelqt::core::ImageEntry& image = project.images()[change.imageIndex];
         if (change.labelIndex < 0 || change.labelIndex >= image.labels.size()) {
             continue;
         }
@@ -183,7 +183,7 @@ void AutomationOperationApplier::apply(labelminus::core::Project& project, const
         if (change.imageIndex < 0 || change.imageIndex >= project.images().size()) {
             continue;
         }
-        labelminus::core::ImageEntry& image = project.images()[change.imageIndex];
+        labelqt::core::ImageEntry& image = project.images()[change.imageIndex];
         if (change.labelIndex < 0 || change.labelIndex >= image.labels.size()) {
             continue;
         }
@@ -191,4 +191,4 @@ void AutomationOperationApplier::apply(labelminus::core::Project& project, const
     }
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

@@ -41,7 +41,7 @@ class LabelGroupDelegate final : public QStyledItemDelegate {
 public:
     explicit LabelGroupDelegate(QObject* parent = nullptr);
 
-    void setGroups(QStringList groups, QVector<labelminus::core::LabelGroupStyle> groupStyles);
+    void setGroups(QStringList groups, QVector<labelqt::core::LabelGroupStyle> groupStyles);
     QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
     void setEditorData(QWidget* editor, const QModelIndex& index) const override;
     void setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const override;
@@ -51,5 +51,5 @@ private:
     QColor colorForGroup(const QString& group) const;
 
     QStringList m_groups;
-    QVector<labelminus::core::LabelGroupStyle> m_groupStyles;
+    QVector<labelqt::core::LabelGroupStyle> m_groupStyles;
 };

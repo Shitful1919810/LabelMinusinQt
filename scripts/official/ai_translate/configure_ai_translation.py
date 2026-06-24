@@ -5,14 +5,14 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelminus_automation import AutomationContext, as_bool
+from labelqt_automation import AutomationContext, as_bool
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Configure LabelMinus AI translation scripts.")
-    parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
+    parser = argparse.ArgumentParser(description="Configure LabelQt AI translation scripts.")
+    parser.add_argument("--input", required=True, help="Path to the LabelQt automation input JSON.")
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
 
@@ -40,7 +40,7 @@ def main() -> None:
         "\n".join(
             [
                 f"Saved configuration to {CONFIG_PATH}",
-                "API key: saved in the system keychain by LabelMinus",
+                "API key: saved in the system keychain by LabelQt",
                 f"Base URL: {config['baseUrl']}",
                 f"Model: {config['model']}",
                 f"Target language: {config['targetLanguage']}",

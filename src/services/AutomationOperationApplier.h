@@ -6,7 +6,7 @@
 #include <QString>
 #include <QVector>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 struct AutomationLabelGroupChange {
     int imageIndex{-1};
@@ -18,7 +18,7 @@ struct AutomationLabelGroupChange {
 struct AutomationLabelAddition {
     int imageIndex{-1};
     int labelIndex{-1};
-    labelminus::core::Label label;
+    labelqt::core::Label label;
 };
 
 struct AutomationLabelTextChange {
@@ -56,9 +56,9 @@ struct AutomationOperationApplyPlan {
 
 class AutomationOperationApplier final {
 public:
-    static AutomationOperationApplyPlan plan(const labelminus::core::Project& project,
+    static AutomationOperationApplyPlan plan(const labelqt::core::Project& project,
                                              const QVector<AutomationOperation>& operations);
-    static void apply(labelminus::core::Project& project, const AutomationOperationApplyPlan& plan, bool redo);
+    static void apply(labelqt::core::Project& project, const AutomationOperationApplyPlan& plan, bool redo);
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services

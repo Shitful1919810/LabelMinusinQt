@@ -1,6 +1,6 @@
 find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Test)
 
-qt_add_executable(LabelMinusTests
+qt_add_executable(LabelQtTests
     LabelTests.cpp
     ../src/core/ApplicationTheme.cpp
     ../src/core/AppPreferences.cpp
@@ -13,18 +13,18 @@ qt_add_executable(LabelMinusTests
     ../src/services/ProjectPageOrderService.cpp
 )
 
-target_include_directories(LabelMinusTests
+target_include_directories(LabelQtTests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../src
 )
 
-target_link_libraries(LabelMinusTests
+target_link_libraries(LabelQtTests
     PRIVATE
         Qt6::Core
         Qt6::Gui
         Qt6::Test
 )
 
-labelminus_enable_warnings(LabelMinusTests)
+labelqt_enable_warnings(LabelQtTests)
 
-add_test(NAME LabelMinusTests COMMAND $<TARGET_FILE:LabelMinusTests>)
+add_test(NAME LabelQtTests COMMAND $<TARGET_FILE:LabelQtTests>)

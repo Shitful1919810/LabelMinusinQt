@@ -1,6 +1,6 @@
 # Contributing
 
-This branch is a C++/Qt 6 port of LabelMinus. Keep changes aligned with the current architecture and cross-platform goal.
+LabelQt is an independent C++/Qt 6 LabelPlus text project editor. Keep changes aligned with the current architecture and cross-platform goal.
 
 ## Code Style
 
@@ -31,7 +31,7 @@ See `docs/architecture.md` for more detail.
 - Current required Qt dependencies should stay limited to `Qt6::Core`, `Qt6::Gui` and `Qt6::Widgets` unless a new module is reviewed. `Qt6::Svg` is an optional enhancement for bundled stylesheet icons.
 - Do not introduce Qt GPL-only modules without documenting the license impact and getting an explicit project decision.
 - Prefer dynamic linking for Qt in release packaging.
-- The Windows `LabelMinusStatic` target is experimental and local-only. Do not publish static Qt binaries without a Qt license review.
+- The Windows `LabelQtStatic` target is experimental and local-only. Do not publish static Qt binaries without a Qt license review.
 - Do not commit Qt source code, Qt SDK files or bundled Qt binaries into this repository.
 - Binary releases must include Qt license notices, Qt module/version information and third-party dependency notices.
 - When adding a third-party dependency, document its license and keep it compatible with the intended project license.
@@ -50,10 +50,10 @@ See `docs/architecture.md` for more detail.
 
 - User-visible UI strings must use `tr()`.
 - When adding or changing a `tr()` string, update all of the 4 files:
-  - `translations/labelminus_zh_CN.ts`
-  - `translations/labelminus_zh_TW.ts`
-  - `translations/labelminus_en_US.ts`
-  - `translations/labelminus_ja_JP.ts`
+  - `translations/labelqt_zh_CN.ts`
+  - `translations/labelqt_zh_TW.ts`
+  - `translations/labelqt_en_US.ts`
+  - `translations/labelqt_ja_JP.ts`
 - Then run:
 
 ```bash

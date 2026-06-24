@@ -4,7 +4,7 @@
 
 #include <utility>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 namespace {
 class CallbackUndoCommand final : public QUndoCommand {
@@ -135,4 +135,4 @@ void UndoStack::notifyChanged()
     }
 }
 
-} // namespace labelminus::core
+} // namespace labelqt::core

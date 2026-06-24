@@ -1,6 +1,6 @@
 #include "core/ApplicationTheme.h"
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 const QVector<ApplicationTheme>& builtInApplicationThemes()
 {
@@ -37,4 +37,4 @@ bool isBuiltInApplicationTheme(const QString& themeId)
            !applicationThemeResourcePath(themeId).isEmpty();
 }
 
-} // namespace labelminus::core
+} // namespace labelqt::core

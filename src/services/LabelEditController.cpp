@@ -3,16 +3,16 @@
 #include <algorithm>
 #include <utility>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 namespace {
-QString imageName(const labelminus::core::Project& project, int imageIndex)
+QString imageName(const labelqt::core::Project& project, int imageIndex)
 {
     if (imageIndex < 0 || imageIndex >= project.images().size()) {
         return {};
     }
 
-    const labelminus::core::ImageEntry& image = project.images().at(imageIndex);
+    const labelqt::core::ImageEntry& image = project.images().at(imageIndex);
     return image.name.isEmpty() ? image.path : image.name;
 }
 
@@ -21,7 +21,7 @@ QString labelNumber(int labelIndex)
     return QString::number(labelIndex + 1).rightJustified(3, QLatin1Char('0'));
 }
 
-QString labelMessage(const QString& messageTemplate, const QString& fallback, const labelminus::core::Project& project,
+QString labelMessage(const QString& messageTemplate, const QString& fallback, const labelqt::core::Project& project,
                      int imageIndex, int labelIndex, const QString& group)
 {
     if (messageTemplate.isEmpty()) {
@@ -30,13 +30,13 @@ QString labelMessage(const QString& messageTemplate, const QString& fallback, co
     return QString(messageTemplate).arg(imageName(project, imageIndex), group, labelNumber(labelIndex));
 }
 
-bool labelEquals(const labelminus::core::Label& lhs, const labelminus::core::Label& rhs)
+bool labelEquals(const labelqt::core::Label& lhs, const labelqt::core::Label& rhs)
 {
     return lhs.text() == rhs.text() && lhs.group() == rhs.group() && lhs.position() == rhs.position() &&
            lhs.isDeleted() == rhs.isDeleted();
 }
 
-bool labelVectorsEqual(const QVector<labelminus::core::Label>& lhs, const QVector<labelminus::core::Label>& rhs)
+bool labelVectorsEqual(const QVector<labelqt::core::Label>& lhs, const QVector<labelqt::core::Label>& rhs)
 {
     if (lhs.size() != rhs.size()) {
         return false;
@@ -50,7 +50,7 @@ bool labelVectorsEqual(const QVector<labelminus::core::Label>& lhs, const QVecto
 }
 } // namespace
 
-LabelEditController::LabelEditController(labelminus::core::Project& project, labelminus::core::UndoStack& undoStack,
+LabelEditController::LabelEditController(labelqt::core::Project& project, labelqt::core::UndoStack& undoStack,
                                          LabelEditCommandTexts commandTexts)
     : m_project(project), m_undoStack(undoStack), m_commandTexts(std::move(commandTexts))
 {
@@ -110,8 +110,8 @@ LabelEditResult LabelEditController::removeGroup(const QString& group, const QSt
     QStringList newGroups = oldGroups;
     newGroups.removeAll(group);
 
-    for (labelminus::core::ImageEntry& image : m_project.images()) {
-        for (labelminus::core::Label& label : image.labels) {
+    for (labelqt::core::ImageEntry& image : m_project.images()) {
+        for (labelqt::core::Label& label : image.labels) {
             if (label.group() == group) {
                 label.setGroup(fallbackGroup);
             }
@@ -138,16 +138,16 @@ LabelEditResult LabelEditController::removeGroup(const QString& group, const QSt
     return result;
 }
 
-LabelEditResult LabelEditController::addLabel(int imageIndex, const labelminus::core::Label& label)
+LabelEditResult LabelEditController::addLabel(int imageIndex, const labelqt::core::Label& label)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr) {
         return {};
     }
 
     image->labels.append(label);
     const int labelIndex = static_cast<int>(image->labels.size()) - 1;
-    const labelminus::core::Label addedLabel = image->labels.last();
+    const labelqt::core::Label addedLabel = image->labels.last();
     const QString message =
         labelMessage(m_commandTexts.addLabelMessage, m_commandTexts.addLabel, m_project, imageIndex, labelIndex,
                      addedLabel.group());
@@ -156,12 +156,12 @@ LabelEditResult LabelEditController::addLabel(int imageIndex, const labelminus::
         message,
         message,
         [this, imageIndex, labelIndex, addedLabel]() {
-            labelminus::core::ImageEntry* targetImage = imageAt(imageIndex);
+            labelqt::core::ImageEntry* targetImage = imageAt(imageIndex);
             if (targetImage == nullptr || labelIndex < 0 || labelIndex >= targetImage->labels.size()) {
                 return;
             }
 
-            const labelminus::core::Label& currentLabel = targetImage->labels.at(labelIndex);
+            const labelqt::core::Label& currentLabel = targetImage->labels.at(labelIndex);
             if (!labelEquals(currentLabel, addedLabel)) {
                 return;
             }
@@ -173,7 +173,7 @@ LabelEditResult LabelEditController::addLabel(int imageIndex, const labelminus::
             markDirty();
         },
         [this, imageIndex, labelIndex, addedLabel]() {
-            labelminus::core::ImageEntry* targetImage = imageAt(imageIndex);
+            labelqt::core::ImageEntry* targetImage = imageAt(imageIndex);
             if (targetImage == nullptr || labelIndex < 0 || labelIndex > targetImage->labels.size()) {
                 return;
             }
@@ -191,7 +191,7 @@ LabelEditResult LabelEditController::addLabel(int imageIndex, const labelminus::
 
 LabelEditResult LabelEditController::deleteLabels(int imageIndex, const QVector<int>& labelIndexes)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndexes.isEmpty()) {
         return {};
     }
@@ -233,7 +233,7 @@ LabelEditResult LabelEditController::deleteLabels(int imageIndex, const QVector<
 LabelEditResult LabelEditController::changeLabelsGroup(int imageIndex, const QVector<int>& labelIndexes,
                                                        const QString& group)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndexes.isEmpty() || !hasGroup(group)) {
         return {};
     }
@@ -279,7 +279,7 @@ LabelEditResult LabelEditController::changeLabelsGroup(int imageIndex, const QVe
 LabelEditResult LabelEditController::reorderLabels(int imageIndex, QVector<int> sourceIndexes,
                                                    int insertBeforeSourceIndex)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || sourceIndexes.isEmpty()) {
         return {};
     }
@@ -300,10 +300,10 @@ LabelEditResult LabelEditController::reorderLabels(int imageIndex, QVector<int> 
 
     struct IndexedLabel {
         int oldIndex;
-        labelminus::core::Label label;
+        labelqt::core::Label label;
     };
 
-    const QVector<labelminus::core::Label> oldLabels = image->labels;
+    const QVector<labelqt::core::Label> oldLabels = image->labels;
     QVector<IndexedLabel> movingLabels;
     QVector<IndexedLabel> remainingLabels;
     movingLabels.reserve(sourceIndexes.size());
@@ -342,7 +342,7 @@ LabelEditResult LabelEditController::reorderLabels(int imageIndex, QVector<int> 
         reorderedLabels.append(std::move(remainingLabels[i]));
     }
 
-    QVector<labelminus::core::Label> newLabels;
+    QVector<labelqt::core::Label> newLabels;
     QVector<int> newSelectedIndexes;
     newLabels.reserve(reorderedLabels.size());
     newSelectedIndexes.reserve(sourceIndexes.size());
@@ -377,7 +377,7 @@ LabelEditResult LabelEditController::reorderLabels(int imageIndex, QVector<int> 
 LabelEditResult LabelEditController::setLabelText(int imageIndex, int labelIndex, const QString& text,
                                                   bool registerUndo)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndex < 0 || labelIndex >= image->labels.size()) {
         return {};
     }
@@ -398,7 +398,7 @@ LabelEditResult LabelEditController::setLabelText(int imageIndex, int labelIndex
 LabelEditResult LabelEditController::setLabelGroup(int imageIndex, int labelIndex, const QString& group,
                                                    bool registerUndo)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndex < 0 || labelIndex >= image->labels.size() || !hasGroup(group)) {
         return {};
     }
@@ -419,7 +419,7 @@ LabelEditResult LabelEditController::setLabelGroup(int imageIndex, int labelInde
 LabelEditResult LabelEditController::setLabelPosition(int imageIndex, int labelIndex, QPointF normalizedPosition,
                                                       bool registerUndo)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndex < 0 || labelIndex >= image->labels.size()) {
         return {};
     }
@@ -453,7 +453,7 @@ void LabelEditController::registerLabelTextUndo(int imageIndex, int labelIndex, 
         return;
     }
 
-    const labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    const labelqt::core::ImageEntry* image = imageAt(imageIndex);
     const QString group =
         image != nullptr && labelIndex >= 0 && labelIndex < image->labels.size() ? image->labels.at(labelIndex).group()
                                                                                  : QString();
@@ -486,7 +486,7 @@ void LabelEditController::registerLabelGroupUndo(int imageIndex, int labelIndex,
 
 void LabelEditController::applyLabelText(int imageIndex, int labelIndex, const QString& text)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndex < 0 || labelIndex >= image->labels.size()) {
         return;
     }
@@ -500,7 +500,7 @@ void LabelEditController::applyLabelText(int imageIndex, int labelIndex, const Q
 
 void LabelEditController::applyLabelGroup(int imageIndex, int labelIndex, const QString& group)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndex < 0 || labelIndex >= image->labels.size() || !hasGroup(group)) {
         return;
     }
@@ -514,7 +514,7 @@ void LabelEditController::applyLabelGroup(int imageIndex, int labelIndex, const 
 
 void LabelEditController::applyLabelPosition(int imageIndex, int labelIndex, QPointF normalizedPosition)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndex < 0 || labelIndex >= image->labels.size()) {
         return;
     }
@@ -526,10 +526,10 @@ void LabelEditController::applyLabelPosition(int imageIndex, int labelIndex, QPo
     markDirty();
 }
 
-void LabelEditController::applyLabelOrder(int imageIndex, QVector<labelminus::core::Label> labels,
+void LabelEditController::applyLabelOrder(int imageIndex, QVector<labelqt::core::Label> labels,
                                           QVector<int> selectedIndexes)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr) {
         return;
     }
@@ -543,7 +543,7 @@ void LabelEditController::applyLabelOrder(int imageIndex, QVector<labelminus::co
 
 void LabelEditController::applyBatchLabelGroups(int imageIndex, QVector<int> labelIndexes, QVector<QString> groups)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndexes.size() != groups.size()) {
         return;
     }
@@ -569,7 +569,7 @@ void LabelEditController::applyBatchLabelGroups(int imageIndex, QVector<int> lab
 
 void LabelEditController::applyBatchLabelDeleted(int imageIndex, QVector<int> labelIndexes, QVector<bool> deleted)
 {
-    labelminus::core::ImageEntry* image = imageAt(imageIndex);
+    labelqt::core::ImageEntry* image = imageAt(imageIndex);
     if (image == nullptr || labelIndexes.size() != deleted.size()) {
         return;
     }
@@ -599,7 +599,7 @@ void LabelEditController::applyGroupsAndLabelGroups(QStringList groups, QVector<
 {
     m_project.setGroups(std::move(groups));
     for (int imageIndex = 0; imageIndex < m_project.images().size() && imageIndex < labelGroups.size(); ++imageIndex) {
-        labelminus::core::ImageEntry& image = m_project.images()[imageIndex];
+        labelqt::core::ImageEntry& image = m_project.images()[imageIndex];
         const QVector<QString>& imageLabelGroups = labelGroups.at(imageIndex);
         for (int labelIndex = 0; labelIndex < image.labels.size() && labelIndex < imageLabelGroups.size();
              ++labelIndex) {
@@ -617,10 +617,10 @@ QVector<QVector<QString>> LabelEditController::currentLabelGroups() const
 {
     QVector<QVector<QString>> labelGroups;
     labelGroups.reserve(m_project.images().size());
-    for (const labelminus::core::ImageEntry& image : m_project.images()) {
+    for (const labelqt::core::ImageEntry& image : m_project.images()) {
         QVector<QString> imageLabelGroups;
         imageLabelGroups.reserve(image.labels.size());
-        for (const labelminus::core::Label& label : image.labels) {
+        for (const labelqt::core::Label& label : image.labels) {
             imageLabelGroups.append(label.group());
         }
         labelGroups.append(std::move(imageLabelGroups));
@@ -628,7 +628,7 @@ QVector<QVector<QString>> LabelEditController::currentLabelGroups() const
     return labelGroups;
 }
 
-labelminus::core::ImageEntry* LabelEditController::imageAt(int imageIndex)
+labelqt::core::ImageEntry* LabelEditController::imageAt(int imageIndex)
 {
     if (imageIndex < 0 || imageIndex >= m_project.images().size()) {
         return nullptr;
@@ -636,7 +636,7 @@ labelminus::core::ImageEntry* LabelEditController::imageAt(int imageIndex)
     return &m_project.images()[imageIndex];
 }
 
-const labelminus::core::ImageEntry* LabelEditController::imageAt(int imageIndex) const
+const labelqt::core::ImageEntry* LabelEditController::imageAt(int imageIndex) const
 {
     if (imageIndex < 0 || imageIndex >= m_project.images().size()) {
         return nullptr;
@@ -656,4 +656,4 @@ void LabelEditController::markDirty()
     }
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

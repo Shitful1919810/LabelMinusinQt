@@ -1,6 +1,6 @@
 # Architecture
 
-LabelMinus Qt Port is organized around a small set of boundaries so the project can grow without turning the main window into the whole application.
+LabelQt is organized around a small set of boundaries so the project can grow without turning the main window into the whole application.
 
 ## Layers
 
@@ -148,7 +148,7 @@ Before adding any Qt module, check the official Qt licensing documentation. Do n
 project explicitly accepts the resulting GPL-oriented distribution requirements. Examples of modules that require extra
 care include Qt Graphs, Qt GRPC, Qt HTTP Server, Qt MQTT, Qt Virtual Keyboard and Qt Wayland Compositor.
 
-Release packaging should prefer dynamic linking to Qt. The optional Windows `LabelMinusStatic` target is for local
+Release packaging should prefer dynamic linking to Qt. The optional Windows `LabelQtStatic` target is for local
 experiments with a static Qt build only; it is not the default release path. Do not publish static Qt binaries without a
 Qt license review. Source repositories should not vendor Qt SDK files, Qt source code or Qt runtime binaries. Binary
 releases need third-party notices covering Qt and any other bundled dependencies.
@@ -165,7 +165,7 @@ Current preferences:
 
 - `appearance.style`: optional Qt widget style name. Empty means the platform/system default is used. Available values are discovered with `QStyleFactory::keys()` at runtime.
 - `appearance.theme`: optional built-in Breeze stylesheet theme. Empty means no application stylesheet. Current built-in values are `breezeDark` and `breezeLight`. This is layered on top of `appearance.style`, so Qt styles and Breeze QSS themes coexist.
-- `appearance.language`: optional UI language locale name such as `zh_CN` or `en_US`. Empty means the system locale is used. Available values are discovered from `labelminus_*.qm` translation resources at runtime. Language changes currently take effect after restart.
+- `appearance.language`: optional UI language locale name such as `zh_CN` or `en_US`. Empty means the system locale is used. Available values are discovered from `labelqt_*.qm` translation resources at runtime. Language changes currently take effect after restart.
 - `automation.showRunLog`: whether running automation scripts should open a live stdout/stderr log window. The default is `false`, so automation output logs are ignored unless the user opts in.
 - `labelMarker.diameter`: marker diameter in screen pixels; floating-point values are accepted.
 - `labelMarker.fontPointSize`: marker number size as a Qt font point size; floating-point values are accepted.
@@ -279,10 +279,10 @@ The block format is JSON Lines with comment prefixes. Consecutive pages from the
 one range:
 
 ```text
-# LabelMinusMergeSources v2
+# LabelQtMergeSources v2
 # {"firstImage":"001.png","lastImage":"005.png","sourceIndex":1,"sourcePath":"member-a.txt","pageCount":5,"labelCount":42}
 # {"firstImage":"006.png","lastImage":"008.png","sourceIndex":2,"sourcePath":"parts/member-b.txt","pageCount":3,"labelCount":21}
-# EndLabelMinusMergeSources
+# EndLabelQtMergeSources
 ```
 
 Each JSON object describes a contiguous range in the merged project's image order. `sourceIndex` is one-based and follows

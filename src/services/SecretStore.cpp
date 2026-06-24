@@ -6,7 +6,7 @@
 
 #include <memory>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 namespace {
 template <typename Job>
@@ -28,7 +28,7 @@ QString effectiveService(const QString& service)
 
 QString SecretStore::defaultService()
 {
-    return QStringLiteral("LabelMinus");
+    return QStringLiteral("LabelQt");
 }
 
 SecretStoreReadResult SecretStore::readText(const QString& service, const QString& account)
@@ -66,4 +66,4 @@ SecretStoreWriteResult SecretStore::writeText(const QString& service, const QStr
     return result;
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

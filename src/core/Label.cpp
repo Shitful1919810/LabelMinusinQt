@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <utility>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 namespace {
 double clampUnit(double value)
@@ -58,4 +58,4 @@ void Label::setDeleted(bool deleted) noexcept
     m_deleted = deleted;
 }
 
-} // namespace labelminus::core
+} // namespace labelqt::core

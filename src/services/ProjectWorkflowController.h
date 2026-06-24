@@ -11,7 +11,7 @@
 
 #include <functional>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 struct ProjectViewState {
     QString currentImageName;
@@ -23,29 +23,29 @@ struct ProjectViewState {
 class ProjectWorkflowController {
 public:
     using ReplaceImagesCallback =
-        std::function<void(QVector<labelminus::core::ImageEntry> images, const QString& preferredImageName,
+        std::function<void(QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName,
                            int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter)>;
     using DirtyCallback = std::function<void()>;
 
-    ProjectWorkflowController(labelminus::core::Project& project, labelminus::core::UndoStack& undoStack,
+    ProjectWorkflowController(labelqt::core::Project& project, labelqt::core::UndoStack& undoStack,
                               QString reorderPagesText);
 
     void setCallbacks(ReplaceImagesCallback replaceImages, DirtyCallback dirty);
 
     ProjectMergePlan createMergePlan(const QStringList& paths) const;
-    labelminus::core::Project mergedProject(ProjectMergePlan mergePlan, const QVector<int>& selectedCandidateIndexes,
+    labelqt::core::Project mergedProject(ProjectMergePlan mergePlan, const QVector<int>& selectedCandidateIndexes,
                                             const QString& savePath, const QVector<int>& pageOrder) const;
-    labelminus::core::Project mergedProjectPreview(const ProjectMergePlan& mergePlan,
+    labelqt::core::Project mergedProjectPreview(const ProjectMergePlan& mergePlan,
                                                    const QVector<int>& selectedCandidateIndexes) const;
-    void saveProject(const labelminus::core::Project& project, const QString& path) const;
+    void saveProject(const labelqt::core::Project& project, const QString& path) const;
     bool applyPageOrder(const QVector<int>& order, const ProjectViewState& viewState);
 
 private:
-    labelminus::core::Project& m_project;
-    labelminus::core::UndoStack& m_undoStack;
+    labelqt::core::Project& m_project;
+    labelqt::core::UndoStack& m_undoStack;
     QString m_reorderPagesText;
     ReplaceImagesCallback m_replaceImages;
     DirtyCallback m_dirty;
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services

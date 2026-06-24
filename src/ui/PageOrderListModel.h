@@ -13,7 +13,7 @@ public:
         ColumnCount,
     };
 
-    explicit PageOrderListModel(const labelminus::core::Project& project, QObject* parent = nullptr);
+    explicit PageOrderListModel(const labelqt::core::Project& project, QObject* parent = nullptr);
 
     QVector<int> pageOrder() const;
     QVector<int> lastMovedSourceIndexes() const;
@@ -36,7 +36,7 @@ public:
 private:
     void resetOrder(QVector<int> order, QVector<int> selectedSourceIndexes);
 
-    const labelminus::core::Project& m_project;
+    const labelqt::core::Project& m_project;
     QVector<int> m_order;
     QVector<int> m_lastMovedSourceIndexes;
 };

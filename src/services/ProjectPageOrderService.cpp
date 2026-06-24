@@ -2,7 +2,7 @@
 
 #include <QSet>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 bool ProjectPageOrderService::isValidOrder(const QVector<int>& order, int pageCount) noexcept
 {
@@ -31,14 +31,14 @@ bool ProjectPageOrderService::isIdentityOrder(const QVector<int>& order) noexcep
     return true;
 }
 
-QVector<labelminus::core::ImageEntry>
-ProjectPageOrderService::reorderedImages(const QVector<labelminus::core::ImageEntry>& images, const QVector<int>& order)
+QVector<labelqt::core::ImageEntry>
+ProjectPageOrderService::reorderedImages(const QVector<labelqt::core::ImageEntry>& images, const QVector<int>& order)
 {
     if (!isValidOrder(order, static_cast<int>(images.size()))) {
         return images;
     }
 
-    QVector<labelminus::core::ImageEntry> reordered;
+    QVector<labelqt::core::ImageEntry> reordered;
     reordered.reserve(images.size());
     for (int sourceIndex : order) {
         reordered.append(images.at(sourceIndex));
@@ -46,7 +46,7 @@ ProjectPageOrderService::reorderedImages(const QVector<labelminus::core::ImageEn
     return reordered;
 }
 
-void ProjectPageOrderService::reorderImages(labelminus::core::Project& project, const QVector<int>& order)
+void ProjectPageOrderService::reorderImages(labelqt::core::Project& project, const QVector<int>& order)
 {
     if (!isValidOrder(order, static_cast<int>(project.images().size())) || isIdentityOrder(order)) {
         return;
@@ -55,4 +55,4 @@ void ProjectPageOrderService::reorderImages(labelminus::core::Project& project, 
     project.images() = reorderedImages(project.images(), order);
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

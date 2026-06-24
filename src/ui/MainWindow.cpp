@@ -84,8 +84,8 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), m_labelModel(new LabelTableModel(this)), m_labelTextDelegate(new LabelTextDelegate(this)),
       m_labelGroupDelegate(new LabelGroupDelegate(this))
 {
-    const labelminus::core::AppPreferencesLoadResult preferences =
-        labelminus::core::AppPreferences::loadWithDiagnostics();
+    const labelqt::core::AppPreferencesLoadResult preferences =
+        labelqt::core::AppPreferences::loadWithDiagnostics();
     m_preferences = preferences.preferences;
     m_preferenceWarnings = preferences.warnings;
     qApp->installEventFilter(this);
@@ -109,12 +109,12 @@ MainWindow::MainWindow(QWidget* parent)
     m_automationController->setCallbacks({
         [this]() { return project().isEmpty(); },
         [this]() { commitActiveTextInput(); },
-        [this]() -> const labelminus::core::Project& { return project(); },
+        [this]() -> const labelqt::core::Project& { return project(); },
         [this]() { return project().groups(); },
         [this]() { return m_preferences.groupStyles(); },
         [this]() { return m_currentImageIndex; },
         [this]() {
-            labelminus::services::AutomationSelection selection;
+            labelqt::services::AutomationSelection selection;
             if (m_canvas != nullptr && m_canvas->hasSelection()) {
                 selection.hasSelection = true;
                 selection.normalizedRect = m_canvas->normalizedSelectionRect();
@@ -122,7 +122,7 @@ MainWindow::MainWindow(QWidget* parent)
             return selection;
         },
         [this]() {
-            labelminus::services::AutomationContext context;
+            labelqt::services::AutomationContext context;
             context.currentImageIndex = m_currentImageIndex;
             context.selectedLabelIndexes = selectedLabelIndexes();
             return context;
@@ -177,7 +177,7 @@ MainWindow::MainWindow(QWidget* parent)
                 if (m_labelEditController == nullptr || imageIndex < 0 || imageIndex >= project().images().size()) {
                     return;
                 }
-                const labelminus::core::ImageEntry& image = project().images().at(imageIndex);
+                const labelqt::core::ImageEntry& image = project().images().at(imageIndex);
                 if (labelIndex < 0 || labelIndex >= image.labels.size() || image.labels.at(labelIndex).text() == text) {
                     return;
                 }
@@ -194,17 +194,17 @@ MainWindow::MainWindow(QWidget* parent)
     m_labelTextDelegate->setCommitShortcut(m_preferences.commitLabelTextShortcut());
     m_undoStack.setChangedCallback([this]() { updateUndoRedoActions(); });
     m_projectWorkflowController =
-        std::make_unique<labelminus::services::ProjectWorkflowController>(project(), m_undoStack, tr("Reorder pages"));
+        std::make_unique<labelqt::services::ProjectWorkflowController>(project(), m_undoStack, tr("Reorder pages"));
     m_projectWorkflowController->setCallbacks(
-        [this](QVector<labelminus::core::ImageEntry> images, const QString& preferredImageName, int fallbackImageIndex,
+        [this](QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName, int fallbackImageIndex,
                int zoomPercent, QPointF normalizedCenter) {
             replaceProjectImages(std::move(images), preferredImageName, fallbackImageIndex, zoomPercent,
                                  normalizedCenter);
         },
         [this]() { markDirty(); });
     m_labelEditController =
-        std::make_unique<labelminus::services::LabelEditController>(project(), m_undoStack,
-                                                                    labelminus::services::LabelEditCommandTexts{
+        std::make_unique<labelqt::services::LabelEditController>(project(), m_undoStack,
+                                                                    labelqt::services::LabelEditCommandTexts{
                                                                         tr("Add label"),
                                                                         tr("Edit label text"),
                                                                         tr("Change label group"),
@@ -234,7 +234,7 @@ MainWindow::MainWindow(QWidget* parent)
         },
         [this]() { markDirty(); });
 
-    setWindowTitle(QStringLiteral("LabelMinus"));
+    setWindowTitle(QStringLiteral("LabelQt"));
     resize(1200, 800);
 
     createActions();
@@ -663,9 +663,9 @@ void MainWindow::newProject()
 
     const QString projectBaseName = tr("New Translation");
     const QStringList defaultGroups = defaultProjectGroups();
-    labelminus::services::NewProjectResult result =
+    labelqt::services::NewProjectResult result =
         m_projectController.createProjectFromImageDirectory(directoryPath, projectBaseName, defaultGroups, false);
-    if (result.status == labelminus::services::NewProjectResult::Status::ProjectFileExists) {
+    if (result.status == labelqt::services::NewProjectResult::Status::ProjectFileExists) {
         QMessageBox messageBox(QMessageBox::Question, tr("Project file already exists"),
                                tr("%1 already exists. Create the project with the next available name instead?")
                                    .arg(result.existingFileName),
@@ -681,15 +681,15 @@ void MainWindow::newProject()
             m_projectController.createProjectFromImageDirectory(directoryPath, projectBaseName, defaultGroups, true);
     }
 
-    if (result.status == labelminus::services::NewProjectResult::Status::NoImages) {
+    if (result.status == labelqt::services::NewProjectResult::Status::NoImages) {
         QMessageBox::warning(this, tr("New project failed"), tr("No supported image files were found in this folder."));
         return;
     }
-    if (result.status == labelminus::services::NewProjectResult::Status::Failed) {
+    if (result.status == labelqt::services::NewProjectResult::Status::Failed) {
         QMessageBox::critical(this, tr("New project failed"), result.error);
         return;
     }
-    if (result.status == labelminus::services::NewProjectResult::Status::Created &&
+    if (result.status == labelqt::services::NewProjectResult::Status::Created &&
         openProjectFile(result.projectPath)) {
         statusBar()->showMessage(tr("Created %1").arg(result.projectPath), 4000);
     }
@@ -725,7 +725,7 @@ void MainWindow::mergeProjects()
     }
     m_sessionStateStore.saveLastFileDialogPath(paths.first());
 
-    labelminus::services::ProjectMergePlan mergePlan;
+    labelqt::services::ProjectMergePlan mergePlan;
     try {
         mergePlan = m_projectWorkflowController->createMergePlan(paths);
     }
@@ -757,7 +757,7 @@ void MainWindow::mergeProjects()
         selectedCandidateIndexes = dialog.selectedCandidateIndexes();
     }
 
-    const labelminus::core::Project orderPreviewProject =
+    const labelqt::core::Project orderPreviewProject =
         m_projectWorkflowController->mergedProjectPreview(mergePlan, selectedCandidateIndexes);
     PageOrderDialog pageOrderDialog(orderPreviewProject, m_preferences, this);
     pageOrderDialog.showMaximized();
@@ -778,7 +778,7 @@ void MainWindow::mergeProjects()
     }
     saveProjectSessionState();
 
-    labelminus::core::Project mergedProject = m_projectWorkflowController->mergedProject(
+    labelqt::core::Project mergedProject = m_projectWorkflowController->mergedProject(
         std::move(mergePlan), selectedCandidateIndexes, savePath, pageOrderDialog.pageOrder());
 
     try {
@@ -813,7 +813,7 @@ void MainWindow::reorderPages()
         return;
     }
 
-    const labelminus::services::ProjectViewState viewState{
+    const labelqt::services::ProjectViewState viewState{
         m_currentImageIndex >= 0 && m_currentImageIndex < project().images().size()
             ? project().images().at(m_currentImageIndex).name
             : QString(),
@@ -837,16 +837,16 @@ void MainWindow::showAutomationDiscoveryWarnings(const QStringList& warnings)
 }
 
 void MainWindow::applyAutomationOperations(const QString& scriptName,
-                                           const QVector<labelminus::services::AutomationOperation>& operations)
+                                           const QVector<labelqt::services::AutomationOperation>& operations)
 {
-    const labelminus::services::AutomationOperationApplyPlan plan =
-        labelminus::services::AutomationOperationApplier::plan(project(), operations);
+    const labelqt::services::AutomationOperationApplyPlan plan =
+        labelqt::services::AutomationOperationApplier::plan(project(), operations);
     if (!plan.hasChanges()) {
         return;
     }
 
     auto applyChanges = [this, plan](bool redo) {
-        labelminus::services::AutomationOperationApplier::apply(project(), plan, redo);
+        labelqt::services::AutomationOperationApplier::apply(project(), plan, redo);
         refreshLabelViews();
         refreshCurrentLabelUi();
         markDirty();
@@ -943,8 +943,8 @@ void MainWindow::openPreferences()
     }
 
     auto* dialog =
-        new PreferenceDialog(labelminus::core::AppPreferences::defaultFilePath(), m_preferences,
-                             m_automationController == nullptr ? QVector<labelminus::services::AutomationScript>{}
+        new PreferenceDialog(labelqt::core::AppPreferences::defaultFilePath(), m_preferences,
+                             m_automationController == nullptr ? QVector<labelqt::services::AutomationScript>{}
                                                                : m_automationController->scripts(),
                              this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
@@ -1028,7 +1028,7 @@ void MainWindow::addGroup()
         return;
     }
 
-    const labelminus::services::LabelEditResult result = m_labelEditController->addGroup(group);
+    const labelqt::services::LabelEditResult result = m_labelEditController->addGroup(group);
     if (!result.changed) {
         return;
     }
@@ -1084,7 +1084,7 @@ void MainWindow::removeGroup()
         }
     }
 
-    const labelminus::services::LabelEditResult result = m_labelEditController->removeGroup(group, fallback);
+    const labelqt::services::LabelEditResult result = m_labelEditController->removeGroup(group, fallback);
     if (!result.changed) {
         return;
     }
@@ -1157,7 +1157,7 @@ void MainWindow::selectLabel(int index)
 
 void MainWindow::selectLabelFromCanvas(int index, Qt::KeyboardModifiers modifiers)
 {
-    labelminus::core::ImageEntry* image = currentImage();
+    labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || index < 0 || index >= image->labels.size()) {
         clearCurrentLabelSelection();
         return;
@@ -1214,8 +1214,8 @@ void MainWindow::addLabel(QPointF normalizedPosition)
         return;
     }
 
-    const labelminus::services::LabelEditResult result = m_labelEditController->addLabel(
-        m_currentImageIndex, labelminus::core::Label(QString(), group, normalizedPosition));
+    const labelqt::services::LabelEditResult result = m_labelEditController->addLabel(
+        m_currentImageIndex, labelqt::core::Label(QString(), group, normalizedPosition));
     if (!result.changed) {
         return;
     }
@@ -1230,7 +1230,7 @@ void MainWindow::deleteSelectedLabels()
         return;
     }
 
-    const labelminus::services::LabelEditResult result =
+    const labelqt::services::LabelEditResult result =
         m_labelEditController->deleteLabels(m_currentImageIndex, labelIndexes);
     if (!result.changed) {
         return;
@@ -1247,7 +1247,7 @@ void MainWindow::changeSelectedLabelsGroup(const QString& group)
         return;
     }
 
-    const labelminus::services::LabelEditResult result =
+    const labelqt::services::LabelEditResult result =
         m_labelEditController->changeLabelsGroup(m_currentImageIndex, labelIndexes, group);
     if (!result.changed) {
         return;
@@ -1307,7 +1307,7 @@ void MainWindow::showLabelContextMenu(const QPoint& position)
 
 void MainWindow::reorderLabels(QVector<int> sourceIndexes, int visibleDropRow)
 {
-    labelminus::core::ImageEntry* image = currentImage();
+    labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || sourceIndexes.isEmpty() || m_labelEditController == nullptr) {
         return;
     }
@@ -1322,7 +1322,7 @@ void MainWindow::reorderLabels(QVector<int> sourceIndexes, int visibleDropRow)
         }
     }
 
-    const labelminus::services::LabelEditResult result =
+    const labelqt::services::LabelEditResult result =
         m_labelEditController->reorderLabels(m_currentImageIndex, sourceIndexes, insertBeforeSourceIndex);
     if (!result.changed) {
         return;
@@ -1338,7 +1338,7 @@ void MainWindow::updateCurrentLabelText()
         return;
     }
 
-    labelminus::core::ImageEntry* image = currentImage();
+    labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || m_currentLabelIndex < 0 || m_currentLabelIndex >= image->labels.size()) {
         return;
     }
@@ -1378,7 +1378,7 @@ bool MainWindow::updateCurrentLabelDetails(int index)
         commitPendingTextEdit();
     }
 
-    labelminus::core::ImageEntry* image = currentImage();
+    labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || index < 0 || index >= image->labels.size()) {
         return false;
     }
@@ -1479,7 +1479,7 @@ void MainWindow::commitPendingTextEdit()
         return;
     }
 
-    const labelminus::core::ImageEntry& image = project().images().at(m_pendingTextEditImageIndex);
+    const labelqt::core::ImageEntry& image = project().images().at(m_pendingTextEditImageIndex);
     if (m_pendingTextEditLabelIndex >= image.labels.size()) {
         resetPendingTextEdit();
         return;
@@ -1532,7 +1532,7 @@ void MainWindow::updateCurrentLabelGroup(int index)
         return;
     }
 
-    labelminus::core::ImageEntry* image = currentImage();
+    labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || m_currentLabelIndex < 0 || m_currentLabelIndex >= image->labels.size()) {
         return;
     }
@@ -1546,7 +1546,7 @@ void MainWindow::updateCurrentLabelGroup(int index)
     if (m_labelEditController == nullptr) {
         return;
     }
-    const labelminus::services::LabelEditResult result =
+    const labelqt::services::LabelEditResult result =
         m_labelEditController->setLabelGroup(m_currentImageIndex, m_currentLabelIndex, newGroup);
     if (!result.changed) {
         return;
@@ -1559,7 +1559,7 @@ void MainWindow::updateLabelFromTable(int sourceIndex, int column, QVariant newV
 {
     commitPendingTextEdit();
 
-    labelminus::core::ImageEntry* image = currentImage();
+    labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || sourceIndex < 0 || sourceIndex >= image->labels.size()) {
         return;
     }
@@ -1618,7 +1618,7 @@ void MainWindow::clearLabelTextPreviewFromTableEditor(QPersistentModelIndex inde
 
 void MainWindow::openCanvasLabelTextEditor(int index, QPoint globalPosition)
 {
-    labelminus::core::ImageEntry* image = currentImage();
+    labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || m_canvas == nullptr || m_canvasTextEditController == nullptr ||
         m_labelEditController == nullptr || index < 0 || index >= image->labels.size() ||
         !isLabelVisibleByGroupFilter(image->labels.at(index))) {
@@ -1655,7 +1655,7 @@ void MainWindow::closeCanvasLabelTextEditor()
 
 void MainWindow::moveLabel(int index, QPointF normalizedPosition)
 {
-    labelminus::core::ImageEntry* image = currentImage();
+    labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || index < 0 || index >= image->labels.size()) {
         return;
     }
@@ -1664,7 +1664,7 @@ void MainWindow::moveLabel(int index, QPointF normalizedPosition)
         return;
     }
 
-    const labelminus::services::LabelEditResult result =
+    const labelqt::services::LabelEditResult result =
         m_labelEditController->setLabelPosition(m_currentImageIndex, index, normalizedPosition);
     if (!result.changed) {
         refreshCanvasLabels();
@@ -1796,7 +1796,7 @@ void MainWindow::selectNextVisibleLabelFrom(int imageIndex, int labelIndex)
         return;
     }
 
-    const labelminus::services::LabelNavigationTarget target = labelminus::services::LabelNavigator::nextVisibleLabel(
+    const labelqt::services::LabelNavigationTarget target = labelqt::services::LabelNavigator::nextVisibleLabel(
         project(), {imageIndex, labelIndex, m_groupFilterComboBox->selectedGroups()});
     if (target.isValid()) {
         selectLabelAndCenter(target.imageIndex, target.labelIndex);
@@ -1809,8 +1809,8 @@ void MainWindow::selectPreviousVisibleLabelFrom(int imageIndex, int labelIndex)
         return;
     }
 
-    const labelminus::services::LabelNavigationTarget target =
-        labelminus::services::LabelNavigator::previousVisibleLabel(
+    const labelqt::services::LabelNavigationTarget target =
+        labelqt::services::LabelNavigator::previousVisibleLabel(
             project(), {imageIndex, labelIndex, m_groupFilterComboBox->selectedGroups()});
     if (target.isValid()) {
         selectLabelAndCenter(target.imageIndex, target.labelIndex);
@@ -1888,7 +1888,7 @@ void MainWindow::selectLabelAndCenter(int imageIndex, int labelIndex)
     }
 }
 
-bool MainWindow::isLabelVisibleByGroupFilter(const labelminus::core::Label& label) const
+bool MainWindow::isLabelVisibleByGroupFilter(const labelqt::core::Label& label) const
 {
     return !label.isDeleted() && m_groupFilterComboBox != nullptr &&
            m_groupFilterComboBox->selectedGroups().contains(label.group());
@@ -1917,7 +1917,7 @@ QVector<int> MainWindow::selectedLabelIndexes() const
 
 void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes, int primarySourceIndex)
 {
-    labelminus::core::ImageEntry* image = currentImage();
+    labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr || m_labelView == nullptr || m_labelView->selectionModel() == nullptr) {
         return;
     }
@@ -1981,7 +1981,7 @@ void MainWindow::refreshProjectUi()
 {
     m_isUpdatingUi = true;
     m_imageComboBox->clear();
-    for (const labelminus::core::ImageEntry& image : project().images()) {
+    for (const labelqt::core::ImageEntry& image : project().images()) {
         m_imageComboBox->addItem(image.name);
     }
     refreshGroupUi();
@@ -2012,7 +2012,7 @@ void MainWindow::detachProjectViewsFromProjectData()
     m_isUpdatingUi = false;
 }
 
-void MainWindow::replaceProjectImages(QVector<labelminus::core::ImageEntry> images, const QString& preferredImageName,
+void MainWindow::replaceProjectImages(QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName,
                                       int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter)
 {
     detachProjectViewsFromProjectData();
@@ -2050,7 +2050,7 @@ void MainWindow::refreshImageUi()
 {
     closeCanvasLabelTextEditor();
     m_isUpdatingUi = true;
-    const labelminus::core::ImageEntry* image = currentImage();
+    const labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr) {
         m_labelModel->setLabels(nullptr);
         m_textEdit->clear();
@@ -2074,7 +2074,7 @@ void MainWindow::refreshImageUi()
 
 void MainWindow::refreshCanvasLabels()
 {
-    const labelminus::core::ImageEntry* image = currentImage();
+    const labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr) {
         return;
     }
@@ -2195,7 +2195,7 @@ void MainWindow::focusLabelTableSelection()
 
 void MainWindow::restoreLayoutState()
 {
-    const labelminus::services::WindowLayoutState state = m_sessionStateStore.loadWindowLayout();
+    const labelqt::services::WindowLayoutState state = m_sessionStateStore.loadWindowLayout();
 
     if (!state.geometry.isEmpty()) {
         restoreGeometry(state.geometry);
@@ -2216,7 +2216,7 @@ void MainWindow::restoreLayoutState()
 
 void MainWindow::saveLayoutState() const
 {
-    labelminus::services::WindowLayoutState state;
+    labelqt::services::WindowLayoutState state;
     state.geometry = saveGeometry();
     state.windowState = saveState();
     if (m_rootSplitter != nullptr) {
@@ -2258,7 +2258,7 @@ void MainWindow::restoreProjectSessionState()
         return;
     }
 
-    const labelminus::services::ProjectSessionState state =
+    const labelqt::services::ProjectSessionState state =
         m_sessionStateStore.loadProjectSession(project().filePath());
     if (!state.isValid) {
         return;
@@ -2286,7 +2286,7 @@ void MainWindow::restoreProjectSessionState()
         m_zoomSlider->setValue(m_canvas->zoomPercent());
     }
 
-    const labelminus::core::ImageEntry* image = currentImage();
+    const labelqt::core::ImageEntry* image = currentImage();
     if (image != nullptr && state.selectedLabelIndex >= 0 && state.selectedLabelIndex < image->labels.size() &&
         !image->labels.at(state.selectedLabelIndex).isDeleted() &&
         m_labelModel->rowForSourceIndex(state.selectedLabelIndex) >= 0) {
@@ -2301,7 +2301,7 @@ void MainWindow::saveProjectSessionState() const
         return;
     }
 
-    labelminus::services::ProjectSessionState state;
+    labelqt::services::ProjectSessionState state;
     state.isValid = true;
     state.imageIndex = m_currentImageIndex;
     state.imageName = project().images().at(m_currentImageIndex).name;
@@ -2322,14 +2322,14 @@ void MainWindow::configureBackupTimer()
 
 void MainWindow::performAutoBackup()
 {
-    const labelminus::services::AutoBackupResult result = m_projectController.performAutoBackup(m_preferences);
+    const labelqt::services::AutoBackupResult result = m_projectController.performAutoBackup(m_preferences);
     switch (result.status) {
-    case labelminus::services::AutoBackupResult::Status::Skipped:
+    case labelqt::services::AutoBackupResult::Status::Skipped:
         return;
-    case labelminus::services::AutoBackupResult::Status::Saved:
+    case labelqt::services::AutoBackupResult::Status::Saved:
         statusBar()->showMessage(tr("Auto backed up %1").arg(result.path), 4000);
         return;
-    case labelminus::services::AutoBackupResult::Status::Failed:
+    case labelqt::services::AutoBackupResult::Status::Failed:
         if (QFileInfo(result.error).isAbsolute()) {
             statusBar()->showMessage(tr("Auto backup failed: could not create %1").arg(result.error), 4000);
         }
@@ -2390,7 +2390,7 @@ void MainWindow::showPreferenceWarnings()
 
     QStringList messages;
     messages.reserve(m_preferenceWarnings.size());
-    for (const labelminus::core::AppPreferenceWarning& warning : m_preferenceWarnings) {
+    for (const labelqt::core::AppPreferenceWarning& warning : m_preferenceWarnings) {
         messages.append(preferenceWarningText(warning));
     }
 
@@ -2399,7 +2399,7 @@ void MainWindow::showPreferenceWarnings()
     m_warningLabel->setVisible(true);
 }
 
-void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult result)
+void MainWindow::applyPreferences(labelqt::core::AppPreferencesLoadResult result)
 {
     const bool languageChanged = m_preferences.applicationLanguage() != result.preferences.applicationLanguage();
     m_preferences = result.preferences;
@@ -2421,14 +2421,14 @@ void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult res
     }
 
     const QString styleName = m_preferences.applicationStyle().isEmpty()
-                                  ? qApp->property("labelminus.defaultStyle").toString()
+                                  ? qApp->property("labelqt.defaultStyle").toString()
                                   : m_preferences.applicationStyle();
     if (!styleName.isEmpty() && QStyleFactory::keys().contains(styleName, Qt::CaseInsensitive)) {
         QApplication::setStyle(styleName);
     }
-    if (!labelminus::ui::applyApplicationTheme(m_preferences.applicationTheme())) {
-        m_preferenceWarnings.append(labelminus::core::AppPreferenceWarning{
-            labelminus::core::AppPreferenceWarningType::AppearanceThemeWrongType,
+    if (!labelqt::ui::applyApplicationTheme(m_preferences.applicationTheme())) {
+        m_preferenceWarnings.append(labelqt::core::AppPreferenceWarning{
+            labelqt::core::AppPreferenceWarningType::AppearanceThemeWrongType,
             QStringLiteral("appearance.theme"),
             m_preferences.applicationTheme(),
         });
@@ -2452,9 +2452,9 @@ void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult res
     statusBar()->showMessage(tr("Preferences applied"), 4000);
 }
 
-QString MainWindow::preferenceWarningText(const labelminus::core::AppPreferenceWarning& warning) const
+QString MainWindow::preferenceWarningText(const labelqt::core::AppPreferenceWarning& warning) const
 {
-    using labelminus::core::AppPreferenceWarningType;
+    using labelqt::core::AppPreferenceWarningType;
 
     switch (warning.type) {
     case AppPreferenceWarningType::FileNotReadable:
@@ -2608,7 +2608,7 @@ bool MainWindow::promptToSaveIfDirty()
 
 void MainWindow::updateWindowTitle()
 {
-    QString title = QStringLiteral("LabelMinus");
+    QString title = QStringLiteral("LabelQt");
     if (!project().filePath().isEmpty()) {
         title += QStringLiteral(" - %1").arg(project().filePath());
     }
@@ -2674,8 +2674,8 @@ QColor MainWindow::colorForGroup(const QString& group) const
 int MainWindow::labelCountForGroup(const QString& group) const
 {
     int count = 0;
-    for (const labelminus::core::ImageEntry& image : project().images()) {
-        for (const labelminus::core::Label& label : image.labels) {
+    for (const labelqt::core::ImageEntry& image : project().images()) {
+        for (const labelqt::core::Label& label : image.labels) {
             if (!label.isDeleted() && label.group() == group) {
                 ++count;
             }
@@ -2757,17 +2757,17 @@ void MainWindow::setAutomationRunning(bool running)
     }
 }
 
-labelminus::core::Project& MainWindow::project() noexcept
+labelqt::core::Project& MainWindow::project() noexcept
 {
     return m_projectController.project();
 }
 
-const labelminus::core::Project& MainWindow::project() const noexcept
+const labelqt::core::Project& MainWindow::project() const noexcept
 {
     return m_projectController.project();
 }
 
-labelminus::core::ImageEntry* MainWindow::currentImage()
+labelqt::core::ImageEntry* MainWindow::currentImage()
 {
     if (m_currentImageIndex < 0 || m_currentImageIndex >= project().images().size()) {
         return nullptr;
@@ -2775,7 +2775,7 @@ labelminus::core::ImageEntry* MainWindow::currentImage()
     return &project().images()[m_currentImageIndex];
 }
 
-const labelminus::core::ImageEntry* MainWindow::currentImage() const
+const labelqt::core::ImageEntry* MainWindow::currentImage() const
 {
     if (m_currentImageIndex < 0 || m_currentImageIndex >= project().images().size()) {
         return nullptr;

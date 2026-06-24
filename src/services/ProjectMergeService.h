@@ -6,12 +6,12 @@
 #include <QStringList>
 #include <QVector>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 struct ProjectMergeCandidate {
     int projectIndex{-1};
     QString projectPath;
-    labelminus::core::ImageEntry image;
+    labelqt::core::ImageEntry image;
     int labelCount{0};
 };
 
@@ -29,7 +29,7 @@ struct ProjectMergePageSource {
 };
 
 struct ProjectMergePlan {
-    labelminus::core::Project mergedProject;
+    labelqt::core::Project mergedProject;
     QVector<ProjectMergeConflict> conflicts;
     QVector<ProjectMergePageSource> pageSources;
     QStringList warnings;
@@ -38,13 +38,13 @@ struct ProjectMergePlan {
 class ProjectMergeService final {
 public:
     static ProjectMergePlan createPlan(const QStringList& projectPaths);
-    static labelminus::core::Project mergedProjectWithSelections(ProjectMergePlan plan,
+    static labelqt::core::Project mergedProjectWithSelections(ProjectMergePlan plan,
                                                                  const QVector<int>& selectedCandidateIndexes,
                                                                  const QString& outputProjectPath = {},
                                                                  const QVector<int>& imageOrder = {});
 
 private:
-    static int visibleLabelCount(const labelminus::core::ImageEntry& image);
+    static int visibleLabelCount(const labelqt::core::ImageEntry& image);
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services

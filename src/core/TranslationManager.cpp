@@ -8,10 +8,10 @@
 
 #include <algorithm>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 namespace {
-constexpr auto translationPrefix = "labelminus_";
+constexpr auto translationPrefix = "labelqt_";
 constexpr auto translationSuffix = ".qm";
 
 QString i18nDirectoryPath()
@@ -35,7 +35,7 @@ QString localeNameFromTranslationFile(const QString& fileName)
 void collectLocalesFromDirectory(const QString& path, QSet<QString>& locales)
 {
     const QDir directory(path);
-    const QStringList fileNames = directory.entryList({QStringLiteral("labelminus_*.qm")}, QDir::Files, QDir::Name);
+    const QStringList fileNames = directory.entryList({QStringLiteral("labelqt_*.qm")}, QDir::Files, QDir::Name);
     for (const QString& fileName : fileNames) {
         const QString localeName = localeNameFromTranslationFile(fileName);
         if (!localeName.isEmpty()) {
@@ -81,8 +81,8 @@ QVector<ApplicationLanguage> availableApplicationLanguages()
 bool loadApplicationTranslator(QTranslator& translator, const QString& localeName)
 {
     const QLocale locale = localeName.trimmed().isEmpty() ? QLocale() : QLocale(localeName.trimmed());
-    return translator.load(locale, QStringLiteral("labelminus"), QStringLiteral("_"), QStringLiteral(":/i18n")) ||
-           translator.load(locale, QStringLiteral("labelminus"), QStringLiteral("_"), i18nDirectoryPath());
+    return translator.load(locale, QStringLiteral("labelqt"), QStringLiteral("_"), QStringLiteral(":/i18n")) ||
+           translator.load(locale, QStringLiteral("labelqt"), QStringLiteral("_"), i18nDirectoryPath());
 }
 
-} // namespace labelminus::core
+} // namespace labelqt::core

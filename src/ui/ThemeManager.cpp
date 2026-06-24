@@ -6,11 +6,11 @@
 #include <QFile>
 #include <QTextStream>
 
-namespace labelminus::ui {
+namespace labelqt::ui {
 
 QStringList availableApplicationThemes()
 {
-    return labelminus::core::builtInApplicationThemeIds();
+    return labelqt::core::builtInApplicationThemeIds();
 }
 
 bool applyApplicationTheme(const QString& themeName)
@@ -22,7 +22,7 @@ bool applyApplicationTheme(const QString& themeName)
         return true;
     }
 
-    const QString resourcePath = labelminus::core::applicationThemeResourcePath(normalizedTheme);
+    const QString resourcePath = labelqt::core::applicationThemeResourcePath(normalizedTheme);
     if (resourcePath.isEmpty()) {
         return false;
     }
@@ -37,4 +37,4 @@ bool applyApplicationTheme(const QString& themeName)
     return true;
 }
 
-} // namespace labelminus::ui
+} // namespace labelqt::ui

@@ -1,4 +1,4 @@
-function(labelminus_enable_warnings target_name)
+function(labelqt_enable_warnings target_name)
     if(MSVC)
         target_compile_options(${target_name} PRIVATE /W4 /permissive-)
     else()

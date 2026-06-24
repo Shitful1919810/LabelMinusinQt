@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace labelminus::core {
+namespace labelqt::core {
 
 bool Project::isEmpty() const noexcept
 {
@@ -78,4 +78,4 @@ void Project::setCommentLines(QStringList commentLines)
     m_commentLines = std::move(commentLines);
 }
 
-} // namespace labelminus::core
+} // namespace labelqt::core

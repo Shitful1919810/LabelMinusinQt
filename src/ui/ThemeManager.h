@@ -3,9 +3,9 @@
 #include <QString>
 #include <QStringList>
 
-namespace labelminus::ui {
+namespace labelqt::ui {
 
 QStringList availableApplicationThemes();
 bool applyApplicationTheme(const QString& themeName);
 
-} // namespace labelminus::ui
+} // namespace labelqt::ui

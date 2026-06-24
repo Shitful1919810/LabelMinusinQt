@@ -30,9 +30,9 @@ public:
 
     void setInteractionMode(InteractionMode mode);
     InteractionMode interactionMode() const noexcept;
-    void setPreferences(const labelminus::core::AppPreferences& preferences);
-    void setImage(const QString& path, const QVector<labelminus::core::Label>& labels);
-    void setLabels(const QVector<labelminus::core::Label>& labels);
+    void setPreferences(const labelqt::core::AppPreferences& preferences);
+    void setImage(const QString& path, const QVector<labelqt::core::Label>& labels);
+    void setLabels(const QVector<labelqt::core::Label>& labels);
     void setGroups(QStringList groups);
     void setVisibleGroups(QStringList groups);
     void setSelectedLabel(int index);
@@ -78,12 +78,12 @@ private:
     void updateScenePadding();
     void setZoomPercentAt(int percent, QPoint viewportAnchor);
     void notifyViewportStateChanged();
-    bool isLabelVisible(const labelminus::core::Label& label) const;
+    bool isLabelVisible(const labelqt::core::Label& label) const;
     bool hasMoveLabelModifiers(Qt::KeyboardModifiers modifiers) const;
     QString displayTextForLabel(int index) const;
     void updateHoveredLabelToolTip(const QPoint& viewportPosition, const QPoint& globalPosition);
     void hideHoveredLabelToolTip();
-    labelminus::core::LabelGroupStyle styleForGroup(const QString& group) const;
+    labelqt::core::LabelGroupStyle styleForGroup(const QString& group) const;
     QPointF normalizedPositionFromScene(QPointF scenePosition) const;
     QRectF imageClampedSceneRect(QPointF firstScenePosition, QPointF secondScenePosition) const;
     QRectF normalizedRectFromSceneRect(QRectF sceneRect) const;
@@ -98,7 +98,7 @@ private:
     QGraphicsPixmapItem* m_pixmapItem{nullptr};
     QGraphicsRectItem* m_selectionItem{nullptr};
     QLabel* m_hoverToolTip{nullptr};
-    QVector<labelminus::core::Label> m_labels;
+    QVector<labelqt::core::Label> m_labels;
     QVector<QGraphicsItem*> m_labelItems;
     QString m_imagePath;
     QSet<int> m_selectedLabels;
@@ -111,7 +111,7 @@ private:
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
     QStringList m_groups;
     QSet<QString> m_visibleGroups;
-    QVector<labelminus::core::LabelGroupStyle> m_groupStyles;
+    QVector<labelqt::core::LabelGroupStyle> m_groupStyles;
     bool m_hasUserZoom{false};
     bool m_isDestroying{false};
     bool m_pendingLabelCreate{false};

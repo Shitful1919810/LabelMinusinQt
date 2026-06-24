@@ -5,10 +5,10 @@
 
 #include <utility>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
-ProjectWorkflowController::ProjectWorkflowController(labelminus::core::Project& project,
-                                                     labelminus::core::UndoStack& undoStack, QString reorderPagesText)
+ProjectWorkflowController::ProjectWorkflowController(labelqt::core::Project& project,
+                                                     labelqt::core::UndoStack& undoStack, QString reorderPagesText)
     : m_project(project), m_undoStack(undoStack), m_reorderPagesText(std::move(reorderPagesText))
 {
 }
@@ -24,7 +24,7 @@ ProjectMergePlan ProjectWorkflowController::createMergePlan(const QStringList& p
     return ProjectMergeService::createPlan(paths);
 }
 
-labelminus::core::Project ProjectWorkflowController::mergedProject(ProjectMergePlan mergePlan,
+labelqt::core::Project ProjectWorkflowController::mergedProject(ProjectMergePlan mergePlan,
                                                                    const QVector<int>& selectedCandidateIndexes,
                                                                    const QString& savePath,
                                                                    const QVector<int>& pageOrder) const
@@ -33,16 +33,16 @@ labelminus::core::Project ProjectWorkflowController::mergedProject(ProjectMergeP
                                                             pageOrder);
 }
 
-labelminus::core::Project
+labelqt::core::Project
 ProjectWorkflowController::mergedProjectPreview(const ProjectMergePlan& mergePlan,
                                                 const QVector<int>& selectedCandidateIndexes) const
 {
     return ProjectMergeService::mergedProjectWithSelections(mergePlan, selectedCandidateIndexes);
 }
 
-void ProjectWorkflowController::saveProject(const labelminus::core::Project& project, const QString& path) const
+void ProjectWorkflowController::saveProject(const labelqt::core::Project& project, const QString& path) const
 {
-    labelminus::core::LabelPlusDocument::saveToFile(project, path);
+    labelqt::core::LabelPlusDocument::saveToFile(project, path);
 }
 
 bool ProjectWorkflowController::applyPageOrder(const QVector<int>& order, const ProjectViewState& viewState)
@@ -52,8 +52,8 @@ bool ProjectWorkflowController::applyPageOrder(const QVector<int>& order, const 
         return false;
     }
 
-    const QVector<labelminus::core::ImageEntry> oldImages = m_project.images();
-    const QVector<labelminus::core::ImageEntry> newImages =
+    const QVector<labelqt::core::ImageEntry> oldImages = m_project.images();
+    const QVector<labelqt::core::ImageEntry> newImages =
         ProjectPageOrderService::reorderedImages(m_project.images(), order);
 
     if (m_replaceImages) {
@@ -88,4 +88,4 @@ bool ProjectWorkflowController::applyPageOrder(const QVector<int>& order, const 
     return true;
 }
 
-} // namespace labelminus::services
+} // namespace labelqt::services

@@ -1,10 +1,10 @@
-# LabelMinus Qt
+# LabelQt
 
-LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Windows 与 macOS 上提供可用的 LabelPlus 文本工程编辑体验。
+LabelQt 是一个使用 C++/Qt 6 开发的跨平台 LabelPlus 文本工程编辑器，目标是在 Linux、Windows 与 macOS 上提供可用的漫画翻译标注工作流。
 
 当前版本面向已有的经典 LabelPlus `.txt` 工程文件：程序可以打开文本工程，从工程文件所在目录加载图片，在图像预览区添加、移动和筛选标签，并将修改后的内容保存回 LabelPlus 文本格式。
 
-> 本分支是 Qt 移植分支，旧 WPF 实现已按计划移除。
+本项目为独立实现，不包含原 WPF 项目的源代码。
 
 ## 功能概览
 
@@ -31,7 +31,15 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 
 ## 当前状态
 
-项目仍处于移植和功能重构阶段，重点是复刻并改进 LabelPlus 文本工程的基础编辑流程。OCR、压缩包读取、平台集成等能力会在后续阶段继续完善。
+项目仍处于早期开发和功能重构阶段，重点是完善 LabelPlus 文本工程的基础编辑流程，并逐步扩展 OCR、自动化脚本、AI 翻译、协作合并和平台集成等能力。
+
+## 致谢
+
+LabelQt 的早期产品方向、基础编辑工作流以及部分 OCR 流程设计参考了
+[Yilibala-kid/LabelMinusinWPF](https://github.com/Yilibala-kid/LabelMinusinWPF)。本项目代码为 C++/Qt
+重新实现，不包含原 WPF 项目的源代码。
+
+本项目兼容经典 LabelPlus `.txt` 工程格式，但不是 LabelPlus 或 LabelMinus 的官方项目。
 
 ## 许可说明
 
@@ -130,7 +138,7 @@ cmake --preset windows-vs-static-release
 cmake --build --preset windows-vs-static-release
 ```
 
-这些 preset 只启用 `LabelMinusStatic` 目标，并要求当前 CMake 能找到静态构建的 Qt。使用普通动态 Qt
+这些 preset 只启用 `LabelQtStatic` 目标，并要求当前 CMake 能找到静态构建的 Qt。使用普通动态 Qt
 安装包时，CMake 会直接报错，因为动态 Qt 无法生成真正脱离 Qt DLL 的单 exe。即便 Qt 本身是静态构建，
 QtKeychain、LibArchive 等第三方依赖也需要提供静态库，否则最终产物仍可能依赖额外 DLL。该目标仅供
 本地实验，不作为官方 release 推荐路径。若使用 Ninja preset，请先进入 “x64 Native Tools Command Prompt
@@ -164,26 +172,26 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 Linux Debug 构建完成后，可直接运行：
 
 ```bash
-./build/linux/debug/src/labelminus
+./build/linux/debug/src/labelqt
 ```
 
 也可以在启动时传入 LabelPlus 文本工程路径：
 
 ```bash
-./build/linux/debug/src/labelminus /path/to/project.txt
+./build/linux/debug/src/labelqt /path/to/project.txt
 ```
 
 Linux Release 构建对应路径为：
 
 ```bash
-./build/linux/release/src/labelminus
+./build/linux/release/src/labelqt
 ```
 
 Windows 构建会生成 GUI 可执行文件，macOS 构建会生成应用包。
 
 ### Windows Qt 运行时
 
-Windows 上直接运行刚编译出的 `labelminus.exe` 时，如果系统找不到 `Qt6Widgets.dll`、`Qt6Core.dll`、
+Windows 上直接运行刚编译出的 `labelqt.exe` 时，如果系统找不到 `Qt6Widgets.dll`、`Qt6Core.dll`、
 `Qt6Gui.dll` 等文件，说明 Qt 运行时 DLL 还没有部署到 exe 旁边，或 Qt 的 `bin` 目录不在 `PATH` 中。
 
 推荐在构建后运行项目提供的部署目标：
@@ -200,7 +208,7 @@ cmake --build --preset windows-vs-debug --target deploy_windows
 cmake --build --preset windows-vs-release --target deploy_windows
 ```
 
-该目标会调用 Qt 自带的 `windeployqt`，把运行所需的 Qt DLL 和平台插件复制到 `labelminus.exe`
+该目标会调用 Qt 自带的 `windeployqt`，把运行所需的 Qt DLL 和平台插件复制到 `labelqt.exe`
 所在目录。之后从该目录启动 exe 即可。若 CMake 提示找不到 `windeployqt`，请把 Qt 安装目录下的
 `bin` 目录加入 `PATH`，例如 `C:\Qt\6.x.x\msvc2022_64\bin`。
 
@@ -278,7 +286,7 @@ cmake --build --preset windows-vs-release --target deploy_windows
 
 - `appearance.style`：启动时强制使用的 Qt 控件风格名称，例如 `Fusion`。为空时不强制设置，使用系统默认风格。可选值由当前 Qt 环境的 `QStyleFactory::keys()` 决定，偏好设置窗口会自动列出可用 style。
 - `appearance.theme`：应用内置 Breeze QSS 样式表主题。为空时不使用样式表；当前支持 `breezeDark`、`breezeLight`。该字段与 `appearance.style` 可同时使用，程序会先设置 Qt style，再叠加 Breeze QSS。
-- `appearance.language`：界面语言。为空时跟随系统语言；可选值由程序扫描当前可用的 `labelminus_*.qm` 翻译资源得到。修改后需要重启应用程序生效。
+- `appearance.language`：界面语言。为空时跟随系统语言；可选值由程序扫描当前可用的 `labelqt_*.qm` 翻译资源得到。修改后需要重启应用程序生效。
 - `labelMarker.diameter`：默认 marker 直径，单位为屏幕像素，支持浮点数。
 - `labelMarker.fontPointSize`：默认 marker 内部序号字号，使用 Qt 字号单位，支持浮点数。
 - `labelTable.maxTextRows`：右侧标签列表文本列自动换行后的最大显示行数。
@@ -367,7 +375,7 @@ scripts/custom      用户自定义脚本
       "name": "OCR Add Labels",
       "entry": "ocr_preview.py",
       "environment": {
-        "LABELMINUS_OCR_ACTION": "add-labels"
+        "LABELQT_OCR_ACTION": "add-labels"
       }
     },
     {
@@ -389,7 +397,7 @@ scripts/custom      用户自定义脚本
         }
       ],
       "environment": {
-        "LABELMINUS_OCR_ACTION": "add-page-range-labels"
+        "LABELQT_OCR_ACTION": "add-page-range-labels"
       }
     }
   ]
@@ -429,7 +437,7 @@ scripts/custom      用户自定义脚本
   "label": "DeepSeek API key",
   "type": "secret",
   "secretKey": "deepseekApiKey",
-  "service": "LabelMinus",
+  "service": "LabelQt",
   "account": "deepseek_api_key",
   "environment": "DEEPSEEK_API_KEY"
 }
@@ -446,7 +454,7 @@ scripts/custom      用户自定义脚本
     {
       "key": "deepseekApiKey",
       "label": "DeepSeek API key",
-      "service": "LabelMinus",
+      "service": "LabelQt",
       "account": "deepseek_api_key",
       "environment": "DEEPSEEK_API_KEY",
       "required": true
@@ -610,7 +618,7 @@ find src tests -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -prin
 项目使用 Qt 推荐的 Linguist 工作流：
 
 - 新增用户可见 UI 文本时使用 `tr()`。
-- 同步更新 `translations/labelminus_zh_CN.ts` 与 `translations/labelminus_en_US.ts`。
+- 同步更新 `translations/` 下的四份 `labelqt_*.ts` 翻译文件。
 - 使用 `release_translations` 生成 `.qm` 翻译资源。
 - 程序启动时会根据系统区域设置自动加载匹配翻译。
 

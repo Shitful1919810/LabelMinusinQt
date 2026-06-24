@@ -4,7 +4,7 @@
 
 #include <QStringList>
 
-namespace labelminus::services {
+namespace labelqt::services {
 
 struct LabelNavigationState {
     int imageIndex{-1};
@@ -21,10 +21,10 @@ struct LabelNavigationTarget {
 
 class LabelNavigator final {
 public:
-    static LabelNavigationTarget nextVisibleLabel(const labelminus::core::Project& project,
+    static LabelNavigationTarget nextVisibleLabel(const labelqt::core::Project& project,
                                                   const LabelNavigationState& state);
-    static LabelNavigationTarget previousVisibleLabel(const labelminus::core::Project& project,
+    static LabelNavigationTarget previousVisibleLabel(const labelqt::core::Project& project,
                                                       const LabelNavigationState& state);
 };
 
-} // namespace labelminus::services
+} // namespace labelqt::services
