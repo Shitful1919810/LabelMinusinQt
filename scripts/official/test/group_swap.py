@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
+from labelminus_automation import AutomationContext
 
 
 def main() -> None:
@@ -9,38 +13,19 @@ def main() -> None:
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
 
-    with open(args.input, "r", encoding="utf-8") as input_file:
-        payload = json.load(input_file)
-
-    parameters = payload.get("parameters", {})
-    group_a = parameters.get("groupA", "")
-    group_b = parameters.get("groupB", "")
+    ctx = AutomationContext.from_file(args.input)
+    script_parameters = ctx.parameters
+    group_a = script_parameters.get("groupA", "")
+    group_b = script_parameters.get("groupB", "")
     operations = []
 
     if group_a and group_b and group_a != group_b:
-        pages = payload.get("project", {}).get("pages", [])
-        for page in pages:
-            page_name = page.get("name", "")
-            for label in page.get("labels", []):
-                group = label.get("group", "")
-                if group == group_a:
-                    operations.append(
-                        {
-                            "type": "setLabelGroup",
-                            "page": page_name,
-                            "labelIndex": label.get("labelIndex", -1),
-                            "group": group_b,
-                        }
-                    )
-                elif group == group_b:
-                    operations.append(
-                        {
-                            "type": "setLabelGroup",
-                            "page": page_name,
-                            "labelIndex": label.get("labelIndex", -1),
-                            "group": group_a,
-                        }
-                    )
+        for page in ctx.pages:
+            for label in page.labels:
+                if label.group == group_a:
+                    operations.append(label.set_group(group_b))
+                elif label.group == group_b:
+                    operations.append(label.set_group(group_a))
 
     count = len(operations)
     if not group_a or not group_b:
@@ -50,22 +35,7 @@ def main() -> None:
     else:
         result_text = f"Swapped {count} labels between {group_a} and {group_b}."
 
-    with open(args.output, "w", encoding="utf-8") as output_file:
-        json.dump(
-            {
-                "apiVersion": 1,
-                "summary": result_text,
-                "result": {
-                    "type": "message",
-                    "title": "Swap Label Groups",
-                    "text": result_text,
-                },
-                "operations": operations,
-            },
-            output_file,
-            ensure_ascii=False,
-            indent=2,
-        )
+    ctx.write_output(args.output, "Swap Label Groups", result_text, operations)
 
 
 if __name__ == "__main__":

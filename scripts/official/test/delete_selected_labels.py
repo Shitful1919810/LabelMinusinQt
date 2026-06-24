@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
+from labelminus_automation import AutomationContext
 
 
 def main() -> None:
@@ -9,45 +13,18 @@ def main() -> None:
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
 
-    with open(args.input, "r", encoding="utf-8") as input_file:
-        payload = json.load(input_file)
-
-    current_page = payload.get("context", {}).get("currentPage", {})
-    page_name = current_page.get("name", "")
-    selected_labels = payload.get("context", {}).get("selectedLabels", [])
+    ctx = AutomationContext.from_file(args.input)
 
     operations = []
-    if page_name:
-        for label in selected_labels:
-            operations.append(
-                {
-                    "type": "deleteLabel",
-                    "page": page_name,
-                    "labelIndex": label.get("labelIndex", -1),
-                }
-            )
+    for label in ctx.selected_labels:
+        operations.append(label.delete())
 
     if operations:
         result_text = f"Deleted {len(operations)} selected label(s). Use Undo to restore them."
     else:
         result_text = "Select one or more labels before running this script."
 
-    with open(args.output, "w", encoding="utf-8") as output_file:
-        json.dump(
-            {
-                "apiVersion": 1,
-                "summary": result_text,
-                "result": {
-                    "type": "message",
-                    "title": "Delete Label Test",
-                    "text": result_text,
-                },
-                "operations": operations,
-            },
-            output_file,
-            ensure_ascii=False,
-            indent=2,
-        )
+    ctx.write_output(args.output, "Delete Label Test", result_text, operations)
 
 
 if __name__ == "__main__":

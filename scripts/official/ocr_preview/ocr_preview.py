@@ -2,9 +2,13 @@
 import argparse
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
+from labelminus_automation import AutomationContext
 
 os.environ.setdefault("FLAGS_allocator_strategy", "auto_growth")
 os.environ.setdefault("FLAGS_use_mkldnn", "0")
@@ -50,43 +54,24 @@ def configured_bool(config_key: str, environment_key: str, default: bool = False
     return default
 
 
+def parse_page_number(parameters: dict[str, Any], key: str, default: int) -> int:
+    try:
+        return int(str(parameters.get(key, default)).strip())
+    except ValueError as error:
+        raise RuntimeError(f"{key} must be a 1-based page number.") from error
+
+
 def log_progress(message: str) -> None:
     print(f"[ocr_preview] {message}", flush=True)
 
 
-def write_output(
-    path: str,
-    title: str,
-    text: str,
-    summary: str | None = None,
-    operations: list[dict[str, Any]] | None = None,
-) -> None:
-    payload: dict[str, Any] = {
-        "apiVersion": 1,
-        "summary": summary or text.splitlines()[0] if text else title,
-        "result": {
-            "type": "message",
-            "title": title,
-            "text": text,
-        },
-    }
-    if operations is not None:
-        payload["operations"] = operations
+def selected_target(ctx: AutomationContext) -> tuple[str | None, str, dict[str, Any] | None]:
+    if ctx.has_selection:
+        return ctx.selection.get("imagePath"), "selection", ctx.selection.get("rect", {})
 
-    with open(path, "w", encoding="utf-8") as output_file:
-        json.dump(payload, output_file, ensure_ascii=False, indent=2)
-
-
-def selected_target(payload: dict[str, Any]) -> tuple[str | None, str, dict[str, Any] | None]:
-    context = payload.get("context", {})
-    current_page = context.get("currentPage", {})
-    selection = payload.get("selection", {})
-
-    if selection.get("hasSelection"):
-        return selection.get("imagePath"), "selection", selection.get("rect", {})
-
-    if current_page.get("hasPage"):
-        return current_page.get("imagePath"), "current page", None
+    if ctx.current_page_info.get("hasPage"):
+        page = ctx.current_page
+        return page.image_path if page is not None else "", "current page", None
 
     return None, "none", None
 
@@ -561,6 +546,24 @@ def merge_all_regions(regions: list[dict[str, Any]], vertical: bool, right_to_le
     return {"text": text, "score": confidence, "box": list(merged_bounds)}
 
 
+def label_regions_for_target(
+    regions: list[dict[str, Any]], selection_rect: dict[str, Any] | None
+) -> list[dict[str, Any]]:
+    """Return the final text blocks that LabelMinus should preview or add.
+
+    Detector output often splits one manga speech bubble into several adjacent
+    OCR regions. Earlier steps already merge nearby regions into text blocks.
+    When the user OCRs an explicit selection, the selection represents one
+    intended LabelMinus label, so the remaining blocks are merged once more.
+    Full-page OCR keeps one label per post-processed text block.
+    """
+    if not selection_rect:
+        return regions
+
+    merged_region = merge_all_regions(regions, is_vertical_layout(regions), True)
+    return [merged_region] if merged_region is not None else []
+
+
 def parse_paddle_regions(result: Any) -> list[dict[str, Any]]:
     regions: list[dict[str, Any]] = []
 
@@ -637,21 +640,31 @@ def ocr_regions(image_path: str, engine: str, temp_dir: str) -> tuple[str, list[
     width, height = image_size(image_path)
     raw_regions = normalize_regions(parse_paddle_regions(run_paddle(image_path)), width, height)
     log_progress(f"PaddleOCR detected {len(raw_regions)} text region(s)")
-    right_to_left = configured_bool("rightToLeft", "LABELMINUS_OCR_RIGHT_TO_LEFT")
+    right_to_left = configured_bool("rightToLeft", "LABELMINUS_OCR_RIGHT_TO_LEFT", True)
 
     if engine in {"manga", "manga-with-paddle", "manga_with_paddle"}:
         detection_vertical = is_vertical_layout(raw_regions)
-        detection_blocks = build_text_blocks(raw_regions, width, height, detection_vertical, True)
+        detection_blocks = build_text_blocks(raw_regions, width, height, detection_vertical, right_to_left)
         log_progress(f"Merged PaddleOCR detections into {len(detection_blocks)} manga recognition block(s)")
         recognized_regions = run_manga_on_paddle_boxes(image_path, detection_blocks, temp_dir)
-        processed_regions = post_process_regions(recognized_regions, width, height, already_merged=True, right_to_left=True)
-        return "manga-ocr with PaddleOCR detection", processed_regions, width, height
+        processed_regions = post_process_regions(
+            recognized_regions, width, height, already_merged=True, right_to_left=right_to_left
+        )
+        direction = "right-to-left" if right_to_left else "left-to-right"
+        return f"manga-ocr with PaddleOCR detection ({direction} text block order)", processed_regions, width, height
 
     processed_regions = post_process_regions(raw_regions, width, height, already_merged=False, right_to_left=right_to_left)
-    return "PaddleOCR", processed_regions, width, height
+    direction = "right-to-left" if right_to_left else "left-to-right"
+    return f"PaddleOCR ({direction} text block order)", processed_regions, width, height
 
 
-def format_regions(regions: list[dict[str, Any]], engine: str, target_description: str, image_path: str) -> str:
+def format_regions(
+    regions: list[dict[str, Any]],
+    engine: str,
+    target_description: str,
+    image_path: str,
+    source_region_count: int,
+) -> str:
     if not regions:
         return f"OCR engine: {engine}\nTarget: {target_description}\nImage: {image_path}\n\nNo text regions were recognized."
 
@@ -659,9 +672,11 @@ def format_regions(regions: list[dict[str, Any]], engine: str, target_descriptio
         f"OCR engine: {engine}",
         f"Target: {target_description}",
         f"Image: {image_path}",
-        f"Recognized regions: {len(regions)}",
-        "",
+        f"Post-processed text blocks: {len(regions)}",
     ]
+    if source_region_count != len(regions):
+        lines.append(f"Source OCR regions after detector cleanup: {source_region_count}")
+    lines.append("")
     for index, region in enumerate(regions, start=1):
         score = region.get("score")
         score_text = ""
@@ -674,21 +689,11 @@ def format_regions(regions: list[dict[str, Any]], engine: str, target_descriptio
     return "\n".join(lines)
 
 
-def current_page_name(payload: dict[str, Any]) -> str:
-    context = payload.get("context", {})
-    current_page = context.get("currentPage", {})
-    page_name = str(current_page.get("name", "")).strip()
-    if page_name:
-        return page_name
-    project = payload.get("project", {})
-    return str(project.get("currentPage", "")).strip()
-
-
-def default_label_group(payload: dict[str, Any]) -> str:
+def default_label_group(ctx: AutomationContext) -> str:
     configured_group = configured_string("defaultGroup", "LABELMINUS_OCR_GROUP")
     if configured_group:
         return configured_group
-    groups = payload.get("project", {}).get("groups", [])
+    groups = ctx.groups
     if "框内" in groups:
         return "框内"
     if groups:
@@ -723,76 +728,62 @@ def operation_position_for_region(
 
 
 def operations_for_regions(
-    payload: dict[str, Any],
+    ctx: AutomationContext,
+    page_name: str,
     regions: list[dict[str, Any]],
     image_width: int,
     image_height: int,
     selection_rect: dict[str, Any] | None,
 ) -> list[dict[str, Any]]:
-    page_name = current_page_name(payload)
-    group = default_label_group(payload)
+    group = default_label_group(ctx)
     if not page_name:
         return []
 
-    operation_regions = regions
-    if selection_rect:
-        merged_region = merge_all_regions(regions, is_vertical_layout(regions), True)
-        operation_regions = [merged_region] if merged_region is not None else []
-
     operations: list[dict[str, Any]] = []
-    for index, region in enumerate(operation_regions, start=1):
+    for index, region in enumerate(regions, start=1):
         text = str(region.get("text", "")).strip() or f"Label{index}"
         x, y = operation_position_for_region(region, image_width, image_height, selection_rect)
-        operations.append(
-            {
-                "type": "addLabel",
-                "page": page_name,
-                "group": group,
-                "text": text,
-                "x": x,
-                "y": y,
-            }
-        )
+        operations.append(ctx.ops.add_label(page_name, group, text, x, y))
     return operations
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Preview OCR results for the current LabelMinus page or selection.")
-    parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
-    parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
-    args = parser.parse_args()
+def process_single_target(
+    image_path: str,
+    target_description: str,
+    selection_rect: dict[str, Any] | None,
+    engine: str,
+    temp_dir: str,
+) -> tuple[str, list[dict[str, Any]], int, int, str, int]:
+    target_path = image_path
+    target_detail = target_description
+    if selection_rect:
+        target_path, crop_detail = crop_selection(image_path, selection_rect, temp_dir)
+        target_detail = f"selection ({crop_detail})"
 
-    with open(args.input, "r", encoding="utf-8") as input_file:
-        payload = json.load(input_file)
+    engine_name, regions, width, height = ocr_regions(target_path, engine, temp_dir)
+    label_regions = label_regions_for_target(regions, selection_rect)
+    result_text = format_regions(label_regions, engine_name, target_detail, target_path, len(regions))
+    return engine_name, label_regions, width, height, result_text, len(regions)
 
-    image_path, target_kind, selection_rect = selected_target(payload)
+
+def run_current_target(ctx: AutomationContext, args: argparse.Namespace, engine: str) -> None:
+    image_path, target_kind, selection_rect = selected_target(ctx)
     if not image_path:
-        write_output(args.output, "OCR Preview", "Open a project page before running OCR.")
+        ctx.write_output(args.output, "OCR Preview", "Open a project page before running OCR.")
         return
     if not Path(image_path).exists():
-        write_output(args.output, "OCR Preview", f"Image does not exist:\n{image_path}")
+        ctx.write_output(args.output, "OCR Preview", f"Image does not exist:\n{image_path}")
         return
 
-    engine = configured_string("engine", "LABELMINUS_OCR_ENGINE", "paddle").lower()
-    log_progress(f"Starting OCR preview engine={engine}")
     with tempfile.TemporaryDirectory(prefix="labelminus_ocr_") as temp_dir:
-        target_path = image_path
-        target_description = target_kind
-        if selection_rect:
-            try:
-                target_path, crop_detail = crop_selection(image_path, selection_rect, temp_dir)
-                target_description = f"selection ({crop_detail})"
-            except Exception as error:
-                write_output(args.output, "OCR Preview", f"Failed to crop selected region:\n{error}")
-                return
-
         try:
-            engine_name, regions, width, height = ocr_regions(target_path, engine, temp_dir)
-            result_text = format_regions(regions, engine_name, target_description, target_path)
+            _, label_regions, width, height, result_text, _ = process_single_target(
+                image_path, target_kind, selection_rect, engine, temp_dir
+            )
             action = configured_string("action", "LABELMINUS_OCR_ACTION", "preview").lower()
             operations: list[dict[str, Any]] | None = None
             if action in {"add-labels", "add_labels"}:
-                operations = operations_for_regions(payload, regions, width, height, selection_rect)
+                operations = operations_for_regions(ctx, ctx.current_page_name, label_regions, width, height, selection_rect)
                 result_text = (
                     result_text
                     + "\n\n"
@@ -808,7 +799,84 @@ def main() -> None:
             operations = None
 
     title = "OCR Add Labels" if operations is not None else "OCR Preview"
-    write_output(args.output, title, result_text, operations=operations)
+    action_is_preview = operations is None
+    quiet = not action_is_preview and not configured_bool("showResult", "LABELMINUS_OCR_SHOW_RESULT", True)
+    ctx.write_output(args.output, title, result_text, operations=operations, quiet=quiet)
+
+
+def run_page_range(ctx: AutomationContext, args: argparse.Namespace, engine: str) -> None:
+    parameters = ctx.parameters
+    try:
+        start_page = parse_page_number(parameters, "startPage", 1)
+        end_page = parse_page_number(parameters, "endPage", start_page)
+        target_pages = ctx.page_range_pages(start_page, end_page)
+    except Exception as error:
+        ctx.write_output(args.output, "OCR Page Range Failed", f"OCR page range failed:\n{error}")
+        return
+
+    if not target_pages:
+        ctx.write_output(args.output, "OCR Page Range", "No project pages are available.")
+        return
+
+    all_operations: list[dict[str, Any]] = []
+    summary_lines: list[str] = []
+    with tempfile.TemporaryDirectory(prefix="labelminus_ocr_") as temp_dir:
+        for page in target_pages:
+            current_page_name = page.name
+            image_path = page.image_path
+            if not image_path or not Path(image_path).exists():
+                summary_lines.append(f"{current_page_name or '[unknown]'}: skipped, image does not exist.")
+                continue
+
+            try:
+                _, label_regions, width, height, _, source_region_count = process_single_target(
+                    image_path, f"page {current_page_name}", None, engine, temp_dir
+                )
+            except Exception as error:
+                ctx.write_output(
+                    args.output,
+                    "OCR Page Range Failed",
+                    f"OCR failed on {current_page_name or image_path}:\n{error}\n\n"
+                    f"Runtime: {runtime_versions()}\n\n"
+                    f"{troubleshooting_text(engine)}",
+                )
+                return
+
+            page_operations = operations_for_regions(ctx, current_page_name, label_regions, width, height, None)
+            all_operations.extend(page_operations)
+            summary_lines.append(
+                f"{current_page_name}: {len(page_operations)} label operation(s) "
+                f"from {source_region_count} source OCR region(s)."
+            )
+
+    result_text = (
+        f"Prepared {len(all_operations)} OCR label operation(s) across {len(target_pages)} page(s).\n\n"
+        + "\n".join(summary_lines)
+    )
+    ctx.write_output(
+        args.output,
+        "OCR Page Range Add Labels",
+        result_text,
+        operations=all_operations,
+        quiet=not configured_bool("showResult", "LABELMINUS_OCR_SHOW_RESULT", True),
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Preview OCR results for the current LabelMinus page or selection.")
+    parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
+    parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
+    args = parser.parse_args()
+
+    ctx = AutomationContext.from_file(args.input)
+
+    engine = configured_string("engine", "LABELMINUS_OCR_ENGINE", "paddle").lower()
+    log_progress(f"Starting OCR preview engine={engine}")
+    action = configured_string("action", "LABELMINUS_OCR_ACTION", "preview").lower()
+    if action in {"add-page-range-labels", "add_page_range_labels"}:
+        run_page_range(ctx, args, engine)
+        return
+    run_current_target(ctx, args, engine)
 
 
 if __name__ == "__main__":

@@ -1,27 +1,22 @@
 #!/usr/bin/env python3
 import argparse
-import json
+import sys
 import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
+from labelminus_automation import AutomationContext
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Count characters in all LabelMinus labels.")
+    parser = argparse.ArgumentParser(description="Wait for five seconds to test cancellation and disabled UI state.")
     parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
-    
+    ctx = AutomationContext.from_file(args.input)
+
     time.sleep(5)
-    with open(args.output, "w", encoding="utf-8") as output_file:
-        json.dump({
-            "apiVersion": 1,
-            "summary": "Waited 5 seconds.",
-            "result": {
-                "type": "message",
-                "title": "Wait 5s",
-                "text": "Waited 5 seconds."
-            },
-            "quiet" : True
-        }, output_file, ensure_ascii=False, indent=2)
+    ctx.write_output(args.output, "Wait 5s", "Waited 5 seconds.", quiet=True)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QVector>
@@ -16,11 +17,6 @@
 
 namespace {
 constexpr auto pathEditorObjectName = "automationParameterLineEdit";
-
-QString tr(const char* sourceText)
-{
-    return QCoreApplication::translate("AutomationParameterDialog", sourceText);
-}
 
 void applyGroupStyles(QComboBox* comboBox, const QVector<labelminus::core::LabelGroupStyle>& groupStyles)
 {
@@ -47,7 +43,8 @@ QWidget* createPathEditor(QWidget* parent, const QString& defaultValue, const QS
 
     auto* lineEdit = new QLineEdit(defaultValue, container);
     lineEdit->setObjectName(QString::fromLatin1(pathEditorObjectName));
-    auto* browseButton = new QPushButton(tr("Browse..."), container);
+    auto* browseButton =
+        new QPushButton(QCoreApplication::translate("AutomationParameterDialog", "Browse..."), container);
     pathLayout->addWidget(lineEdit);
     pathLayout->addWidget(browseButton);
 
@@ -55,10 +52,12 @@ QWidget* createPathEditor(QWidget* parent, const QString& defaultValue, const QS
         const QString currentPath = lineEdit->text();
         QString path;
         if (parameterType == QStringLiteral("directory")) {
-            path = QFileDialog::getExistingDirectory(parent, tr("Choose Directory"), currentPath);
+            path = QFileDialog::getExistingDirectory(
+                parent, QCoreApplication::translate("AutomationParameterDialog", "Choose Directory"), currentPath);
         }
         else {
-            path = QFileDialog::getOpenFileName(parent, tr("Choose File"), currentPath);
+            path = QFileDialog::getOpenFileName(
+                parent, QCoreApplication::translate("AutomationParameterDialog", "Choose File"), currentPath);
         }
         if (!path.isEmpty()) {
             lineEdit->setText(path);
@@ -109,41 +108,69 @@ QWidget* createEditor(QWidget* parent, const labelminus::services::AutomationPar
         return createPathEditor(parent, parameter.defaultValue, parameterType);
     }
 
+    if (parameterType == QStringLiteral("secret")) {
+        auto* lineEdit = new QLineEdit(parent);
+        lineEdit->setEchoMode(QLineEdit::Password);
+        lineEdit->setPlaceholderText(
+            QCoreApplication::translate("AutomationParameterDialog", "Leave empty to keep the stored secret"));
+        return lineEdit;
+    }
+
+    if (parameterType == QStringLiteral("textarea") || parameterType == QStringLiteral("multiline")) {
+        auto* plainTextEdit = new QPlainTextEdit(parent);
+        plainTextEdit->setPlainText(parameter.defaultValue);
+        plainTextEdit->setMinimumHeight(120);
+        return plainTextEdit;
+    }
+
     return new QLineEdit(parameter.defaultValue, parent);
 }
 
-QJsonObject collectParameters(const QVector<QPair<labelminus::services::AutomationParameter, QWidget*>>& editors)
+AutomationParameterDialog::Values
+collectValues(const QVector<QPair<labelminus::services::AutomationParameter, QWidget*>>& editors)
 {
-    QJsonObject parameters;
+    AutomationParameterDialog::Values values;
     for (const auto& [parameter, editor] : editors) {
+        const bool isSecret = parameter.type.compare(QStringLiteral("secret"), Qt::CaseInsensitive) == 0;
         if (auto* comboBox = qobject_cast<QComboBox*>(editor)) {
-            parameters.insert(parameter.key, comboBox->currentText());
+            values.parameters.insert(parameter.key, comboBox->currentText());
         }
         else if (auto* checkBox = qobject_cast<QCheckBox*>(editor)) {
-            parameters.insert(parameter.key, checkBox->isChecked());
+            values.parameters.insert(parameter.key, checkBox->isChecked());
         }
         else if (auto* lineEdit = qobject_cast<QLineEdit*>(editor)) {
-            parameters.insert(parameter.key, lineEdit->text());
+            if (isSecret) {
+                const QString secretValue = lineEdit->text();
+                if (!secretValue.isEmpty()) {
+                    values.secrets.insert(parameter.secretKey, secretValue);
+                }
+            }
+            else {
+                values.parameters.insert(parameter.key, lineEdit->text());
+            }
         }
         else if (auto* pathLineEdit = editor->findChild<QLineEdit*>(QString::fromLatin1(pathEditorObjectName))) {
-            parameters.insert(parameter.key, pathLineEdit->text());
+            values.parameters.insert(parameter.key, pathLineEdit->text());
+        }
+        else if (auto* plainTextEdit = qobject_cast<QPlainTextEdit*>(editor)) {
+            values.parameters.insert(parameter.key, plainTextEdit->toPlainText());
         }
     }
-    return parameters;
+    return values;
 }
 } // namespace
 
-std::optional<QJsonObject>
-AutomationParameterDialog::getParameters(QWidget* parent, const labelminus::services::AutomationScript& script,
-                                         const QStringList& groups,
-                                         const QVector<labelminus::core::LabelGroupStyle>& groupStyles)
+std::optional<AutomationParameterDialog::Values>
+AutomationParameterDialog::getValues(QWidget* parent, const labelminus::services::AutomationScript& script,
+                                     const QStringList& groups,
+                                     const QVector<labelminus::core::LabelGroupStyle>& groupStyles)
 {
     if (script.parameters.isEmpty()) {
-        return QJsonObject{};
+        return Values{};
     }
 
     QDialog dialog(parent);
-    dialog.setWindowTitle(tr("Automation Parameters"));
+    dialog.setWindowTitle(QCoreApplication::translate("AutomationParameterDialog", "Automation Parameters"));
     auto* layout = new QVBoxLayout(&dialog);
     auto* formLayout = new QFormLayout;
     layout->addLayout(formLayout);
@@ -164,5 +191,5 @@ AutomationParameterDialog::getParameters(QWidget* parent, const labelminus::serv
     if (dialog.exec() != QDialog::Accepted) {
         return std::nullopt;
     }
-    return collectParameters(editors);
+    return collectValues(editors);
 }

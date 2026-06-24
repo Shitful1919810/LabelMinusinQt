@@ -199,6 +199,9 @@ void ImageCanvas::setInteractionMode(InteractionMode mode)
     m_pendingLabelCreate = false;
     m_pendingLabelSelect = false;
     m_pendingLabelSelectIndex = -1;
+    m_pendingLabelSelectModifiers = Qt::NoModifier;
+    m_pendingLabelMove = false;
+    m_pendingLabelMoveIndex = -1;
     m_isMovingLabel = false;
     m_movingLabelIndex = -1;
     m_isSelectingRegion = false;
@@ -432,6 +435,12 @@ void ImageCanvas::keyPressEvent(QKeyEvent* event)
         event->accept();
         return;
     }
+    if (m_interactionMode == InteractionMode::Label && event->key() == Qt::Key_Delete &&
+        event->modifiers() == Qt::NoModifier) {
+        emit deleteRequested();
+        event->accept();
+        return;
+    }
 
     QGraphicsView::keyPressEvent(event);
 }
@@ -445,6 +454,9 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
         m_pendingLabelCreate = false;
         m_pendingLabelSelect = false;
         m_pendingLabelSelectIndex = -1;
+        m_pendingLabelSelectModifiers = Qt::NoModifier;
+        m_pendingLabelMove = false;
+        m_pendingLabelMoveIndex = -1;
         m_isSelectingRegion = false;
         hideHoveredLabelToolTip();
         viewport()->setCursor(Qt::ClosedHandCursor);
@@ -464,6 +476,9 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
         m_pendingLabelCreate = false;
         m_pendingLabelSelect = false;
         m_pendingLabelSelectIndex = -1;
+        m_pendingLabelSelectModifiers = Qt::NoModifier;
+        m_pendingLabelMove = false;
+        m_pendingLabelMoveIndex = -1;
         bool pressedMarker = false;
 
         QGraphicsItem* item = itemAt(event->pos());
@@ -471,18 +486,15 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
             if (item->type() == markerType) {
                 auto* marker = static_cast<LabelMarkerItem*>(item);
                 pressedMarker = true;
-                if (hasMoveLabelModifiers(event->modifiers())) {
-                    m_isMovingLabel = true;
-                    m_movingLabelIndex = marker->labelIndex();
-                    m_pendingLabelCreate = false;
-                    emit labelSelected(m_movingLabelIndex);
-                    hideHoveredLabelToolTip();
-                    event->accept();
-                    return;
-                }
+                const int labelIndex = marker->labelIndex();
                 m_pendingLabelSelect = true;
-                m_pendingLabelSelectIndex = marker->labelIndex();
+                m_pendingLabelSelectIndex = labelIndex;
+                m_pendingLabelSelectModifiers = event->modifiers();
                 m_labelSelectPressPosition = event->pos();
+                if (hasMoveLabelModifiers(event->modifiers())) {
+                    m_pendingLabelMove = true;
+                    m_pendingLabelMoveIndex = labelIndex;
+                }
                 break;
             }
             item = item->parentItem();
@@ -555,6 +567,21 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
+    if (m_pendingLabelMove &&
+        (event->pos() - m_labelSelectPressPosition).manhattanLength() >= QApplication::startDragDistance()) {
+        m_isMovingLabel = true;
+        m_movingLabelIndex = m_pendingLabelMoveIndex;
+        m_pendingLabelMove = false;
+        m_pendingLabelMoveIndex = -1;
+        m_pendingLabelSelect = false;
+        m_pendingLabelSelectIndex = -1;
+        m_pendingLabelSelectModifiers = Qt::NoModifier;
+        emit labelSelected(m_movingLabelIndex);
+        hideHoveredLabelToolTip();
+        event->accept();
+        return;
+    }
+
     if (m_pendingLabelCreate &&
         (event->pos() - m_labelCreatePressPosition).manhattanLength() >= QApplication::startDragDistance()) {
         m_pendingLabelCreate = false;
@@ -563,6 +590,9 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
         (event->pos() - m_labelSelectPressPosition).manhattanLength() >= QApplication::startDragDistance()) {
         m_pendingLabelSelect = false;
         m_pendingLabelSelectIndex = -1;
+        m_pendingLabelSelectModifiers = Qt::NoModifier;
+        m_pendingLabelMove = false;
+        m_pendingLabelMoveIndex = -1;
     }
 
     QGraphicsView::mouseMoveEvent(event);
@@ -615,15 +645,18 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
 
     m_pendingLabelCreate = false;
     m_pendingLabelSelect = false;
+    m_pendingLabelMove = false;
+    m_pendingLabelMoveIndex = -1;
     QGraphicsView::mouseReleaseEvent(event);
 
     if (shouldCreateLabel) {
         emit labelCreateRequested(normalizedPositionFromScene(mapToScene(event->pos())));
     }
     if (shouldSelectLabel) {
-        emit labelSelected(m_pendingLabelSelectIndex);
+        emit labelClicked(m_pendingLabelSelectIndex, m_pendingLabelSelectModifiers);
     }
     m_pendingLabelSelectIndex = -1;
+    m_pendingLabelSelectModifiers = Qt::NoModifier;
 }
 
 void ImageCanvas::wheelEvent(QWheelEvent* event)

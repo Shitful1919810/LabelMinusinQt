@@ -34,7 +34,7 @@ class QSplitter;
 class QTableView;
 class QTimer;
 class QToolButton;
-class AutomationRunDialog;
+class AutomationController;
 class AutomationShortcutController;
 class CanvasLabelTextEditController;
 class LabelGroupDelegate;
@@ -71,13 +71,7 @@ private:
     void openProject();
     void mergeProjects();
     void reorderPages();
-    void refreshAutomationMenu();
-    void updateAutomationMenuEnabledState();
-    void runAutomationScriptFromAction();
-    void runAutomationScriptById(const QString& scriptId);
-    void runAutomationScript(const labelminus::services::AutomationScript& script);
-    void showMissingAutomationScriptMessage(const QString& scriptId);
-    void cancelRunningAutomationScript();
+    void showAutomationDiscoveryWarnings(const QStringList& warnings);
     void applyAutomationOperations(const QString& scriptName,
                                    const QVector<labelminus::services::AutomationOperation>& operations);
     void openRecentProjectFromAction();
@@ -89,12 +83,14 @@ private:
     void updateGroupFilter(const QStringList& groups);
     void selectImage(int index);
     void selectLabel(int index);
+    void selectLabelFromCanvas(int index, Qt::KeyboardModifiers modifiers);
     void addLabel(QPointF normalizedPosition);
     void deleteSelectedLabels();
     void changeSelectedLabelsGroup(const QString& group);
     void showLabelContextMenu(const QPoint& position);
     void reorderLabels(QVector<int> sourceIndexes, int visibleDropRow);
     void updateCurrentLabelText();
+    bool updateCurrentLabelDetails(int index);
     ActiveTextInputMode activeTextInputMode() const;
     void commitActiveTextInput();
     void restoreTextInputModeAfterLabelNavigation(ActiveTextInputMode mode);
@@ -130,7 +126,7 @@ private:
     void selectLabelAndCenter(int imageIndex, int labelIndex);
     bool isLabelVisibleByGroupFilter(const labelminus::core::Label& label) const;
     QVector<int> selectedLabelIndexes() const;
-    void selectLabelIndexes(const QVector<int>& sourceIndexes);
+    void selectLabelIndexes(const QVector<int>& sourceIndexes, int primarySourceIndex = -1);
     void refreshProjectUi();
     void detachProjectViewsFromProjectData();
     void replaceProjectImages(QVector<labelminus::core::ImageEntry> images, const QString& preferredImageName,
@@ -184,6 +180,7 @@ private:
     QPlainTextEdit* m_textEdit{nullptr};
     CanvasLabelTextEditController* m_canvasTextEditController{nullptr};
     MainWindowShortcutController* m_shortcutController{nullptr};
+    AutomationController* m_automationController{nullptr};
     AutomationShortcutController* m_automationShortcutController{nullptr};
     QComboBox* m_imageComboBox{nullptr};
     QComboBox* m_insertGroupComboBox{nullptr};
@@ -202,8 +199,6 @@ private:
     QAction* m_saveProjectAction{nullptr};
     QAction* m_saveProjectAsAction{nullptr};
     QMenu* m_recentProjectsMenu{nullptr};
-    QMenu* m_automationMenu{nullptr};
-    QAction* m_cancelAutomationAction{nullptr};
     QAction* m_undoAction{nullptr};
     QAction* m_redoAction{nullptr};
     QAction* m_previousPageAction{nullptr};
@@ -231,9 +226,6 @@ private:
     QFont m_defaultTextEditFont;
     labelminus::services::SessionStateStore m_sessionStateStore;
     labelminus::core::UndoStack m_undoStack;
-    QVector<labelminus::services::AutomationScript> m_automationScripts;
-    QPointer<labelminus::services::AutomationRunner> m_automationRunner;
-    QPointer<AutomationRunDialog> m_automationRunDialog;
     int m_operationMessageSerial{0};
     bool m_isAutomationRunning{false};
 };

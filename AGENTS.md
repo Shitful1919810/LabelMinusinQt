@@ -49,5 +49,7 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - Do not destroy or rebuild a `QMenu`/`QAction` tree from inside a slot triggered by one of its own actions. During long-running or nested-event-loop workflows, update enabled/visible state in place; rebuild menus only after the triggering call stack has unwound.
 - New Qt modules and third-party dependencies must be checked for license compatibility and documented.
 - User-configurable shortcuts should go through `AppPreferences`, `preference.json` and the preference dialog.
+- Automation script secrets such as API keys must go through QtKeychain-backed keychain storage. Do not write secrets to
+  `script.json`, `config.json`, automation `input.json`/`output.json`, logs or preference files.
 - The Windows `LabelMinusStatic` target is experimental and local-only; do not make it an official release artifact without Qt license review.
 - Do not commit bundled Qt SDK files, Qt source code or Qt runtime binaries into the repository.

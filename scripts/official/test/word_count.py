@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
+from labelminus_automation import AutomationContext
 
 
 def main() -> None:
@@ -9,19 +13,17 @@ def main() -> None:
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
 
-    with open(args.input, "r", encoding="utf-8") as input_file:
-        payload = json.load(input_file)
-
-    pages = payload.get("project", {}).get("pages", [])
+    ctx = AutomationContext.from_file(args.input)
+    project_pages = ctx.pages
     label_count = 0
     character_count = 0
-    page_count = len(pages)
+    page_count = len(project_pages)
     group_counts = {}
 
-    for page in pages:
-        for label in page.get("labels", []):
-            group = label.get("group", "")
-            text = label.get("text", "")
+    for page in project_pages:
+        for label in page.labels:
+            group = label.group
+            text = label.text
             label_count += 1
             character_count += len(text)
             group_count = group_counts.setdefault(group, {"labels": 0, "characters": 0})
@@ -40,21 +42,7 @@ def main() -> None:
     if group_lines:
         result_text = summary + "\n\nBy group:\n" + "\n".join(group_lines)
 
-    with open(args.output, "w", encoding="utf-8") as output_file:
-        json.dump(
-            {
-                "apiVersion": 1,
-                "summary": summary,
-                "result": {
-                    "type": "message",
-                    "title": "Label Word Count",
-                    "text": result_text,
-                },
-            },
-            output_file,
-            ensure_ascii=False,
-            indent=2,
-        )
+    ctx.write_output(args.output, "Label Word Count", result_text)
 
 
 if __name__ == "__main__":

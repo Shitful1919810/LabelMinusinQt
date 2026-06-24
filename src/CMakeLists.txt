@@ -19,6 +19,7 @@ set(LABELMINUS_SERVICE_SOURCES
     services/ProjectController.cpp
     services/ProjectWorkflowController.cpp
     services/SessionStateStore.cpp
+    services/SecretStore.cpp
 )
 
 file(GLOB LABELMINUS_TRANSLATION_FILES CONFIGURE_DEPENDS
@@ -27,6 +28,7 @@ file(GLOB LABELMINUS_TRANSLATION_FILES CONFIGURE_DEPENDS
 list(SORT LABELMINUS_TRANSLATION_FILES)
 
 set(LABELMINUS_UI_SOURCES
+    ui/AutomationController.cpp
     ui/AutomationParameterDialog.cpp
     ui/AutomationRunDialog.cpp
     ui/AutomationShortcutController.cpp
@@ -62,7 +64,7 @@ qt_add_executable(LabelMinus
 
 target_include_directories(LabelMinus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(LabelMinus PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+target_link_libraries(LabelMinus PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6Keychain::Qt6Keychain)
 
 if(TARGET Qt6::Svg)
     target_link_libraries(LabelMinus PRIVATE Qt6::Svg)
@@ -91,11 +93,13 @@ add_custom_command(TARGET LabelMinus POST_BUILD
 add_custom_target(LabelMinusScripts ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory
         "$<TARGET_FILE_DIR:LabelMinus>/scripts"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/official"
-        "$<TARGET_FILE_DIR:LabelMinus>/scripts/official"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/custom"
+    COMMAND ${CMAKE_COMMAND}
+        "-DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/../scripts/official"
+        "-DDEST_DIR=$<TARGET_FILE_DIR:LabelMinus>/scripts/official"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/SyncAutomationScripts.cmake"
+    COMMAND ${CMAKE_COMMAND} -E rm -rf
+        "$<TARGET_FILE_DIR:LabelMinus>/scripts/custom"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
         "$<TARGET_FILE_DIR:LabelMinus>/scripts/custom"
     DEPENDS LabelMinus
     COMMENT "Syncing automation scripts"
@@ -112,7 +116,7 @@ if(WIN32)
             COMMAND "${WINDEPLOYQT_EXECUTABLE}"
                 "$<IF:$<CONFIG:Debug>,--debug,--release>"
                 "$<TARGET_FILE:LabelMinus>"
-            DEPENDS LabelMinus
+            DEPENDS LabelMinus LabelMinusScripts
             COMMENT "Deploying Qt runtime dependencies with windeployqt"
             VERBATIM
         )
@@ -146,7 +150,7 @@ if(LABELMINUS_ENABLE_STATIC_QT_EXPERIMENT)
     )
 
     target_include_directories(LabelMinusStatic PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-    target_link_libraries(LabelMinusStatic PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+    target_link_libraries(LabelMinusStatic PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6Keychain::Qt6Keychain)
 
     if(TARGET Qt6::Svg)
         target_link_libraries(LabelMinusStatic PRIVATE Qt6::Svg)
@@ -189,8 +193,18 @@ install(TARGETS LabelMinus
     RUNTIME DESTINATION bin
 )
 
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../preference.json"
+    DESTINATION bin
+)
+
 install(DIRECTORY
     "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/official"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../scripts/custom"
     DESTINATION bin/scripts
+    PATTERN "__pycache__" EXCLUDE
+    PATTERN "*.pyc" EXCLUDE
+    PATTERN "*.pyo" EXCLUDE
+    PATTERN "config.json" EXCLUDE
 )
+
+install(CODE "file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/bin/scripts/custom\")")

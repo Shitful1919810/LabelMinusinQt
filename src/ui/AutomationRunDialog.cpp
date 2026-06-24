@@ -1,18 +1,23 @@
 #include "ui/AutomationRunDialog.h"
 
-#include <QColor>
 #include <QCloseEvent>
+#include <QColor>
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QPalette>
 #include <QPushButton>
 #include <QTextCharFormat>
 #include <QTextCursor>
+#include <QTextDocument>
 #include <QTextEdit>
 #include <QVBoxLayout>
 
-AutomationRunDialog::AutomationRunDialog(const QString& scriptName, QWidget* parent)
-    : QDialog(parent)
+namespace {
+constexpr int automationRunDialogMaxBlocks = 5000;
+constexpr int automationRunDialogMaxChunkCharacters = 65536;
+} // namespace
+
+AutomationRunDialog::AutomationRunDialog(const QString& scriptName, QWidget* parent) : QDialog(parent)
 {
     setWindowTitle(tr("Automation Running"));
     setWindowFlag(Qt::WindowMinimizeButtonHint, true);
@@ -25,6 +30,7 @@ AutomationRunDialog::AutomationRunDialog(const QString& scriptName, QWidget* par
     m_logEdit = new QTextEdit(this);
     m_logEdit->setReadOnly(true);
     m_logEdit->setLineWrapMode(QTextEdit::NoWrap);
+    m_logEdit->document()->setMaximumBlockCount(automationRunDialogMaxBlocks);
     layout->addWidget(m_logEdit, 1);
 
     auto* buttons = new QDialogButtonBox(this);
@@ -81,12 +87,18 @@ void AutomationRunDialog::appendText(const QString& text, const QColor& color)
         return;
     }
 
+    QString displayText = text;
+    if (displayText.size() > automationRunDialogMaxChunkCharacters) {
+        displayText = tr("[Large automation log chunk was truncated.]\n") +
+                      displayText.right(automationRunDialogMaxChunkCharacters);
+    }
+
     QTextCursor cursor = m_logEdit->textCursor();
     cursor.movePosition(QTextCursor::End);
     QTextCharFormat format;
     format.setForeground(color);
     cursor.setCharFormat(format);
-    cursor.insertText(text);
+    cursor.insertText(displayText);
     m_logEdit->setTextCursor(cursor);
     m_logEdit->ensureCursorVisible();
 }

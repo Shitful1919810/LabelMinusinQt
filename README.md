@@ -23,7 +23,7 @@ LabelMinus Qt 是 LabelMinus 的 C++/Qt 6 移植版本，目标是在 Linux、Wi
 - 鼠标悬停在图像 marker 上时显示标签文本提示。
 - 提供撤销/重做能力，覆盖新增、删除、移动、文本编辑、类别修改、标签排序和页面排序等工程编辑操作。
 - 支持按间隔自动备份已修改的 LabelPlus 文本工程。
-- 支持通过“自动化”菜单运行外部 Python 自动化脚本，当前内置标签字数统计和分组互换示例脚本。
+- 支持通过“自动化”菜单运行外部 Python 自动化脚本，当前内置标签字数统计、分组互换、OCR 预览和 AI 翻译示例脚本。
 - 偏好设置窗口支持通过系统字体选择器分别调整标签列表和大文本编辑框字体。
 - 支持通过偏好设置启用内置 Breeze 风格 QSS 主题。
 - 提供简体中文和英文界面文本，并使用 Qt Linguist 工作流生成翻译资源。
@@ -59,6 +59,7 @@ Qt GRPC、Qt HTTP Server、Qt MQTT、Qt Virtual Keyboard、Qt Wayland Compositor
 - Ninja，或 Windows 上的 Visual Studio 2022 生成器。
 - 支持 C++20 的编译器。
 - Qt 6，至少需要 Qt Widgets；建议安装 Qt Svg 以完整显示内置 Breeze 主题图标；开发翻译资源时还需要 Qt Linguist Tools。
+- QtKeychain，用于通过系统密钥环保存自动化脚本所需的 API key 等敏感信息。
 
 ## 构建
 
@@ -367,6 +368,28 @@ scripts/custom      用户自定义脚本
       "environment": {
         "LABELMINUS_OCR_ACTION": "add-labels"
       }
+    },
+    {
+      "id": "add_page_range_labels",
+      "name": "OCR Add Page Range Labels",
+      "entry": "ocr_preview.py",
+      "parameters": [
+        {
+          "key": "startPage",
+          "label": "Start page (1-based)",
+          "type": "text",
+          "default": "1"
+        },
+        {
+          "key": "endPage",
+          "label": "End page (1-based)",
+          "type": "text",
+          "default": "1"
+        }
+      ],
+      "environment": {
+        "LABELMINUS_OCR_ACTION": "add-page-range-labels"
+      }
     }
   ]
 }
@@ -377,11 +400,13 @@ scripts/custom      用户自定义脚本
 每个脚本还可以声明 `parameters`。只要参数列表非空，运行前主程序会弹出 Qt 参数窗口，把用户填写的值写入 `input.json` 的 `parameters` 字段。当前支持的参数类型包括：
 
 - `text`：普通文本输入框。
+- `textarea` / `multiline`：多行文本输入框，适合较长的 prompt 或说明文本。
 - `group`：当前工程分组下拉框。
 - `choice` / `select` / `enum`：通过 `options` 提供固定选项。
 - `boolean` / `bool`：复选框。
 - `file`：文件路径输入框，附带文件选择按钮。
 - `directory`：目录路径输入框，附带目录选择按钮。
+- `secret`：密码输入框。用户填写的值不会写入 `input.json`，而是由主程序保存到系统 keychain。
 
 例如：
 
@@ -394,6 +419,44 @@ scripts/custom      用户自定义脚本
   "options": ["cpu", "gpu"]
 }
 ```
+
+`secret` 参数需要额外声明 keychain 元数据：
+
+```json
+{
+  "key": "deepseekApiKey",
+  "label": "DeepSeek API key",
+  "type": "secret",
+  "secretKey": "deepseekApiKey",
+  "service": "LabelMinus",
+  "account": "deepseek_api_key",
+  "environment": "DEEPSEEK_API_KEY"
+}
+```
+
+真正运行时需要读取密钥的脚本，应在对应脚本条目上声明 `secrets`。主程序会从系统 keychain 读取该密钥，并只注入到子进程环境变量中：
+
+```json
+{
+  "id": "preview",
+  "name": "Translation Preview",
+  "entry": "translate.py",
+  "secrets": [
+    {
+      "key": "deepseekApiKey",
+      "label": "DeepSeek API key",
+      "service": "LabelMinus",
+      "account": "deepseek_api_key",
+      "environment": "DEEPSEEK_API_KEY",
+      "required": true
+    }
+  ]
+}
+```
+
+脚本内只需要读取对应环境变量，例如 `DEEPSEEK_API_KEY`。不要把 API key 写入 `script.json`、`config.json`、`input.json` 或日志。
+
+更完整的脚本开发说明、输入/输出 JSON 格式和最小 SDK 用法见 [docs/automation-scripting.md](docs/automation-scripting.md)。
 
 运行脚本时，程序会通过外部 Python 进程调用：
 
@@ -519,7 +582,8 @@ python script.py --input input.json --output output.json
 仓库内置示例脚本包括：
 
 - `scripts/official/test`：测试用脚本目录，会在自动化菜单中显示为 `Test` 子菜单，包含字数统计、分组互换和等待 5 秒等脚本。
-- `scripts/official/ocr_preview`：对当前选区或当前页运行 OCR。`Configure OCR` 会通过参数窗口写入本机 `config.json`，用于保存 OCR 引擎、语言、设备、本地 manga-ocr 模型目录、默认标签分组和排序方向等设置。预览入口只报告识别结果；生成标签入口会按原版 LabelMinus 的思路合并文本块并输出 `addLabel` 操作。选区 OCR 会合并为一个 label，整页 OCR 会为每个文本块生成一个 label。
+- `scripts/official/ocr_preview`：对当前选区、当前页或指定页码区间运行 OCR。`Configure OCR` 会通过参数窗口写入本机 `config.json`，用于保存 OCR 引擎、语言、设备、本地 manga-ocr 模型目录、默认标签分组、排序方向以及非预览入口完成后是否弹出结果报告等设置。预览入口会展示后处理后的文本块；生成标签入口会复用同一套后处理结果并输出 `addLabel` 操作。选区 OCR 会合并为一个 label，整页和跨页 OCR 会为每个文本块生成一个 label。
+- `scripts/official/ai_translate`：通过 DeepSeek API 翻译当前选中的 label；如果没有选中 label，则翻译当前页所有 label。`Configure AI Translation` 会将 API key 保存到系统 keychain，并写入本机 `config.json` 保存 API base URL、模型、目标语言、翻译风格、自定义 prompt 以及应用翻译后是否弹出结果报告等非敏感设置。预览入口只展示译文或译文加分析；应用入口会输出 `setLabelText` 操作并由主程序注册撤销/重做；跨页入口会让用户输入 1-based 页码区间，并把整个区间的 label 一次性提交给模型作为上下文，再应用返回的译文。
 
 用户本机脚本建议放在 `scripts/custom`，该目录下除 `.gitkeep` 外默认不会提交到仓库。
 

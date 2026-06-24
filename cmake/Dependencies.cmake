@@ -1,5 +1,6 @@
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets OPTIONAL_COMPONENTS Svg)
 find_package(Qt6 6.5 QUIET OPTIONAL_COMPONENTS LinguistTools)
+find_package(Qt6Keychain REQUIRED)
 
 qt_standard_project_setup()
 

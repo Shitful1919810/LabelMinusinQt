@@ -4,6 +4,7 @@
 #include "services/AutomationService.h"
 
 #include <QJsonObject>
+#include <QMap>
 
 #include <optional>
 
@@ -11,8 +12,12 @@ class QWidget;
 
 class AutomationParameterDialog final {
 public:
-    static std::optional<QJsonObject> getParameters(QWidget* parent,
-                                                    const labelminus::services::AutomationScript& script,
-                                                    const QStringList& groups,
-                                                    const QVector<labelminus::core::LabelGroupStyle>& groupStyles);
+    struct Values {
+        QJsonObject parameters;
+        QMap<QString, QString> secrets;
+    };
+
+    static std::optional<Values> getValues(QWidget* parent, const labelminus::services::AutomationScript& script,
+                                           const QStringList& groups,
+                                           const QVector<labelminus::core::LabelGroupStyle>& groupStyles);
 };

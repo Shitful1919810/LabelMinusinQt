@@ -1,5 +1,7 @@
 #include "services/AutomationService.h"
 
+#include "services/SecretStore.h"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -20,6 +22,7 @@ namespace {
 constexpr int automationApiVersion = 1;
 constexpr int automationTimeoutMs = 300000;
 constexpr int automationProcessStopWaitMs = 3000;
+constexpr int automationLogMaxCharacters = 1024 * 1024;
 
 QJsonObject labelToJson(const labelminus::core::Label& label, int labelIndex, int visibleIndex)
 {
@@ -251,6 +254,10 @@ QVector<AutomationParameter> parametersFromManifest(const QJsonObject& manifest)
         parameter.label = object.value(QStringLiteral("label")).toString(key);
         parameter.type = object.value(QStringLiteral("type")).toString(QStringLiteral("text"));
         parameter.defaultValue = stringFromJsonValue(object.value(QStringLiteral("default")));
+        parameter.secretKey = object.value(QStringLiteral("secretKey")).toString(key);
+        parameter.secretService = object.value(QStringLiteral("service")).toString(QStringLiteral("LabelMinus"));
+        parameter.secretAccount = object.value(QStringLiteral("account")).toString(parameter.secretKey);
+        parameter.secretEnvironment = object.value(QStringLiteral("environment")).toString();
         const QJsonArray options = object.value(QStringLiteral("options")).toArray();
         for (const QJsonValue& option : options) {
             const QString optionText = stringFromJsonValue(option).trimmed();
@@ -261,6 +268,30 @@ QVector<AutomationParameter> parametersFromManifest(const QJsonObject& manifest)
         parameters.append(parameter);
     }
     return parameters;
+}
+
+QVector<AutomationSecret> secretsFromManifest(const QJsonObject& manifest)
+{
+    QVector<AutomationSecret> secrets;
+    const QJsonArray secretArray = manifest.value(QStringLiteral("secrets")).toArray();
+    for (const QJsonValue& value : secretArray) {
+        const QJsonObject object = value.toObject();
+        const QString key = object.value(QStringLiteral("key")).toString().trimmed();
+        const QString environment = object.value(QStringLiteral("environment")).toString().trimmed();
+        if (key.isEmpty() || environment.isEmpty()) {
+            continue;
+        }
+
+        AutomationSecret secret;
+        secret.key = key;
+        secret.label = object.value(QStringLiteral("label")).toString(key);
+        secret.service = object.value(QStringLiteral("service")).toString(QStringLiteral("LabelMinus"));
+        secret.account = object.value(QStringLiteral("account")).toString(key);
+        secret.environment = environment;
+        secret.required = object.value(QStringLiteral("required")).toBool(true);
+        secrets.append(secret);
+    }
+    return secrets;
 }
 
 QMap<QString, QString> environmentFromManifest(const QJsonObject& manifest)
@@ -323,18 +354,49 @@ QString scriptIdForDirectory(const QFileInfo& scriptDirectory, bool official)
                                        scriptDirectory.fileName());
 }
 
-void appendScriptFromManifest(QVector<AutomationScript>* scripts, const QFileInfo& scriptDirectory,
+QString scriptLocation(const QFileInfo& scriptDirectory, const QString& scriptName = {})
+{
+    if (scriptName.trimmed().isEmpty()) {
+        return scriptDirectory.fileName();
+    }
+    return QStringLiteral("%1/%2").arg(scriptDirectory.fileName(), scriptName);
+}
+
+void appendLog(QString* log, const QString& text)
+{
+    if (log == nullptr || text.isEmpty()) {
+        return;
+    }
+    log->append(text);
+    if (log->size() > automationLogMaxCharacters) {
+        const int keepCharacters = automationLogMaxCharacters / 2;
+        *log = QCoreApplication::translate("AutomationService", "[Earlier automation log output was truncated.]\n") +
+               log->right(keepCharacters);
+    }
+}
+
+bool appendScriptFromManifest(QVector<AutomationScript>* scripts, const QFileInfo& scriptDirectory,
                               const QJsonObject& directoryManifest, const QJsonObject& scriptManifest, bool official,
-                              int scriptIndex)
+                              int directoryIndex, int scriptIndex, QStringList* warnings)
 {
     const QString entry = scriptManifest.value(QStringLiteral("entry")).toString();
     if (entry.trimmed().isEmpty()) {
-        return;
+        if (warnings != nullptr) {
+            warnings->append(
+                QCoreApplication::translate("AutomationService", "Skipped automation script %1: missing entry.")
+                    .arg(scriptLocation(scriptDirectory, scriptManifest.value(QStringLiteral("name")).toString())));
+        }
+        return false;
     }
 
     const QString entryPath = QDir(scriptDirectory.absoluteFilePath()).filePath(entry);
     if (!QFileInfo::exists(entryPath)) {
-        return;
+        if (warnings != nullptr) {
+            warnings->append(QCoreApplication::translate("AutomationService",
+                                                         "Skipped automation script %1: entry file does not exist.")
+                                 .arg(scriptLocation(scriptDirectory, entry)));
+        }
+        return false;
     }
 
     AutomationScript script;
@@ -349,14 +411,18 @@ void appendScriptFromManifest(QVector<AutomationScript>* scripts, const QFileInf
     script.directoryPath = scriptDirectory.absoluteFilePath();
     script.entryPath = entryPath;
     script.parameters = parametersFromManifest(scriptManifest);
+    script.secrets = secretsFromManifest(scriptManifest);
     script.environment = environmentFromManifest(scriptManifest);
     script.official = official;
+    script.directoryOrder = directoryIndex;
+    script.scriptOrder = scriptIndex;
     scripts->append(script);
+    return true;
 }
 
 } // namespace
 
-QVector<AutomationScript> AutomationService::discoverScripts()
+QVector<AutomationScript> AutomationService::discoverScripts(QStringList* warnings)
 {
     QVector<AutomationScript> scripts;
     const QStringList roots = scriptsRootCandidates();
@@ -368,12 +434,19 @@ QVector<AutomationScript> AutomationService::discoverScripts()
 
         const bool official = root.dirName() == QStringLiteral("official");
         const QFileInfoList scriptDirectories = root.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        int directoryIndex = 0;
         for (const QFileInfo& scriptDirectory : scriptDirectories) {
             const QString manifestPath =
                 QDir(scriptDirectory.absoluteFilePath()).filePath(QStringLiteral("script.json"));
             QJsonObject manifest;
             QString error;
             if (!readJsonFile(manifestPath, &manifest, &error)) {
+                if (warnings != nullptr) {
+                    warnings->append(
+                        QCoreApplication::translate("AutomationService", "Skipped automation script directory %1: %2")
+                            .arg(scriptDirectory.fileName(), error));
+                }
+                ++directoryIndex;
                 continue;
             }
 
@@ -382,13 +455,15 @@ QVector<AutomationScript> AutomationService::discoverScripts()
                 int scriptIndex = 0;
                 for (const QJsonValue& scriptValue : scriptArray) {
                     appendScriptFromManifest(&scripts, scriptDirectory, manifest, scriptValue.toObject(), official,
-                                             scriptIndex);
+                                             directoryIndex, scriptIndex, warnings);
                     ++scriptIndex;
                 }
             }
             else {
-                appendScriptFromManifest(&scripts, scriptDirectory, manifest, manifest, official, 0);
+                appendScriptFromManifest(&scripts, scriptDirectory, manifest, manifest, official, directoryIndex, 0,
+                                         warnings);
             }
+            ++directoryIndex;
         }
     }
 
@@ -400,9 +475,65 @@ QVector<AutomationScript> AutomationService::discoverScripts()
         if (directoryCompare != 0) {
             return directoryCompare < 0;
         }
-        return QString::localeAwareCompare(lhs.name, rhs.name) < 0;
+        return lhs.scriptOrder < rhs.scriptOrder;
     });
     return scripts;
+}
+
+bool AutomationService::storeParameterSecrets(const AutomationScript& script, const QMap<QString, QString>& secrets,
+                                              QString* error)
+{
+    for (const AutomationParameter& parameter : script.parameters) {
+        if (parameter.type.compare(QStringLiteral("secret"), Qt::CaseInsensitive) != 0 ||
+            !secrets.contains(parameter.secretKey)) {
+            continue;
+        }
+
+        const SecretStoreWriteResult result = SecretStore::writeText(parameter.secretService, parameter.secretAccount,
+                                                                     secrets.value(parameter.secretKey));
+        if (!result.success) {
+            if (error != nullptr) {
+                *error = QCoreApplication::translate("AutomationService", "Failed to store automation secret %1: %2")
+                             .arg(parameter.label, result.error);
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
+bool AutomationService::secretEnvironment(const AutomationScript& script, QMap<QString, QString>* environment,
+                                          QString* error)
+{
+    if (environment != nullptr) {
+        environment->clear();
+    }
+    for (const AutomationSecret& secret : script.secrets) {
+        const SecretStoreReadResult result = SecretStore::readText(secret.service, secret.account);
+        if (!result.error.isEmpty()) {
+            if (error != nullptr) {
+                *error = QCoreApplication::translate("AutomationService", "Failed to read automation secret %1: %2")
+                             .arg(secret.label, result.error);
+            }
+            return false;
+        }
+        if (!result.found || result.value.isEmpty()) {
+            if (secret.required) {
+                if (error != nullptr) {
+                    *error = QCoreApplication::translate(
+                                 "AutomationService",
+                                 "Automation secret %1 is not configured. Run the script's configuration first.")
+                                 .arg(secret.label);
+                }
+                return false;
+            }
+            continue;
+        }
+        if (environment != nullptr) {
+            environment->insert(secret.environment, result.value);
+        }
+    }
+    return true;
 }
 
 AutomationRunner::AutomationRunner(QObject* parent) : QObject(parent)
@@ -425,7 +556,7 @@ AutomationRunner::~AutomationRunner()
 
 void AutomationRunner::start(const AutomationScript& script, const labelminus::core::Project& project,
                              int currentImageIndex, const QJsonObject& parameters, AutomationSelection selection,
-                             AutomationContext context)
+                             AutomationContext context, const QMap<QString, QString>& environmentOverrides)
 {
     if (m_running) {
         AutomationRunResult result;
@@ -435,6 +566,7 @@ void AutomationRunner::start(const AutomationScript& script, const labelminus::c
     }
 
     m_script = script;
+    m_environmentOverrides = environmentOverrides;
     m_pythonCandidates = pythonProgramCandidates();
     m_candidateIndex = 0;
     m_lastFailure = {};
@@ -493,6 +625,9 @@ void AutomationRunner::startNextCandidate()
         for (auto it = m_script.environment.constBegin(); it != m_script.environment.constEnd(); ++it) {
             processEnvironment.insert(it.key(), it.value());
         }
+        for (auto it = m_environmentOverrides.constBegin(); it != m_environmentOverrides.constEnd(); ++it) {
+            processEnvironment.insert(it.key(), it.value());
+        }
         m_process->setProcessEnvironment(processEnvironment);
 
         connect(m_process, &QProcess::readyReadStandardOutput, this, &AutomationRunner::appendProcessOutput);
@@ -534,8 +669,8 @@ void AutomationRunner::handleFinished(int exitCode, QProcess::ExitStatus exitSta
         AutomationRunResult result;
         result.error = QStringLiteral("Automation script was canceled.");
         if (m_process != nullptr) {
-            result.standardOutput = QString::fromUtf8(m_process->readAllStandardOutput());
-            result.standardError = QString::fromUtf8(m_process->readAllStandardError());
+            appendLog(&result.standardOutput, QString::fromUtf8(m_process->readAllStandardOutput()));
+            appendLog(&result.standardError, QString::fromUtf8(m_process->readAllStandardError()));
         }
         finishWithResult(result);
         return;
@@ -586,13 +721,13 @@ void AutomationRunner::appendProcessOutput()
 
     const QString standardOutput = QString::fromUtf8(m_process->readAllStandardOutput());
     if (!standardOutput.isEmpty()) {
-        m_lastFailure.standardOutput += standardOutput;
+        appendLog(&m_lastFailure.standardOutput, standardOutput);
         emit standardOutputReceived(standardOutput);
     }
 
     const QString standardError = QString::fromUtf8(m_process->readAllStandardError());
     if (!standardError.isEmpty()) {
-        m_lastFailure.standardError += standardError;
+        appendLog(&m_lastFailure.standardError, standardError);
         emit standardErrorReceived(standardError);
     }
 }

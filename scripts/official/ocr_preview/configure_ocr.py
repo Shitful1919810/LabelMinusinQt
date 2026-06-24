@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
+from labelminus_automation import AutomationContext, as_bool
+
 CONFIG_PATH = Path(__file__).with_name("config.json")
-
-
-def read_input(path: str) -> dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as input_file:
-        payload = json.load(input_file)
-    return payload if isinstance(payload, dict) else {}
 
 
 def read_existing_config() -> dict[str, Any]:
@@ -24,42 +22,14 @@ def read_existing_config() -> dict[str, Any]:
         return {}
 
 
-def write_output(path: str, text: str) -> None:
-    with open(path, "w", encoding="utf-8") as output_file:
-        json.dump(
-            {
-                "apiVersion": 1,
-                "summary": "OCR configuration saved.",
-                "result": {
-                    "type": "message",
-                    "title": "OCR Configuration",
-                    "text": text,
-                },
-            },
-            output_file,
-            ensure_ascii=False,
-            indent=2,
-        )
-
-
-def as_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "on"}
-    return False
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Configure LabelMinus OCR automation scripts.")
     parser.add_argument("--input", required=True, help="Path to the LabelMinus automation input JSON.")
     parser.add_argument("--output", required=True, help="Path to write the automation output JSON.")
     args = parser.parse_args()
 
-    payload = read_input(args.input)
-    parameters = payload.get("parameters", {})
-    if not isinstance(parameters, dict):
-        parameters = {}
+    ctx = AutomationContext.from_file(args.input)
+    parameters = ctx.parameters
 
     config = read_existing_config()
     config.update(
@@ -69,7 +39,8 @@ def main() -> None:
             "device": str(parameters.get("device", config.get("device", "cpu"))),
             "mangaModelPath": str(parameters.get("mangaModelPath", config.get("mangaModelPath", ""))),
             "defaultGroup": str(parameters.get("defaultGroup", config.get("defaultGroup", "框内"))),
-            "rightToLeft": as_bool(parameters.get("rightToLeft", config.get("rightToLeft", False))),
+            "rightToLeft": as_bool(parameters.get("rightToLeft", config.get("rightToLeft", True))),
+            "showResult": as_bool(parameters.get("showResult", config.get("showResult", True))),
         }
     )
 
@@ -86,8 +57,9 @@ def main() -> None:
         f"mangaModelPath: {config['mangaModelPath'] or '(auto/local HuggingFace cache)'}",
         f"defaultGroup: {config['defaultGroup']}",
         f"rightToLeft: {config['rightToLeft']}",
+        f"showResult: {config['showResult']}",
     ]
-    write_output(args.output, "\n".join(lines))
+    ctx.write_output(args.output, "OCR Configuration", "\n".join(lines), summary="OCR configuration saved.")
 
 
 if __name__ == "__main__":

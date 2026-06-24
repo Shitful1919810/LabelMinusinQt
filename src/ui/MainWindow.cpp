@@ -3,8 +3,7 @@
 #include "services/AutomationOperationApplier.h"
 #include "services/LabelNavigator.h"
 #include "services/SessionStateStore.h"
-#include "ui/AutomationParameterDialog.h"
-#include "ui/AutomationRunDialog.h"
+#include "ui/AutomationController.h"
 #include "ui/AutomationShortcutController.h"
 #include "ui/CanvasLabelTextEditController.h"
 #include "ui/LabelEditDelegates.h"
@@ -28,7 +27,6 @@
 #include <QFileInfo>
 #include <QFontMetrics>
 #include <QHBoxLayout>
-#include <QHash>
 #include <QHeaderView>
 #include <QIcon>
 #include <QInputDialog>
@@ -58,7 +56,6 @@
 #include <QWidgetAction>
 
 #include <algorithm>
-#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -107,12 +104,60 @@ MainWindow::MainWindow(QWidget* parent)
         },
         [this]() { editCurrentLabelText(); },
     });
+    m_automationController = new AutomationController(this, this);
+    m_automationController->setPreferences(m_preferences);
+    m_automationController->setCallbacks({
+        [this]() { return project().isEmpty(); },
+        [this]() { commitActiveTextInput(); },
+        [this]() -> const labelminus::core::Project& { return project(); },
+        [this]() { return project().groups(); },
+        [this]() { return m_preferences.groupStyles(); },
+        [this]() { return m_currentImageIndex; },
+        [this]() {
+            labelminus::services::AutomationSelection selection;
+            if (m_canvas != nullptr && m_canvas->hasSelection()) {
+                selection.hasSelection = true;
+                selection.normalizedRect = m_canvas->normalizedSelectionRect();
+            }
+            return selection;
+        },
+        [this]() {
+            labelminus::services::AutomationContext context;
+            context.currentImageIndex = m_currentImageIndex;
+            context.selectedLabelIndexes = selectedLabelIndexes();
+            return context;
+        },
+    });
     m_automationShortcutController = new AutomationShortcutController(this, this);
     m_automationShortcutController->setPreferences(m_preferences);
+    connect(m_automationController, &AutomationController::scriptsChanged, m_automationShortcutController,
+            &AutomationShortcutController::setScripts);
+    connect(m_automationController, &AutomationController::discoveryWarningsFound, this,
+            &MainWindow::showAutomationDiscoveryWarnings);
+    connect(m_automationController, &AutomationController::runningChanged, this, &MainWindow::setAutomationRunning);
+    connect(m_automationController, &AutomationController::operationsReady, this,
+            &MainWindow::applyAutomationOperations);
+    connect(m_automationController, &AutomationController::statusMessageRequested, this,
+            [this](const QString& message, int timeoutMs) {
+                if (timeoutMs > 0) {
+                    statusBar()->showMessage(message, timeoutMs);
+                }
+                else {
+                    statusBar()->showMessage(message);
+                }
+            });
     connect(m_automationShortcutController, &AutomationShortcutController::scriptTriggered, this,
-            &MainWindow::runAutomationScriptById);
+            [this](const QString& scriptId) {
+                if (m_automationController != nullptr) {
+                    m_automationController->runScriptById(scriptId);
+                }
+            });
     connect(m_automationShortcutController, &AutomationShortcutController::missingScriptTriggered, this,
-            &MainWindow::showMissingAutomationScriptMessage);
+            [this](const QString& scriptId) {
+                if (m_automationController != nullptr) {
+                    m_automationController->showMissingScriptMessage(scriptId);
+                }
+            });
     m_canvasTextEditController = new CanvasLabelTextEditController(this);
     m_canvasTextEditController->setCommitShortcut(m_preferences.commitLabelTextShortcut());
     m_canvasTextEditController->setEditorOpacity(m_preferences.canvasLabelTextEditorOpacity());
@@ -351,8 +396,11 @@ void MainWindow::createMenus()
     editMenu->addSeparator();
     editMenu->addAction(m_reorderPagesAction);
 
-    m_automationMenu = menuBar()->addMenu(tr("&Automation"));
-    refreshAutomationMenu();
+    QMenu* automationMenu = menuBar()->addMenu(tr("&Automation"));
+    if (m_automationController != nullptr) {
+        m_automationController->setMenu(automationMenu);
+        m_automationController->refreshScripts();
+    }
 }
 
 void MainWindow::createCentralWidget()
@@ -523,7 +571,9 @@ void MainWindow::createCentralWidget()
     connect(m_canvas, &ImageCanvas::labelCreateRequested, this, &MainWindow::addLabel);
     connect(m_canvas, &ImageCanvas::labelMoveRequested, this, &MainWindow::moveLabel);
     connect(m_canvas, &ImageCanvas::labelSelected, this, &MainWindow::selectLabel);
+    connect(m_canvas, &ImageCanvas::labelClicked, this, &MainWindow::selectLabelFromCanvas);
     connect(m_canvas, &ImageCanvas::labelTextEditRequested, this, &MainWindow::openCanvasLabelTextEditor);
+    connect(m_canvas, &ImageCanvas::deleteRequested, this, &MainWindow::deleteSelectedLabels);
     connect(m_canvas, &ImageCanvas::zoomPercentChanged, m_zoomSlider, &QSlider::setValue);
     connect(m_zoomSlider, &QSlider::valueChanged, m_canvas, &ImageCanvas::setZoomPercent);
     connect(m_imageComboBox, &QComboBox::currentIndexChanged, this, &MainWindow::selectImage);
@@ -532,14 +582,21 @@ void MainWindow::createCentralWidget()
     connect(m_labelView->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
             [this](const QModelIndex& current) {
                 if (current.isValid()) {
-                    selectLabel(m_labelModel->sourceIndexForRow(current.row()));
+                    updateCurrentLabelDetails(m_labelModel->sourceIndexForRow(current.row()));
                 }
             });
     connect(m_labelView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() {
         if (m_isUpdatingUi || m_canvas == nullptr) {
             return;
         }
-        m_canvas->setSelectedLabels(selectedLabelIndexes());
+        const QVector<int> labelIndexes = selectedLabelIndexes();
+        m_canvas->setSelectedLabels(labelIndexes);
+        if (labelIndexes.isEmpty()) {
+            clearCurrentLabelSelection();
+        }
+        else if (!labelIndexes.contains(m_currentLabelIndex)) {
+            updateCurrentLabelDetails(labelIndexes.last());
+        }
     });
     auto* deleteLabelShortcut = new QAction(m_labelView);
     deleteLabelShortcut->setShortcut(QKeySequence::Delete);
@@ -766,250 +823,16 @@ void MainWindow::reorderPages()
     m_projectWorkflowController->applyPageOrder(dialog.pageOrder(), viewState);
 }
 
-void MainWindow::refreshAutomationMenu()
+void MainWindow::showAutomationDiscoveryWarnings(const QStringList& warnings)
 {
-    if (m_automationMenu == nullptr) {
+    if (warnings.isEmpty()) {
         return;
     }
 
-    m_automationMenu->clear();
-    m_cancelAutomationAction = m_automationMenu->addAction(tr("Cancel Running Script"));
-    m_cancelAutomationAction->setObjectName(QStringLiteral("automationCancelAction"));
-    m_cancelAutomationAction->setEnabled(m_isAutomationRunning);
-    connect(m_cancelAutomationAction, &QAction::triggered, this, &MainWindow::cancelRunningAutomationScript);
-    m_automationMenu->addSeparator();
-
-    m_automationScripts = labelminus::services::AutomationService::discoverScripts();
-    if (m_automationShortcutController != nullptr) {
-        m_automationShortcutController->setScripts(m_automationScripts);
-    }
-    if (m_automationScripts.isEmpty()) {
-        QAction* emptyAction = m_automationMenu->addAction(tr("No automation scripts found"));
-        emptyAction->setObjectName(QStringLiteral("automationEmptyAction"));
-        emptyAction->setEnabled(false);
-    }
-    else {
-        QHash<QString, QVector<int>> scriptIndexesByDirectory;
-        QStringList directoryOrder;
-        for (int i = 0; i < m_automationScripts.size(); ++i) {
-            const QString directoryPath = m_automationScripts.at(i).directoryPath;
-            if (!scriptIndexesByDirectory.contains(directoryPath)) {
-                directoryOrder.append(directoryPath);
-            }
-            scriptIndexesByDirectory[directoryPath].append(i);
-        }
-
-        auto addScriptAction = [this](QMenu* menu, int scriptIndex) {
-            const labelminus::services::AutomationScript& script = m_automationScripts.at(scriptIndex);
-            QAction* scriptAction = menu->addAction(script.name);
-            scriptAction->setObjectName(QStringLiteral("automationScriptAction"));
-            scriptAction->setData(scriptIndex);
-            scriptAction->setToolTip(script.description);
-            scriptAction->setEnabled(!m_isAutomationRunning);
-            connect(scriptAction, &QAction::triggered, this, &MainWindow::runAutomationScriptFromAction);
-        };
-
-        for (const QString& directoryPath : std::as_const(directoryOrder)) {
-            const QVector<int> scriptIndexes = scriptIndexesByDirectory.value(directoryPath);
-            if (scriptIndexes.size() == 1) {
-                addScriptAction(m_automationMenu, scriptIndexes.first());
-                continue;
-            }
-
-            const labelminus::services::AutomationScript& firstScript = m_automationScripts.at(scriptIndexes.first());
-            QMenu* scriptMenu = m_automationMenu->addMenu(firstScript.directoryName);
-            scriptMenu->menuAction()->setObjectName(QStringLiteral("automationScriptMenuAction"));
-            scriptMenu->setEnabled(!m_isAutomationRunning);
-            for (int scriptIndex : scriptIndexes) {
-                addScriptAction(scriptMenu, scriptIndex);
-            }
-        }
-    }
-
-    m_automationMenu->addSeparator();
-    QAction* refreshAction = m_automationMenu->addAction(tr("Refresh Scripts"));
-    refreshAction->setObjectName(QStringLiteral("automationRefreshAction"));
-    refreshAction->setEnabled(!m_isAutomationRunning);
-    connect(refreshAction, &QAction::triggered, this,
-            [this]() { QTimer::singleShot(0, this, &MainWindow::refreshAutomationMenu); });
-}
-
-void MainWindow::updateAutomationMenuEnabledState()
-{
-    if (m_automationMenu == nullptr) {
-        return;
-    }
-
-    const auto updateActions = [this](const QList<QAction*>& actions, const auto& updateActionsRef) -> void {
-        for (QAction* action : actions) {
-            if (action == nullptr || action->isSeparator()) {
-                continue;
-            }
-
-            if (action == m_cancelAutomationAction ||
-                action->objectName() == QStringLiteral("automationCancelAction")) {
-                action->setEnabled(m_isAutomationRunning);
-            }
-            else if (action->objectName() == QStringLiteral("automationEmptyAction")) {
-                action->setEnabled(false);
-            }
-            else {
-                action->setEnabled(!m_isAutomationRunning);
-            }
-
-            if (QMenu* menu = action->menu()) {
-                updateActionsRef(menu->actions(), updateActionsRef);
-            }
-        }
-    };
-    updateActions(m_automationMenu->actions(), updateActions);
-}
-
-void MainWindow::runAutomationScriptFromAction()
-{
-    const auto* action = qobject_cast<const QAction*>(sender());
-    if (action == nullptr) {
-        return;
-    }
-
-    const int scriptIndex = action->data().toInt();
-    if (scriptIndex < 0 || scriptIndex >= m_automationScripts.size()) {
-        return;
-    }
-    runAutomationScript(m_automationScripts.at(scriptIndex));
-}
-
-void MainWindow::runAutomationScriptById(const QString& scriptId)
-{
-    const auto script = std::find_if(m_automationScripts.cbegin(), m_automationScripts.cend(),
-                                     [&scriptId](const auto& candidate) { return candidate.id == scriptId; });
-    if (script == m_automationScripts.cend()) {
-        showMissingAutomationScriptMessage(scriptId);
-        return;
-    }
-
-    runAutomationScript(*script);
-}
-
-void MainWindow::runAutomationScript(const labelminus::services::AutomationScript& script)
-{
-    if (!QFileInfo::exists(script.entryPath)) {
-        showMissingAutomationScriptMessage(script.id);
-        refreshAutomationMenu();
-        return;
-    }
-    if (m_isAutomationRunning) {
-        return;
-    }
-    if (project().isEmpty()) {
-        QMessageBox::information(this, tr("Automation"), tr("Open a project before running automation scripts."));
-        return;
-    }
-
-    commitActiveTextInput();
-    const std::optional<QJsonObject> parameters =
-        AutomationParameterDialog::getParameters(this, script, project().groups(), m_preferences.groupStyles());
-    if (!parameters.has_value()) {
-        return;
-    }
-
-    statusBar()->showMessage(tr("Running automation script: %1").arg(script.name));
-    labelminus::services::AutomationSelection selection;
-    if (m_canvas != nullptr && m_canvas->hasSelection()) {
-        selection.hasSelection = true;
-        selection.normalizedRect = m_canvas->normalizedSelectionRect();
-    }
-    labelminus::services::AutomationContext context;
-    context.currentImageIndex = m_currentImageIndex;
-    context.selectedLabelIndexes = selectedLabelIndexes();
-
-    auto* runner = new labelminus::services::AutomationRunner(this);
-    AutomationRunDialog* dialog = nullptr;
-    if (m_preferences.showAutomationRunLog()) {
-        dialog = new AutomationRunDialog(script.name, this);
-        dialog->setAttribute(Qt::WA_DeleteOnClose);
-    }
-    m_automationRunner = runner;
-    m_automationRunDialog = dialog;
-
-    if (dialog != nullptr) {
-        connect(dialog, &AutomationRunDialog::cancelRequested, runner, &labelminus::services::AutomationRunner::cancel);
-        connect(dialog, &QObject::destroyed, this, [this]() { m_automationRunDialog.clear(); });
-        connect(runner, &labelminus::services::AutomationRunner::standardOutputReceived, dialog,
-                &AutomationRunDialog::appendStandardOutput);
-        connect(runner, &labelminus::services::AutomationRunner::standardErrorReceived, dialog,
-                &AutomationRunDialog::appendStandardError);
-    }
-    connect(runner, &labelminus::services::AutomationRunner::finished, this,
-            [this, runner, dialog, script](const labelminus::services::AutomationRunResult& result) {
-                setAutomationRunning(false);
-                if (m_automationRunner == runner) {
-                    m_automationRunner.clear();
-                }
-                const QPointer<AutomationRunDialog> dialogPointer(dialog);
-                runner->deleteLater();
-                QTimer::singleShot(0, this, [this, dialogPointer, script, result]() {
-                    if (!dialogPointer.isNull()) {
-                        dialogPointer->setFinished(result.success);
-                    }
-
-                    if (!result.success) {
-                        const QString errorMessage = result.error == QStringLiteral("Automation script was canceled.")
-                                                         ? tr("Automation script was canceled.")
-                                                         : result.error;
-                        const QString displayError =
-                            errorMessage.isEmpty() ? tr("The automation script failed.") : errorMessage;
-                        if (!dialogPointer.isNull()) {
-                            dialogPointer->appendStandardError(displayError + QLatin1Char('\n'));
-                        }
-                        else {
-                            QMessageBox::critical(this, tr("Automation failed"), displayError);
-                        }
-                        statusBar()->showMessage(tr("Automation script failed: %1").arg(script.name), 5000);
-                        if (!dialogPointer.isNull() && !dialogPointer->isVisible()) {
-                            dialogPointer->deleteLater();
-                        }
-                        return;
-                    }
-
-                    applyAutomationOperations(script.name, result.operations);
-
-                    if (!result.quiet) {
-                        const QString title = result.resultTitle.isEmpty() ? script.name : result.resultTitle;
-                        const QString text = result.resultText.isEmpty() ? result.summary : result.resultText;
-                        QMessageBox::information(!dialogPointer.isNull() && dialogPointer->isVisible()
-                                                     ? static_cast<QWidget*>(dialogPointer.data())
-                                                     : static_cast<QWidget*>(this),
-                                                 title, text);
-                    }
-                    statusBar()->showMessage(tr("Automation script finished: %1").arg(script.name), 5000);
-                    if (!dialogPointer.isNull() && !dialogPointer->isVisible()) {
-                        dialogPointer->deleteLater();
-                    }
-                });
-            });
-
-    setAutomationRunning(true);
-    if (dialog != nullptr) {
-        dialog->show();
-    }
-    runner->start(script, project(), m_currentImageIndex, parameters.value(), selection, context);
-}
-
-void MainWindow::showMissingAutomationScriptMessage(const QString& scriptId)
-{
-    statusBar()->showMessage(tr("Automation script is no longer available: %1").arg(scriptId), 5000);
-}
-
-void MainWindow::cancelRunningAutomationScript()
-{
-    if (!m_automationRunner.isNull()) {
-        m_automationRunner->cancel();
-    }
-    if (!m_automationRunDialog.isNull()) {
-        m_automationRunDialog->setCanceling();
-    }
-    statusBar()->showMessage(tr("Canceling automation script..."));
+    statusBar()->showMessage(
+        tr("Skipped %n invalid automation script(s): %1", nullptr, static_cast<int>(warnings.size()))
+            .arg(warnings.first()),
+        8000);
 }
 
 void MainWindow::applyAutomationOperations(const QString& scriptName,
@@ -1114,13 +937,15 @@ void MainWindow::openRecentProjectFromAction()
 
 void MainWindow::openPreferences()
 {
-    m_automationScripts = labelminus::services::AutomationService::discoverScripts();
-    if (m_automationShortcutController != nullptr) {
-        m_automationShortcutController->setScripts(m_automationScripts);
+    if (m_automationController != nullptr) {
+        m_automationController->refreshScripts();
     }
 
-    auto* dialog = new PreferenceDialog(labelminus::core::AppPreferences::defaultFilePath(), m_preferences,
-                                        m_automationScripts, this);
+    auto* dialog =
+        new PreferenceDialog(labelminus::core::AppPreferences::defaultFilePath(), m_preferences,
+                             m_automationController == nullptr ? QVector<labelminus::services::AutomationScript>{}
+                                                               : m_automationController->scripts(),
+                             this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(dialog, &PreferenceDialog::preferencesApplied, this, &MainWindow::applyPreferences);
     dialog->show();
@@ -1300,26 +1125,13 @@ void MainWindow::selectImage(int index)
 
 void MainWindow::selectLabel(int index)
 {
-    if (!m_isUpdatingUi && m_canvasTextEditController != nullptr && m_canvasTextEditController->labelIndex() >= 0 &&
-        m_canvasTextEditController->labelIndex() != index) {
-        commitCanvasLabelTextEditor();
-    }
-
-    if (!m_isUpdatingUi &&
-        (m_pendingTextEditImageIndex != m_currentImageIndex || m_pendingTextEditLabelIndex != index)) {
-        commitPendingTextEdit();
-    }
-
-    labelminus::core::ImageEntry* image = currentImage();
-    if (image == nullptr || index < 0 || index >= image->labels.size()) {
+    if (!updateCurrentLabelDetails(index)) {
         clearCurrentLabelSelection();
         return;
     }
 
+    const bool wasUpdatingUi = m_isUpdatingUi;
     m_isUpdatingUi = true;
-    m_currentLabelIndex = index;
-    m_textEdit->setPlainText(image->labels.at(index).text());
-    m_labelGroupComboBox->setCurrentText(image->labels.at(index).group());
     const int visibleRow = m_labelModel->rowForSourceIndex(index);
     if (visibleRow >= 0) {
         const QModelIndex rowIndex = m_labelModel->index(visibleRow, LabelTableModel::NumberColumn);
@@ -1338,7 +1150,53 @@ void MainWindow::selectLabel(int index)
     }
     m_canvas->setSelectedLabels({index});
     setEditorEnabled(true);
-    m_isUpdatingUi = false;
+    m_isUpdatingUi = wasUpdatingUi;
+}
+
+void MainWindow::selectLabelFromCanvas(int index, Qt::KeyboardModifiers modifiers)
+{
+    labelminus::core::ImageEntry* image = currentImage();
+    if (image == nullptr || index < 0 || index >= image->labels.size()) {
+        clearCurrentLabelSelection();
+        return;
+    }
+
+    if ((modifiers & Qt::ControlModifier) != Qt::NoModifier && (modifiers & Qt::ShiftModifier) == Qt::NoModifier) {
+        QVector<int> sourceIndexes = selectedLabelIndexes();
+        if (sourceIndexes.contains(index)) {
+            sourceIndexes.removeAll(index);
+        }
+        else {
+            sourceIndexes.append(index);
+        }
+        selectLabelIndexes(sourceIndexes, sourceIndexes.contains(index) ? index : -1);
+        return;
+    }
+
+    if ((modifiers & Qt::ShiftModifier) == Qt::NoModifier || m_currentLabelIndex < 0 ||
+        m_currentLabelIndex >= image->labels.size()) {
+        selectLabel(index);
+        return;
+    }
+
+    const int anchorRow = m_labelModel->rowForSourceIndex(m_currentLabelIndex);
+    const int targetRow = m_labelModel->rowForSourceIndex(index);
+    if (anchorRow < 0 || targetRow < 0) {
+        selectLabel(index);
+        return;
+    }
+
+    QVector<int> sourceIndexes;
+    const int firstRow = std::min(anchorRow, targetRow);
+    const int lastRow = std::max(anchorRow, targetRow);
+    sourceIndexes.reserve(lastRow - firstRow + 1);
+    for (int row = firstRow; row <= lastRow; ++row) {
+        const int sourceIndex = m_labelModel->sourceIndexForRow(row);
+        if (sourceIndex >= 0) {
+            sourceIndexes.append(sourceIndex);
+        }
+    }
+    selectLabelIndexes(sourceIndexes, index);
 }
 
 void MainWindow::addLabel(QPointF normalizedPosition)
@@ -1504,6 +1362,33 @@ void MainWindow::updateCurrentLabelText()
         m_labelView->resizeRowToContents(visibleRow);
         capLabelRowHeight(visibleRow);
     }
+}
+
+bool MainWindow::updateCurrentLabelDetails(int index)
+{
+    if (!m_isUpdatingUi && m_canvasTextEditController != nullptr && m_canvasTextEditController->labelIndex() >= 0 &&
+        m_canvasTextEditController->labelIndex() != index) {
+        commitCanvasLabelTextEditor();
+    }
+
+    if (!m_isUpdatingUi &&
+        (m_pendingTextEditImageIndex != m_currentImageIndex || m_pendingTextEditLabelIndex != index)) {
+        commitPendingTextEdit();
+    }
+
+    labelminus::core::ImageEntry* image = currentImage();
+    if (image == nullptr || index < 0 || index >= image->labels.size()) {
+        return false;
+    }
+
+    const bool wasUpdatingUi = m_isUpdatingUi;
+    m_isUpdatingUi = true;
+    m_currentLabelIndex = index;
+    m_textEdit->setPlainText(image->labels.at(index).text());
+    m_labelGroupComboBox->setCurrentText(image->labels.at(index).group());
+    setEditorEnabled(true);
+    m_isUpdatingUi = wasUpdatingUi;
+    return true;
 }
 
 MainWindow::ActiveTextInputMode MainWindow::activeTextInputMode() const
@@ -2028,7 +1913,7 @@ QVector<int> MainWindow::selectedLabelIndexes() const
     return labelIndexes;
 }
 
-void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes)
+void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes, int primarySourceIndex)
 {
     labelminus::core::ImageEntry* image = currentImage();
     if (image == nullptr || m_labelView == nullptr || m_labelView->selectionModel() == nullptr) {
@@ -2047,25 +1932,23 @@ void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes)
     visibleSourceIndexes.erase(std::unique(visibleSourceIndexes.begin(), visibleSourceIndexes.end()),
                                visibleSourceIndexes.end());
 
-    QSignalBlocker selectionBlocker(m_labelView->selectionModel());
+    const bool wasUpdatingUi = m_isUpdatingUi;
+    m_isUpdatingUi = true;
     m_labelView->clearSelection();
 
     if (visibleSourceIndexes.isEmpty()) {
-        m_isUpdatingUi = true;
         clearCurrentLabelSelection();
-        m_isUpdatingUi = false;
+        m_isUpdatingUi = wasUpdatingUi;
         return;
     }
 
-    const int primarySourceIndex = visibleSourceIndexes.last();
-    const labelminus::core::Label& primaryLabel = image->labels.at(primarySourceIndex);
-
-    m_isUpdatingUi = true;
-    m_currentLabelIndex = primarySourceIndex;
-    m_canvas->setSelectedLabels(visibleSourceIndexes);
-    m_textEdit->setPlainText(primaryLabel.text());
-    m_labelGroupComboBox->setCurrentText(primaryLabel.group());
-    setEditorEnabled(true);
+    if (!visibleSourceIndexes.contains(primarySourceIndex)) {
+        primarySourceIndex = visibleSourceIndexes.last();
+    }
+    updateCurrentLabelDetails(primarySourceIndex);
+    if (m_canvas != nullptr) {
+        m_canvas->setSelectedLabels(visibleSourceIndexes);
+    }
 
     QItemSelection selection;
     for (int sourceIndex : visibleSourceIndexes) {
@@ -2082,11 +1965,13 @@ void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes)
     m_labelView->selectionModel()->select(selection, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     const int primaryVisibleRow = m_labelModel->rowForSourceIndex(primarySourceIndex);
     if (primaryVisibleRow >= 0) {
-        m_labelView->selectionModel()->setCurrentIndex(
-            m_labelModel->index(primaryVisibleRow, LabelTableModel::NumberColumn),
-            QItemSelectionModel::Current | QItemSelectionModel::Rows);
+        const QModelIndex primaryIndex = m_labelModel->index(primaryVisibleRow, LabelTableModel::NumberColumn);
+        m_labelView->selectionModel()->setCurrentIndex(primaryIndex,
+                                                       QItemSelectionModel::Current | QItemSelectionModel::Rows);
+        m_labelView->scrollTo(primaryIndex, QAbstractItemView::EnsureVisible);
     }
-    m_isUpdatingUi = false;
+    m_labelView->viewport()->update();
+    m_isUpdatingUi = wasUpdatingUi;
 }
 
 void MainWindow::refreshProjectUi()
@@ -2517,6 +2402,9 @@ void MainWindow::applyPreferences(labelminus::core::AppPreferencesLoadResult res
     if (m_automationShortcutController != nullptr) {
         m_automationShortcutController->setPreferences(m_preferences);
     }
+    if (m_automationController != nullptr) {
+        m_automationController->setPreferences(m_preferences);
+    }
     if (m_canvasTextEditController != nullptr) {
         m_canvasTextEditController->setCommitShortcut(m_preferences.commitLabelTextShortcut());
         m_canvasTextEditController->setEditorOpacity(m_preferences.canvasLabelTextEditorOpacity());
@@ -2857,10 +2745,6 @@ void MainWindow::setAutomationRunning(bool running)
     if (m_nextPageAction != nullptr) {
         m_nextPageAction->setEnabled(!running && !project().isEmpty());
     }
-    if (m_cancelAutomationAction != nullptr) {
-        m_cancelAutomationAction->setEnabled(running);
-    }
-    updateAutomationMenuEnabledState();
 }
 
 labelminus::core::Project& MainWindow::project() noexcept

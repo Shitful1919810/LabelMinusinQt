@@ -18,3 +18,15 @@ The bundled stylesheets provide Breeze-like Qt Widgets themes.
 - Local license file: `resources/themes/breeze/MaterialUi.LICENSE`
 
 Some SVG assets used by BreezeStyleSheets are derived from Material UI / Material Design icon sources.
+
+## QtKeychain
+
+- Source: <https://github.com/frankosterfeld/qtkeychain>
+- Usage: linked as a system/library dependency to store automation script secrets in the operating system keychain.
+- License: BSD-style license. See the QtKeychain project for the exact license text shipped by the installed package.
+
+## External APIs Not Bundled
+
+The official automation scripts may call user-configured external services, such as the DeepSeek API for AI
+translation. These services, API keys, hosted models and remote runtimes are not bundled in this repository. Users are
+responsible for configuring credentials and complying with the relevant service terms.

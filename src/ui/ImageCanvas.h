@@ -52,7 +52,9 @@ signals:
     void labelCreateRequested(QPointF normalizedPosition);
     void labelMoveRequested(int index, QPointF normalizedPosition);
     void labelSelected(int index);
+    void labelClicked(int index, Qt::KeyboardModifiers modifiers);
     void labelTextEditRequested(int index, QPoint globalPosition);
+    void deleteRequested();
     void zoomPercentChanged(int percent);
     void viewportStateChanged(int zoomPercent, QPointF normalizedCenter);
     void selectionChanged(QRectF normalizedRect);
@@ -114,10 +116,13 @@ private:
     bool m_pendingLabelCreate{false};
     bool m_pendingLabelSelect{false};
     bool m_isMovingLabel{false};
+    bool m_pendingLabelMove{false};
     bool m_isSelectingRegion{false};
     bool m_isMiddleButtonPanning{false};
     int m_pendingLabelSelectIndex{-1};
     int m_movingLabelIndex{-1};
+    int m_pendingLabelMoveIndex{-1};
+    Qt::KeyboardModifiers m_pendingLabelSelectModifiers{Qt::NoModifier};
     QPoint m_labelCreatePressPosition;
     QPoint m_labelSelectPressPosition;
     QPoint m_lastMiddlePanPosition;

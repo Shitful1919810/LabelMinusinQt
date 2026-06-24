@@ -24,6 +24,19 @@ struct AutomationParameter {
     QString type;
     QString defaultValue;
     QStringList options;
+    QString secretKey;
+    QString secretService;
+    QString secretAccount;
+    QString secretEnvironment;
+};
+
+struct AutomationSecret {
+    QString key;
+    QString label;
+    QString service;
+    QString account;
+    QString environment;
+    bool required{true};
 };
 
 struct AutomationOperation {
@@ -54,8 +67,11 @@ struct AutomationScript {
     QString directoryPath;
     QString entryPath;
     QVector<AutomationParameter> parameters;
+    QVector<AutomationSecret> secrets;
     QMap<QString, QString> environment;
     bool official{false};
+    int directoryOrder{0};
+    int scriptOrder{0};
 };
 
 struct AutomationRunResult {
@@ -72,7 +88,10 @@ struct AutomationRunResult {
 
 class AutomationService final {
 public:
-    static QVector<AutomationScript> discoverScripts();
+    static QVector<AutomationScript> discoverScripts(QStringList* warnings = nullptr);
+    static bool storeParameterSecrets(const AutomationScript& script, const QMap<QString, QString>& secrets,
+                                      QString* error);
+    static bool secretEnvironment(const AutomationScript& script, QMap<QString, QString>* environment, QString* error);
 
 private:
     static QStringList scriptsRootCandidates();
@@ -86,7 +105,8 @@ public:
     ~AutomationRunner() override;
 
     void start(const AutomationScript& script, const labelminus::core::Project& project, int currentImageIndex,
-               const QJsonObject& parameters = {}, AutomationSelection selection = {}, AutomationContext context = {});
+               const QJsonObject& parameters = {}, AutomationSelection selection = {}, AutomationContext context = {},
+               const QMap<QString, QString>& environmentOverrides = {});
     void cancel();
     bool isRunning() const noexcept;
 
@@ -105,6 +125,7 @@ private:
     void finishWithResult(AutomationRunResult result);
 
     AutomationScript m_script;
+    QMap<QString, QString> m_environmentOverrides;
     QStringList m_pythonCandidates;
     int m_candidateIndex{0};
     QStringList m_arguments;

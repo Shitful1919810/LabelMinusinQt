@@ -1,0 +1,249 @@
+# LabelMinus 自动化脚本开发指南
+
+LabelMinus 的自动化脚本采用“外部 Python 进程 + JSON 文件交换”的模式。脚本不嵌入主程序，也不直接修改 `.txt` 工程文件；它读取主程序导出的 `input.json`，再写回 `output.json`。如果需要修改工程，脚本输出结构化 `operations`，由 C++ 侧校验、应用并注册撤销/重做。
+
+## 目录结构
+
+发行包中的脚本目录位于可执行文件旁边：
+
+```text
+scripts/
+  official/      官方脚本和示例
+  custom/        用户脚本
+```
+
+每个脚本组一个目录。目录里至少包含 `script.json` 和入口 Python 文件，也可以包含 `requirements.txt`、资源文件、脚本本地配置文件等。
+
+```text
+scripts/official/my_tool/
+  script.json
+  run.py
+  requirements.txt
+```
+
+`script.json` 可以定义单个脚本，也可以用顶层 `scripts` 数组定义多个菜单项。多脚本目录会在“自动化”菜单里显示为一个子菜单，子菜单顺序保持 `script.json` 中的声明顺序，因此建议把 `Configuration` 类脚本放在第一个。
+
+## 最小 SDK
+
+官方提供一个轻量辅助库：
+
+```text
+scripts/official/sdk/labelminus_automation.py
+```
+
+它不是独立 Python 包，不需要安装。官方示例脚本通过相对路径导入：
+
+```python
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
+from labelminus_automation import AutomationContext
+```
+
+脚本通常先创建 `AutomationContext`，再通过属性和方法读取工程快照、构造操作并写出结果：
+
+```python
+ctx = AutomationContext.from_file(args.input)
+
+operations = []
+for label in ctx.selected_labels:
+    operations.append(label.delete())
+
+ctx.write_output(args.output, "Delete Labels", "Done.", operations)
+```
+
+这个库封装最常用的无依赖操作，例如读取输入、写结果、读取当前页、读取选中标签、读取参数、通过 `Page` / `Label` 对象访问工程数据、按 1-based 页码区间读取页面或 label、构造常见 operations 等。它刻意保持很小，方便用户复制和理解。
+
+## 脚本调用方式
+
+主程序运行脚本时会传入两个参数：
+
+```bash
+python run.py --input /tmp/input.json --output /tmp/output.json
+```
+
+脚本必须读取 `--input`，并在成功时写出 `--output`。脚本可以向 stdout/stderr 输出日志；用户在偏好设置里打开自动化日志窗口后，可以实时看到这些输出。
+
+## input.json
+
+`input.json` 是一次运行开始时的工程快照，默认只导出未删除 label。主要字段如下：
+
+```json
+{
+  "apiVersion": 1,
+  "parameters": {},
+  "selection": {
+    "hasSelection": true,
+    "imagePath": "/path/to/001.png",
+    "rect": {
+      "left": 0.1,
+      "top": 0.2,
+      "right": 0.5,
+      "bottom": 0.4,
+      "width": 0.4,
+      "height": 0.2
+    }
+  },
+  "context": {
+    "currentPage": {
+      "hasPage": true,
+      "index": 0,
+      "name": "001.png",
+      "imagePath": "/path/to/001.png"
+    },
+    "selectedLabels": []
+  },
+  "project": {
+    "filePath": "/path/to/project.txt",
+    "directory": "/path/to",
+    "groups": ["框内", "框外"],
+    "imagePaths": ["/path/to/001.png"],
+    "pages": [
+      {
+        "index": 0,
+        "name": "001.png",
+        "imagePath": "/path/to/001.png",
+        "labels": [
+          {
+            "labelIndex": 0,
+            "visibleIndex": 1,
+            "group": "框内",
+            "text": "原文",
+            "x": 0.3,
+            "y": 0.4
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+`labelIndex` 是工程内部 label 下标，供 `operations` 精确引用；`visibleIndex` 是 UI 展示序号，只用于展示。脚本不要把 `visibleIndex` 当成修改目标。
+
+`parameters` 来自 `script.json` 声明的运行前参数窗口。`secret` 参数不会出现在 `input.json`；密钥由主程序保存到系统 keychain，并按脚本声明注入到子进程环境变量。
+
+## output.json
+
+最小成功输出如下：
+
+```json
+{
+  "apiVersion": 1,
+  "summary": "处理完成",
+  "result": {
+    "type": "message",
+    "title": "脚本结果",
+    "text": "处理完成。"
+  },
+  "quiet": false
+}
+```
+
+如果顶层 `"quiet": true`，脚本成功后不会弹出结果窗口，只会更新状态栏。失败仍然会提示用户。
+
+## operations
+
+脚本需要修改工程时，输出 `operations`。主程序会统一校验、应用并纳入 undo/redo。
+
+当前支持的操作：
+
+```json
+{
+  "type": "setLabelText",
+  "page": "001.png",
+  "labelIndex": 0,
+  "text": "译文"
+}
+```
+
+```json
+{
+  "type": "setLabelGroup",
+  "page": "001.png",
+  "labelIndex": 0,
+  "group": "框外"
+}
+```
+
+```json
+{
+  "type": "setLabelPosition",
+  "page": "001.png",
+  "labelIndex": 0,
+  "x": 0.35,
+  "y": 0.45
+}
+```
+
+```json
+{
+  "type": "deleteLabel",
+  "page": "001.png",
+  "labelIndex": 0
+}
+```
+
+```json
+{
+  "type": "addLabel",
+  "page": "001.png",
+  "group": "框内",
+  "text": "OCR 结果",
+  "x": 0.5,
+  "y": 0.5
+}
+```
+
+坐标是图像归一化坐标，范围为 `0.0` 到 `1.0`。脚本应主动 clamp 坐标，避免输出无效值。
+
+## script.json 参数
+
+支持的参数类型包括：
+
+- `text`：单行文本。
+- `textarea` / `multiline`：多行文本，适合 prompt。
+- `group`：当前工程分组。
+- `choice` / `select` / `enum`：固定选项。
+- `boolean` / `bool`：复选框。
+- `file`：文件路径。
+- `directory`：目录路径。
+- `secret`：密钥输入框，保存到系统 keychain。
+
+密钥参数示例：
+
+```json
+{
+  "key": "deepseekApiKey",
+  "label": "DeepSeek API key",
+  "type": "secret",
+  "secretKey": "deepseekApiKey",
+  "service": "LabelMinus",
+  "account": "deepseek_api_key",
+  "environment": "DEEPSEEK_API_KEY"
+}
+```
+
+真正需要读取密钥的运行脚本还应声明 `secrets`，主程序会在运行前读取 keychain 并注入环境变量。脚本只读取环境变量，不要把 API key 写入 `config.json`、日志或结果 JSON。
+
+## 示例职责
+
+`scripts/official/test` 既用于测试自动化框架，也用于展示推荐写法：
+
+- 用 `AutomationContext.from_file()` 读 `input.json`，用 `ctx.write_output()` 写 `output.json`。
+- 用 `ctx.parameters` 接收用户参数。
+- 用 `ctx.ops` 构造 `operations` 修改工程，而不是直接改 `.txt`。
+- 对没有当前页、没有选中 label、参数为空等情况给出温和结果。
+- 让有副作用的脚本输出可撤销操作。
+
+`scripts/official/ocr_preview` 展示如何读取当前选区、当前页图像路径、OCR 结果并输出 `addLabel`。`scripts/official/ai_translate` 展示如何使用 keychain 注入的 API key、如何做 preview、apply 和跨页 apply；跨页 apply 会把整个页码区间作为上下文一次性提交给模型，并用返回的 `page + labelIndex` 定位修改目标。
+
+## 建议
+
+- 脚本应当把工程快照视为只读。
+- 长任务要定期输出进度日志，方便用户判断是否卡住。
+- 不要输出无限日志；主程序会截断过大的日志内容。
+- 不要假设 label 分组一定存在；如果要写入某个 group，应让用户在参数窗口选择或在文档里明确要求。
+- 不要把密钥、私有路径、模型目录提交到仓库。脚本本地配置建议写入脚本目录下被 `.gitignore` 忽略的 `config.json`。
+- 如果脚本损坏、入口文件不存在或 manifest 格式错误，主程序会跳过该脚本并在状态栏显示警告；脚本作者仍应尽量让错误信息清晰可读。

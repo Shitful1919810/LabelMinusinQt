@@ -80,7 +80,10 @@ Qt Widgets. Current services include:
 
 Keep workflow/state persistence code here when it would otherwise make `MainWindow` responsible for non-UI details.
 
-Automation scripts are external processes, not embedded Python. Official scripts live under `scripts/official`, and
+Automation menu discovery, script launching, log dialog lifetime and result dispatching belong in
+`AutomationController`; `MainWindow` should only provide the current UI context and apply validated operations back to
+the project. Automation scripts are external processes, not embedded Python. Official scripts live under
+`scripts/official`, and
 user scripts live under `scripts/custom`; each script owns its own directory and manifest. Scripts receive a JSON
 snapshot of the current project plus user-filled `parameters`, current UI `context` and the current image selection,
 then write a JSON result file. The default snapshot exports only non-deleted labels. Each exported label carries
@@ -90,12 +93,17 @@ state. `project` contains both detailed `pages[]` entries and a convenience `ima
 `selection` contains `hasSelection`, current page identity and a normalized `rect` when the image canvas has an active
 region.
 `script.json` may describe one script directly or multiple scripts through a top-level `scripts` array. Multiple scripts
-in one directory should appear as a submenu in the automation menu. Per-script `environment` entries are copied into the
-Python process environment and are intended for lightweight runtime switches, not for storing secrets.
+in one directory should appear as a submenu in the automation menu, and submenu entries must preserve the order declared
+in `script.json` so configuration actions can stay first. Per-script `environment` entries are copied into the Python
+process environment and are intended for lightweight runtime switches, not for storing secrets.
 Per-script `parameters` describe the pre-run Qt parameter form. Supported parameter types should stay generic and
-script-agnostic: `text`, `group`, `choice`/`select`/`enum`, `boolean`/`bool`, `file` and `directory`. Scripts that need
-persistent local configuration should provide a configuration menu item that writes a script-local ignored file such as
-`config.json`; do not store user-specific paths in `script.json`.
+script-agnostic: `text`, `textarea`/`multiline`, `group`, `choice`/`select`/`enum`, `boolean`/`bool`, `file`,
+`directory` and `secret`. Secret
+parameters are handled by the application: the typed value must be stored in the OS keychain and must not be written to
+the automation input JSON, script-local config files or logs. Scripts that need a secret at runtime should declare
+per-script `secrets`; the application reads those keychain entries before launch and injects them as child-process
+environment variables. Scripts that need persistent local configuration should provide a configuration menu item that
+writes a script-local ignored file such as `config.json`; do not store user-specific paths or secrets in `script.json`.
 Scripts must not directly modify LabelPlus project files. Script-generated project edits must be represented as
 validated `operations` and applied by C++ code so undo, dirty state and UI refresh remain consistent. Keep the operation
 vocabulary narrow and explicit; for example, `setLabelGroup` identifies a page by image name, a label by `labelIndex`,

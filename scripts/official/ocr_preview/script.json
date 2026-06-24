@@ -13,7 +13,7 @@
           "key": "engine",
           "label": "Default OCR engine",
           "type": "choice",
-          "default": "paddle",
+          "default": "manga-with-paddle",
           "options": ["paddle", "manga-with-paddle"]
         },
         {
@@ -46,7 +46,13 @@
           "key": "rightToLeft",
           "label": "Sort PaddleOCR regions right-to-left",
           "type": "boolean",
-          "default": false
+          "default": true
+        },
+        {
+          "key": "showResult",
+          "label": "Show result dialog after non-preview runs",
+          "type": "boolean",
+          "default": true
         }
       ]
     },
@@ -63,6 +69,29 @@
       "description": "Run OCR using the configured engine and add recognized text blocks as labels.",
       "environment": {
         "LABELMINUS_OCR_ACTION": "add-labels"
+      }
+    },
+    {
+      "id": "add_page_range_labels",
+      "name": "OCR Add Page Range Labels",
+      "entry": "ocr_preview.py",
+      "description": "Run OCR for every page in the selected 1-based page range and add recognized text blocks as labels.",
+      "parameters": [
+        {
+          "key": "startPage",
+          "label": "Start page (1-based)",
+          "type": "text",
+          "default": "1"
+        },
+        {
+          "key": "endPage",
+          "label": "End page (1-based)",
+          "type": "text",
+          "default": "1"
+        }
+      ],
+      "environment": {
+        "LABELMINUS_OCR_ACTION": "add-page-range-labels"
       }
     }
   ]
