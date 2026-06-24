@@ -59,6 +59,19 @@ struct AutomationContext {
     QVector<int> selectedLabelIndexes;
 };
 
+struct AutomationPythonSettings {
+    QString command;
+    QStringList arguments;
+    bool autoInstallRequirements{false};
+    QString pipIndexUrl;
+};
+
+struct AutomationPythonCommand {
+    QString program;
+    QStringList arguments;
+    QString displayText;
+};
+
 struct AutomationScript {
     QString id;
     QString name;
@@ -106,7 +119,8 @@ public:
 
     void start(const AutomationScript& script, const labelqt::core::Project& project, int currentImageIndex,
                const QJsonObject& parameters = {}, AutomationSelection selection = {}, AutomationContext context = {},
-               const QMap<QString, QString>& environmentOverrides = {});
+               const QMap<QString, QString>& environmentOverrides = {},
+               AutomationPythonSettings pythonSettings = {});
     void cancel();
     bool isRunning() const noexcept;
 
@@ -116,7 +130,13 @@ signals:
     void finished(const labelqt::services::AutomationRunResult& result);
 
 private:
+    enum class RunPhase {
+        InstallRequirements,
+        RunScript,
+    };
+
     void startNextCandidate();
+    void startProcess(const AutomationPythonCommand& command, QStringList arguments, RunPhase phase);
     void handleStarted();
     void handleFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void handleError();
@@ -126,10 +146,14 @@ private:
 
     AutomationScript m_script;
     QMap<QString, QString> m_environmentOverrides;
-    QStringList m_pythonCandidates;
+    AutomationPythonSettings m_pythonSettings;
+    QVector<AutomationPythonCommand> m_pythonCandidates;
+    AutomationPythonCommand m_currentPythonCommand;
+    RunPhase m_phase{RunPhase::RunScript};
     int m_candidateIndex{0};
-    QStringList m_arguments;
+    QStringList m_scriptArguments;
     QString m_outputPath;
+    QString m_requirementsPath;
     AutomationRunResult m_lastFailure;
     std::unique_ptr<QTemporaryDir> m_temporaryDirectory;
     QProcess* m_process{nullptr};

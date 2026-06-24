@@ -5,9 +5,16 @@
         "theme": ""
     },
     "automation": {
+        "python": {
+            "arguments": [
+            ],
+            "autoInstallRequirements": true,
+            "command": "",
+            "pipIndexUrl": ""
+        },
         "shortcuts": {
         },
-        "showRunLog": false
+        "showRunLog": true
     },
     "backupIntervalSeconds": 200,
     "backupPath": "bak",

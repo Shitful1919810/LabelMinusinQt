@@ -290,6 +290,70 @@ AppPreferencesLoadResult AppPreferences::loadFromDocument(const QJsonDocument& d
                 }
             }
 
+            const QJsonValue pythonValue = automationValue.toObject().value(QStringLiteral("python"));
+            if (!pythonValue.isUndefined()) {
+                if (!pythonValue.isObject()) {
+                    warnings.append(makeWarning(AppPreferenceWarningType::AutomationPythonNotObject,
+                                                QStringLiteral("automation.python")));
+                }
+                else {
+                    const QJsonObject python = pythonValue.toObject();
+                    const QJsonValue commandValue = python.value(QStringLiteral("command"));
+                    if (!commandValue.isUndefined()) {
+                        if (commandValue.isString()) {
+                            preferences.m_automationPythonCommand = commandValue.toString().trimmed();
+                        }
+                        else {
+                            warnings.append(makeWarning(AppPreferenceWarningType::AutomationPythonCommandWrongType,
+                                                        QStringLiteral("automation.python.command")));
+                        }
+                    }
+
+                    const QJsonValue argumentsValue = python.value(QStringLiteral("arguments"));
+                    if (!argumentsValue.isUndefined()) {
+                        if (!argumentsValue.isArray()) {
+                            warnings.append(makeWarning(AppPreferenceWarningType::AutomationPythonArgumentsNotArray,
+                                                        QStringLiteral("automation.python.arguments")));
+                        }
+                        else {
+                            const QJsonArray arguments = argumentsValue.toArray();
+                            for (qsizetype i = 0; i < arguments.size(); ++i) {
+                                if (!arguments.at(i).isString()) {
+                                    warnings.append(makeWarning(
+                                        AppPreferenceWarningType::AutomationPythonArgumentWrongType,
+                                        QStringLiteral("automation.python.arguments"), {}, i));
+                                    continue;
+                                }
+                                preferences.m_automationPythonArguments.append(arguments.at(i).toString());
+                            }
+                        }
+                    }
+
+                    const QJsonValue autoInstallValue = python.value(QStringLiteral("autoInstallRequirements"));
+                    if (!autoInstallValue.isUndefined()) {
+                        if (autoInstallValue.isBool()) {
+                            preferences.m_automationAutoInstallRequirements = autoInstallValue.toBool();
+                        }
+                        else {
+                            warnings.append(makeWarning(
+                                AppPreferenceWarningType::AutomationPythonAutoInstallRequirementsWrongType,
+                                QStringLiteral("automation.python.autoInstallRequirements")));
+                        }
+                    }
+
+                    const QJsonValue pipIndexValue = python.value(QStringLiteral("pipIndexUrl"));
+                    if (!pipIndexValue.isUndefined()) {
+                        if (pipIndexValue.isString()) {
+                            preferences.m_automationPipIndexUrl = pipIndexValue.toString().trimmed();
+                        }
+                        else {
+                            warnings.append(makeWarning(AppPreferenceWarningType::AutomationPythonPipIndexUrlWrongType,
+                                                        QStringLiteral("automation.python.pipIndexUrl")));
+                        }
+                    }
+                }
+            }
+
             const QJsonValue shortcutsValue = automationValue.toObject().value(QStringLiteral("shortcuts"));
             if (!shortcutsValue.isUndefined()) {
                 if (!shortcutsValue.isObject()) {
@@ -691,6 +755,16 @@ QJsonDocument AppPreferences::toJsonDocument() const
 
     QJsonObject automation;
     automation.insert(QStringLiteral("showRunLog"), m_showAutomationRunLog);
+    QJsonObject automationPython;
+    automationPython.insert(QStringLiteral("command"), m_automationPythonCommand);
+    QJsonArray automationPythonArguments;
+    for (const QString& argument : m_automationPythonArguments) {
+        automationPythonArguments.append(argument);
+    }
+    automationPython.insert(QStringLiteral("arguments"), automationPythonArguments);
+    automationPython.insert(QStringLiteral("autoInstallRequirements"), m_automationAutoInstallRequirements);
+    automationPython.insert(QStringLiteral("pipIndexUrl"), m_automationPipIndexUrl);
+    automation.insert(QStringLiteral("python"), automationPython);
     QJsonObject automationShortcuts;
     for (auto it = m_automationShortcuts.constBegin(); it != m_automationShortcuts.constEnd(); ++it) {
         if (!it.value().isEmpty()) {
@@ -835,6 +909,26 @@ QString AppPreferences::applicationLanguage() const
 bool AppPreferences::showAutomationRunLog() const noexcept
 {
     return m_showAutomationRunLog;
+}
+
+QString AppPreferences::automationPythonCommand() const
+{
+    return m_automationPythonCommand;
+}
+
+QStringList AppPreferences::automationPythonArguments() const
+{
+    return m_automationPythonArguments;
+}
+
+bool AppPreferences::automationAutoInstallRequirements() const noexcept
+{
+    return m_automationAutoInstallRequirements;
+}
+
+QString AppPreferences::automationPipIndexUrl() const
+{
+    return m_automationPipIndexUrl;
 }
 
 const QMap<QString, QKeySequence>& AppPreferences::automationShortcuts() const noexcept

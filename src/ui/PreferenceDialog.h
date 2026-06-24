@@ -36,6 +36,7 @@ private:
     void createUi();
     QWidget* createGeneralPage(QTabWidget* tabWidget);
     QWidget* createKeyMappingPage(QTabWidget* tabWidget);
+    QWidget* createAutomationPage(QTabWidget* tabWidget);
     QWidget* createAutomationShortcutsPage(QTabWidget* tabWidget);
     QWidget* createGroupStylesPage(QTabWidget* tabWidget);
     QWidget* createJsonPage(QTabWidget* tabWidget);
@@ -58,6 +59,7 @@ private:
     void chooseMarkerTextBubbleFont();
     void resetMarkerTextBubbleFont();
     void updateMarkerTextBubbleFontSummary();
+    void chooseAutomationPythonCommand();
     QString automationShortcutConflictText() const;
     void savePreferences();
     void openPreferenceFile();
@@ -72,6 +74,11 @@ private:
     QComboBox* m_applicationThemeComboBox{nullptr};
     QComboBox* m_applicationLanguageComboBox{nullptr};
     QCheckBox* m_showAutomationRunLogCheckBox{nullptr};
+    QLineEdit* m_automationPythonCommandEdit{nullptr};
+    QLineEdit* m_automationPythonArgumentsEdit{nullptr};
+    QCheckBox* m_automationAutoInstallRequirementsCheckBox{nullptr};
+    QLineEdit* m_automationPipIndexUrlEdit{nullptr};
+    QPushButton* m_chooseAutomationPythonButton{nullptr};
     QLabel* m_labelTableFontLabel{nullptr};
     QPushButton* m_chooseLabelTableFontButton{nullptr};
     QPushButton* m_resetLabelTableFontButton{nullptr};

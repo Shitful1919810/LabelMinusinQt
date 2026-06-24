@@ -1,6 +1,8 @@
 set(LABELQT_CORE_SOURCES
     core/ApplicationTheme.cpp
     core/AppPreferences.cpp
+    core/CommandLineUtils.cpp
+    core/CommandLineUtils.h
     core/Label.cpp
     core/LabelPlusDocument.cpp
     core/Project.cpp

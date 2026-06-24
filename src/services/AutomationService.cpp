@@ -1,5 +1,6 @@
 #include "services/AutomationService.h"
 
+#include "core/CommandLineUtils.h"
 #include "services/SecretStore.h"
 
 #include <QCoreApplication>
@@ -15,6 +16,7 @@
 #include <QTimer>
 
 #include <algorithm>
+#include <utility>
 
 namespace labelqt::services {
 
@@ -176,22 +178,87 @@ QString stringFromJsonValue(const QJsonValue& value)
     return {};
 }
 
-QStringList pythonProgramCandidates()
+QString commandDisplayText(const QString& program, const QStringList& arguments)
 {
-    QStringList programs;
+    QStringList command = {program};
+    command.append(arguments);
+    return labelqt::core::joinCommandLine(command);
+}
+
+void appendPythonCommand(QVector<AutomationPythonCommand>* commands, const QString& program,
+                         const QStringList& arguments)
+{
+    if (commands == nullptr || program.trimmed().isEmpty()) {
+        return;
+    }
+
+    AutomationPythonCommand command;
+    command.program = program.trimmed();
+    command.arguments = arguments;
+    command.displayText = commandDisplayText(command.program, command.arguments);
+    const auto duplicate = std::find_if(commands->cbegin(), commands->cend(), [&command](const auto& candidate) {
+        return candidate.program == command.program && candidate.arguments == command.arguments;
+    });
+    if (duplicate == commands->cend()) {
+        commands->append(command);
+    }
+}
+
+void appendPythonCommandString(QVector<AutomationPythonCommand>* commands, const QString& commandText,
+                               const QStringList& extraArguments = {})
+{
+    const QString trimmedCommand = commandText.trimmed();
+    if (trimmedCommand.isEmpty()) {
+        return;
+    }
+
+    if (QFileInfo::exists(trimmedCommand)) {
+        appendPythonCommand(commands, trimmedCommand, extraArguments);
+        return;
+    }
+
+    QStringList parts = QProcess::splitCommand(trimmedCommand);
+    if (parts.isEmpty()) {
+        return;
+    }
+
+    const QString program = parts.takeFirst();
+    parts.append(extraArguments);
+    appendPythonCommand(commands, program, parts);
+}
+
+QVector<AutomationPythonCommand> pythonProgramCandidates(const AutomationPythonSettings& settings)
+{
+    QVector<AutomationPythonCommand> commands;
+    if (!settings.command.trimmed().isEmpty()) {
+        appendPythonCommandString(&commands, settings.command, settings.arguments);
+        return commands;
+    }
+
     const QByteArray configuredPython = qgetenv("LABELQT_PYTHON");
     if (!configuredPython.trimmed().isEmpty()) {
-        programs.append(QString::fromLocal8Bit(configuredPython));
+        appendPythonCommandString(&commands, QString::fromLocal8Bit(configuredPython));
     }
+
+    const QString bundledPython = QDir(QCoreApplication::applicationDirPath()).filePath(
 #ifdef Q_OS_WIN
-    programs.append(QStringLiteral("python"));
-    programs.append(QStringLiteral("py"));
+        QStringLiteral("python/python.exe")
 #else
-    programs.append(QStringLiteral("python3"));
-    programs.append(QStringLiteral("python"));
+        QStringLiteral("python/bin/python3")
 #endif
-    programs.removeDuplicates();
-    return programs;
+    );
+    if (QFileInfo::exists(bundledPython)) {
+        appendPythonCommand(&commands, bundledPython, {});
+    }
+
+#ifdef Q_OS_WIN
+    appendPythonCommand(&commands, QStringLiteral("python"), {});
+    appendPythonCommand(&commands, QStringLiteral("py"), {});
+#else
+    appendPythonCommand(&commands, QStringLiteral("python3"), {});
+    appendPythonCommand(&commands, QStringLiteral("python"), {});
+#endif
+    return commands;
 }
 
 bool writeJsonFile(const QString& path, const QJsonObject& object, QString* error)
@@ -229,12 +296,16 @@ bool readJsonFile(const QString& path, QJsonObject* object, QString* error)
     return true;
 }
 
-QString pythonUnavailableError(const QStringList& candidates, const QString& lastError)
+QString pythonUnavailableError(const QVector<AutomationPythonCommand>& candidates, const QString& lastError)
 {
-    const QString triedPrograms = candidates.join(QStringLiteral(", "));
+    QStringList triedPrograms;
+    triedPrograms.reserve(candidates.size());
+    for (const AutomationPythonCommand& command : candidates) {
+        triedPrograms.append(command.displayText);
+    }
     // clang-format off
-    return QCoreApplication::translate("AutomationService", "Python was not found. Install Python 3 or set LABELQT_PYTHON to the Python executable path.\n\nTried: %1\nLast error: %2")
-        .arg(triedPrograms, lastError);
+    return QCoreApplication::translate("AutomationService", "Python was not found. Install Python 3, configure the Python command in Preferences, or place a portable Python runtime next to LabelQt.\n\nTried: %1\nLast error: %2")
+        .arg(triedPrograms.join(QStringLiteral(", ")), lastError);
     // clang-format on
 }
 
@@ -556,7 +627,8 @@ AutomationRunner::~AutomationRunner()
 
 void AutomationRunner::start(const AutomationScript& script, const labelqt::core::Project& project,
                              int currentImageIndex, const QJsonObject& parameters, AutomationSelection selection,
-                             AutomationContext context, const QMap<QString, QString>& environmentOverrides)
+                             AutomationContext context, const QMap<QString, QString>& environmentOverrides,
+                             AutomationPythonSettings pythonSettings)
 {
     if (m_running) {
         AutomationRunResult result;
@@ -567,7 +639,8 @@ void AutomationRunner::start(const AutomationScript& script, const labelqt::core
 
     m_script = script;
     m_environmentOverrides = environmentOverrides;
-    m_pythonCandidates = pythonProgramCandidates();
+    m_pythonSettings = std::move(pythonSettings);
+    m_pythonCandidates = pythonProgramCandidates(m_pythonSettings);
     m_candidateIndex = 0;
     m_lastFailure = {};
     m_cancelRequested = false;
@@ -591,7 +664,9 @@ void AutomationRunner::start(const AutomationScript& script, const labelqt::core
         return;
     }
 
-    m_arguments = {script.entryPath, QStringLiteral("--input"), inputPath, QStringLiteral("--output"), m_outputPath};
+    m_scriptArguments = {script.entryPath, QStringLiteral("--input"), inputPath, QStringLiteral("--output"),
+                         m_outputPath};
+    m_requirementsPath = QDir(script.directoryPath).filePath(QStringLiteral("requirements.txt"));
     startNextCandidate();
 }
 
@@ -611,50 +686,76 @@ bool AutomationRunner::isRunning() const noexcept
 void AutomationRunner::startNextCandidate()
 {
     while (m_candidateIndex < m_pythonCandidates.size()) {
-        const QString program = m_pythonCandidates.at(m_candidateIndex);
+        const AutomationPythonCommand command = m_pythonCandidates.at(m_candidateIndex);
         ++m_candidateIndex;
 
-        if (m_process != nullptr) {
-            m_process->deleteLater();
-            m_process = nullptr;
+        if (m_pythonSettings.autoInstallRequirements && QFileInfo::exists(m_requirementsPath)) {
+            QStringList installArguments = {QStringLiteral("-m"), QStringLiteral("pip"), QStringLiteral("install"),
+                                            QStringLiteral("-r"), m_requirementsPath};
+            if (!m_pythonSettings.pipIndexUrl.trimmed().isEmpty()) {
+                installArguments.append({QStringLiteral("-i"), m_pythonSettings.pipIndexUrl.trimmed()});
+            }
+            startProcess(command, installArguments, RunPhase::InstallRequirements);
         }
-
-        m_process = new QProcess(this);
-        m_process->setWorkingDirectory(m_script.directoryPath);
-        QProcessEnvironment processEnvironment = QProcessEnvironment::systemEnvironment();
-        for (auto it = m_script.environment.constBegin(); it != m_script.environment.constEnd(); ++it) {
-            processEnvironment.insert(it.key(), it.value());
+        else {
+            startProcess(command, m_scriptArguments, RunPhase::RunScript);
         }
-        for (auto it = m_environmentOverrides.constBegin(); it != m_environmentOverrides.constEnd(); ++it) {
-            processEnvironment.insert(it.key(), it.value());
-        }
-        m_process->setProcessEnvironment(processEnvironment);
-
-        connect(m_process, &QProcess::readyReadStandardOutput, this, &AutomationRunner::appendProcessOutput);
-        connect(m_process, &QProcess::readyReadStandardError, this, &AutomationRunner::appendProcessOutput);
-        connect(m_process, &QProcess::started, this, &AutomationRunner::handleStarted);
-        connect(m_process, &QProcess::errorOccurred, this, &AutomationRunner::handleError);
-        connect(m_process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
-                &AutomationRunner::handleFinished);
-
-        m_process->start(program, m_arguments);
-        if (m_process->waitForStarted(1000)) {
-            m_timeoutTimer->start(automationTimeoutMs);
+        if (m_process != nullptr && m_process->state() != QProcess::NotRunning) {
             return;
         }
-
-        m_lastFailure.error = QStringLiteral("Failed to start %1: %2").arg(program, m_process->errorString());
-        emit standardErrorReceived(m_lastFailure.error + QLatin1Char('\n'));
     }
 
     m_lastFailure.error = pythonUnavailableError(m_pythonCandidates, m_lastFailure.error);
     finishWithResult(m_lastFailure);
 }
 
+void AutomationRunner::startProcess(const AutomationPythonCommand& command, QStringList arguments, RunPhase phase)
+{
+    if (m_process != nullptr) {
+        m_process->deleteLater();
+        m_process = nullptr;
+    }
+
+    m_currentPythonCommand = command;
+    m_phase = phase;
+    arguments = command.arguments + arguments;
+
+    m_process = new QProcess(this);
+    m_process->setWorkingDirectory(m_script.directoryPath);
+    QProcessEnvironment processEnvironment = QProcessEnvironment::systemEnvironment();
+    for (auto it = m_script.environment.constBegin(); it != m_script.environment.constEnd(); ++it) {
+        processEnvironment.insert(it.key(), it.value());
+    }
+    for (auto it = m_environmentOverrides.constBegin(); it != m_environmentOverrides.constEnd(); ++it) {
+        processEnvironment.insert(it.key(), it.value());
+    }
+    m_process->setProcessEnvironment(processEnvironment);
+
+    connect(m_process, &QProcess::readyReadStandardOutput, this, &AutomationRunner::appendProcessOutput);
+    connect(m_process, &QProcess::readyReadStandardError, this, &AutomationRunner::appendProcessOutput);
+    connect(m_process, &QProcess::started, this, &AutomationRunner::handleStarted);
+    connect(m_process, &QProcess::errorOccurred, this, &AutomationRunner::handleError);
+    connect(m_process, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
+            &AutomationRunner::handleFinished);
+
+    m_process->start(command.program, arguments);
+    if (m_process->waitForStarted(1000)) {
+        m_timeoutTimer->start(automationTimeoutMs);
+        return;
+    }
+
+    m_lastFailure.error = QStringLiteral("Failed to start %1: %2").arg(command.displayText, m_process->errorString());
+    emit standardErrorReceived(m_lastFailure.error + QLatin1Char('\n'));
+}
+
 void AutomationRunner::handleStarted()
 {
     if (m_process != nullptr) {
-        emit standardOutputReceived(QStringLiteral("Started %1\n").arg(m_process->program()));
+        const QString phaseText = m_phase == RunPhase::InstallRequirements
+                                      ? QCoreApplication::translate("AutomationService", "Installing requirements")
+                                      : QCoreApplication::translate("AutomationService", "Running script");
+        emit standardOutputReceived(QStringLiteral("%1: %2\n")
+                                        .arg(phaseText, commandDisplayText(m_process->program(), m_process->arguments())));
     }
 }
 
@@ -677,8 +778,18 @@ void AutomationRunner::handleFinished(int exitCode, QProcess::ExitStatus exitSta
     }
 
     if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-        m_lastFailure.error = QStringLiteral("Automation script failed with exit code %1.").arg(exitCode);
+        m_lastFailure.error =
+            m_phase == RunPhase::InstallRequirements
+                ? QCoreApplication::translate("AutomationService",
+                                              "Failed to install automation requirements with exit code %1.")
+                      .arg(exitCode)
+                : QStringLiteral("Automation script failed with exit code %1.").arg(exitCode);
         finishWithResult(m_lastFailure);
+        return;
+    }
+
+    if (m_phase == RunPhase::InstallRequirements) {
+        startProcess(m_currentPythonCommand, m_scriptArguments, RunPhase::RunScript);
         return;
     }
 

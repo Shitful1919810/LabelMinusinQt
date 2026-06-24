@@ -205,6 +205,28 @@ Last error: %2</source>
         <source>Automation secret %1 is not configured. Run the script&apos;s configuration first.</source>
         <translation>尚未設定自動化密鑰 %1。請先執行該腳本的設定項。</translation>
     </message>
+    <message>
+        <source>Python was not found. Install Python 3, configure the Python command in Preferences, or place a portable Python runtime next to LabelQt.
+
+Tried: %1
+Last error: %2</source>
+        <translation>找不到 Python。請安裝 Python 3、在偏好設定中設定 Python 命令，或將可攜式 Python 執行環境放在 LabelQt 旁邊。
+
+已嘗試：%1
+最後錯誤：%2</translation>
+    </message>
+    <message>
+        <source>Installing requirements</source>
+        <translation>正在安裝依賴套件</translation>
+    </message>
+    <message>
+        <source>Running script</source>
+        <translation>正在執行腳本</translation>
+    </message>
+    <message>
+        <source>Failed to install automation requirements with exit code %1.</source>
+        <translation>自動化依賴套件安裝失敗，結束代碼為 %1。</translation>
+    </message>
 </context>
 <context>
     <name>GroupFilterComboBox</name>
@@ -1008,6 +1030,30 @@ Last error: %2</source>
         <source>Image copied to clipboard.</source>
         <translation>圖像已複製到剪貼簿。</translation>
     </message>
+    <message>
+        <source>%1 must be a JSON object; using default Python automation settings.</source>
+        <translation>%1 必須是 JSON 物件；將使用預設 Python 自動化設定。</translation>
+    </message>
+    <message>
+        <source>%1 must be a string; using automatic Python detection.</source>
+        <translation>%1 必須是字串；將自動偵測 Python。</translation>
+    </message>
+    <message>
+        <source>%1 must be an array; ignoring Python arguments.</source>
+        <translation>%1 必須是陣列；將忽略 Python 參數。</translation>
+    </message>
+    <message>
+        <source>%1 entry %2 must be a string; ignoring this Python argument.</source>
+        <translation>%1 的第 %2 項必須是字串；將忽略此 Python 參數。</translation>
+    </message>
+    <message>
+        <source>%1 must be true or false; requirements will not be installed automatically.</source>
+        <translation>%1 必須是 true 或 false；不會自動安裝 requirements。</translation>
+    </message>
+    <message>
+        <source>%1 must be a string; using the pip default index.</source>
+        <translation>%1 必須是字串；將使用 pip 預設來源。</translation>
+    </message>
 </context>
 <context>
     <name>PageOrderDialog</name>
@@ -1457,6 +1503,58 @@ Last error: %2</source>
         <location filename="../src/ui/PreferenceDialog.cpp" line="1016"/>
         <source>Could not open preference file in the system text editor.</source>
         <translation>無法使用系統文字編輯器開啟偏好設定檔。</translation>
+    </message>
+    <message>
+        <source>Use bundled or system Python</source>
+        <translation>使用內建或系統 Python</translation>
+    </message>
+    <message>
+        <source>Browse...</source>
+        <translation>瀏覽...</translation>
+    </message>
+    <message>
+        <source>Optional Python interpreter arguments</source>
+        <translation>選用 Python 直譯器參數</translation>
+    </message>
+    <message>
+        <source>Install requirements.txt before running scripts</source>
+        <translation>執行腳本前安裝 requirements.txt</translation>
+    </message>
+    <message>
+        <source>Use pip default index</source>
+        <translation>使用 pip 預設來源</translation>
+    </message>
+    <message>
+        <source>Python command</source>
+        <translation>Python 命令</translation>
+    </message>
+    <message>
+        <source>Python arguments</source>
+        <translation>Python 參數</translation>
+    </message>
+    <message>
+        <source>Dependencies</source>
+        <translation>依賴套件</translation>
+    </message>
+    <message>
+        <source>pip index URL</source>
+        <translation>pip 映像來源 URL</translation>
+    </message>
+    <message>
+        <source>Run log</source>
+        <translation>執行日誌</translation>
+    </message>
+    <message>
+        <source>Choose Python executable</source>
+        <translation>選擇 Python 可執行檔</translation>
+    </message>
+    <message>
+        <source>Python executable (python.exe pythonw.exe *.exe);;All files (*)</source>
+        <translation>Python 可執行檔 (python.exe pythonw.exe *.exe);;所有檔案 (*)</translation>
+    </message>
+    <message>
+        <source>Python executable (python python3 python*);;All files (*)</source>
+        <translation>Python 可執行檔 (python python3 python*);;所有檔案 (*)</translation>
     </message>
 </context>
 <context>

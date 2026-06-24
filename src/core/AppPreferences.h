@@ -65,6 +65,12 @@ enum class AppPreferenceWarningType {
     AppearanceLanguageWrongType,
     AutomationNotObject,
     AutomationShowRunLogWrongType,
+    AutomationPythonNotObject,
+    AutomationPythonCommandWrongType,
+    AutomationPythonArgumentsNotArray,
+    AutomationPythonArgumentWrongType,
+    AutomationPythonAutoInstallRequirementsWrongType,
+    AutomationPythonPipIndexUrlWrongType,
     AutomationShortcutsNotObject,
     AutomationShortcutInvalid,
 };
@@ -115,6 +121,10 @@ public:
     QString applicationTheme() const;
     QString applicationLanguage() const;
     bool showAutomationRunLog() const noexcept;
+    QString automationPythonCommand() const;
+    QStringList automationPythonArguments() const;
+    bool automationAutoInstallRequirements() const noexcept;
+    QString automationPipIndexUrl() const;
     const QMap<QString, QKeySequence>& automationShortcuts() const noexcept;
     Qt::KeyboardModifiers moveLabelModifiers() const noexcept;
     Qt::KeyboardModifiers previousLabelModifiers() const noexcept;
@@ -150,6 +160,10 @@ private:
     QString m_applicationTheme;
     QString m_applicationLanguage;
     bool m_showAutomationRunLog{false};
+    QString m_automationPythonCommand;
+    QStringList m_automationPythonArguments;
+    bool m_automationAutoInstallRequirements{false};
+    QString m_automationPipIndexUrl;
     QMap<QString, QKeySequence> m_automationShortcuts;
     Qt::KeyboardModifiers m_moveLabelModifiers{Qt::ControlModifier};
     Qt::KeyboardModifiers m_previousLabelModifiers{Qt::ControlModifier};

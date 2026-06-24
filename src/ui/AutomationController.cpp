@@ -4,6 +4,7 @@
 #include "ui/AutomationRunDialog.h"
 
 #include <QAction>
+#include <QDir>
 #include <QFileInfo>
 #include <QHash>
 #include <QMenu>
@@ -222,8 +223,11 @@ void AutomationController::runScript(const labelqt::services::AutomationScript& 
     emit statusMessageRequested(tr("Running automation script: %1").arg(script.name), 0);
 
     auto* runner = new labelqt::services::AutomationRunner(this);
+    const bool willInstallRequirements = m_preferences.automationAutoInstallRequirements() &&
+                                         QFileInfo::exists(QDir(script.directoryPath)
+                                                               .filePath(QStringLiteral("requirements.txt")));
     AutomationRunDialog* dialog = nullptr;
-    if (m_preferences.showAutomationRunLog()) {
+    if (m_preferences.showAutomationRunLog() || willInstallRequirements) {
         dialog = new AutomationRunDialog(script.name, m_window);
         dialog->setAttribute(Qt::WA_DeleteOnClose);
     }
@@ -253,7 +257,13 @@ void AutomationController::runScript(const labelqt::services::AutomationScript& 
         m_callbacks.selection == nullptr ? labelqt::services::AutomationSelection{} : m_callbacks.selection();
     const labelqt::services::AutomationContext context =
         m_callbacks.context == nullptr ? labelqt::services::AutomationContext{} : m_callbacks.context();
-    runner->start(script, m_callbacks.project(), imageIndex, values->parameters, selection, context, secretEnvironment);
+    runner->start(script, m_callbacks.project(), imageIndex, values->parameters, selection, context, secretEnvironment,
+                  {
+                      m_preferences.automationPythonCommand(),
+                      m_preferences.automationPythonArguments(),
+                      m_preferences.automationAutoInstallRequirements(),
+                      m_preferences.automationPipIndexUrl(),
+                  });
 }
 
 void AutomationController::finishScript(labelqt::services::AutomationRunner* runner, AutomationRunDialog* dialog,

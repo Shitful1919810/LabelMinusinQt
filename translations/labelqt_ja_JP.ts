@@ -205,6 +205,28 @@ Last error: %2</source>
         <source>Automation secret %1 is not configured. Run the script&apos;s configuration first.</source>
         <translation>自動化シークレット %1 が設定されていません。先にこのスクリプトの設定を実行してください。</translation>
     </message>
+    <message>
+        <source>Python was not found. Install Python 3, configure the Python command in Preferences, or place a portable Python runtime next to LabelQt.
+
+Tried: %1
+Last error: %2</source>
+        <translation>Python が見つかりません。Python 3 をインストールするか、環境設定で Python コマンドを設定するか、LabelQt の隣にポータブル Python ランタイムを配置してください。
+
+試行したコマンド: %1
+最後のエラー: %2</translation>
+    </message>
+    <message>
+        <source>Installing requirements</source>
+        <translation>依存関係をインストール中</translation>
+    </message>
+    <message>
+        <source>Running script</source>
+        <translation>スクリプトを実行中</translation>
+    </message>
+    <message>
+        <source>Failed to install automation requirements with exit code %1.</source>
+        <translation>自動化の依存関係のインストールに失敗しました。終了コード: %1。</translation>
+    </message>
 </context>
 <context>
     <name>GroupFilterComboBox</name>
@@ -1008,6 +1030,30 @@ Last error: %2</source>
         <source>Image copied to clipboard.</source>
         <translation>画像をクリップボードにコピーしました。</translation>
     </message>
+    <message>
+        <source>%1 must be a JSON object; using default Python automation settings.</source>
+        <translation>%1 は JSON オブジェクトである必要があります。既定の Python 自動化設定を使用します。</translation>
+    </message>
+    <message>
+        <source>%1 must be a string; using automatic Python detection.</source>
+        <translation>%1 は文字列である必要があります。Python を自動検出します。</translation>
+    </message>
+    <message>
+        <source>%1 must be an array; ignoring Python arguments.</source>
+        <translation>%1 は配列である必要があります。Python 引数を無視します。</translation>
+    </message>
+    <message>
+        <source>%1 entry %2 must be a string; ignoring this Python argument.</source>
+        <translation>%1 の項目 %2 は文字列である必要があります。この Python 引数を無視します。</translation>
+    </message>
+    <message>
+        <source>%1 must be true or false; requirements will not be installed automatically.</source>
+        <translation>%1 は true または false である必要があります。requirements は自動インストールされません。</translation>
+    </message>
+    <message>
+        <source>%1 must be a string; using the pip default index.</source>
+        <translation>%1 は文字列である必要があります。pip の既定インデックスを使用します。</translation>
+    </message>
 </context>
 <context>
     <name>PageOrderDialog</name>
@@ -1457,6 +1503,58 @@ Last error: %2</source>
         <location filename="../src/ui/PreferenceDialog.cpp" line="1016"/>
         <source>Could not open preference file in the system text editor.</source>
         <translation>システムのテキストエディタで設定ファイルを開けません。</translation>
+    </message>
+    <message>
+        <source>Use bundled or system Python</source>
+        <translation>同梱またはシステムの Python を使用</translation>
+    </message>
+    <message>
+        <source>Browse...</source>
+        <translation>参照...</translation>
+    </message>
+    <message>
+        <source>Optional Python interpreter arguments</source>
+        <translation>任意の Python インタープリター引数</translation>
+    </message>
+    <message>
+        <source>Install requirements.txt before running scripts</source>
+        <translation>スクリプト実行前に requirements.txt をインストール</translation>
+    </message>
+    <message>
+        <source>Use pip default index</source>
+        <translation>pip の既定インデックスを使用</translation>
+    </message>
+    <message>
+        <source>Python command</source>
+        <translation>Python コマンド</translation>
+    </message>
+    <message>
+        <source>Python arguments</source>
+        <translation>Python 引数</translation>
+    </message>
+    <message>
+        <source>Dependencies</source>
+        <translation>依存関係</translation>
+    </message>
+    <message>
+        <source>pip index URL</source>
+        <translation>pip インデックス URL</translation>
+    </message>
+    <message>
+        <source>Run log</source>
+        <translation>実行ログ</translation>
+    </message>
+    <message>
+        <source>Choose Python executable</source>
+        <translation>Python 実行ファイルを選択</translation>
+    </message>
+    <message>
+        <source>Python executable (python.exe pythonw.exe *.exe);;All files (*)</source>
+        <translation>Python 実行ファイル (python.exe pythonw.exe *.exe);;すべてのファイル (*)</translation>
+    </message>
+    <message>
+        <source>Python executable (python python3 python*);;All files (*)</source>
+        <translation>Python 実行ファイル (python python3 python*);;すべてのファイル (*)</translation>
     </message>
 </context>
 <context>

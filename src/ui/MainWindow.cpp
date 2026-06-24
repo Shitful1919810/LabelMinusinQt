@@ -2612,6 +2612,20 @@ QString MainWindow::preferenceWarningText(const labelqt::core::AppPreferenceWarn
         return tr("automation must be a JSON object; using default automation preferences.");
     case AppPreferenceWarningType::AutomationShowRunLogWrongType:
         return tr("%1 must be true or false; using the default value.").arg(warning.key);
+    case AppPreferenceWarningType::AutomationPythonNotObject:
+        return tr("%1 must be a JSON object; using default Python automation settings.").arg(warning.key);
+    case AppPreferenceWarningType::AutomationPythonCommandWrongType:
+        return tr("%1 must be a string; using automatic Python detection.").arg(warning.key);
+    case AppPreferenceWarningType::AutomationPythonArgumentsNotArray:
+        return tr("%1 must be an array; ignoring Python arguments.").arg(warning.key);
+    case AppPreferenceWarningType::AutomationPythonArgumentWrongType:
+        return tr("%1 entry %2 must be a string; ignoring this Python argument.")
+            .arg(warning.key)
+            .arg(warning.index + 1);
+    case AppPreferenceWarningType::AutomationPythonAutoInstallRequirementsWrongType:
+        return tr("%1 must be true or false; requirements will not be installed automatically.").arg(warning.key);
+    case AppPreferenceWarningType::AutomationPythonPipIndexUrlWrongType:
+        return tr("%1 must be a string; using the pip default index.").arg(warning.key);
     case AppPreferenceWarningType::AutomationShortcutsNotObject:
         return tr("%1 must be a JSON object; ignoring automation shortcuts.").arg(warning.key);
     case AppPreferenceWarningType::AutomationShortcutInvalid:

@@ -1,5 +1,6 @@
 #include "ui/PreferenceDialog.h"
 
+#include "core/CommandLineUtils.h"
 #include "core/TranslationManager.h"
 #include "ui/ThemeManager.h"
 
@@ -9,6 +10,7 @@
 #include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
+#include <QFileDialog>
 #include <QFile>
 #include <QFontDialog>
 #include <QFormLayout>
@@ -21,6 +23,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPlainTextEdit>
+#include <QProcess>
 #include <QPushButton>
 #include <QScrollBar>
 #include <QSet>
@@ -186,6 +189,7 @@ void PreferenceDialog::createUi()
     auto* tabWidget = new QTabWidget(this);
     tabWidget->addTab(createGeneralPage(tabWidget), tr("General"));
     tabWidget->addTab(createKeyMappingPage(tabWidget), tr("Key mappings"));
+    tabWidget->addTab(createAutomationPage(tabWidget), tr("Automation"));
     tabWidget->addTab(createAutomationShortcutsPage(tabWidget), tr("Automation shortcuts"));
     tabWidget->addTab(createGroupStylesPage(tabWidget), tr("Group styles"));
     tabWidget->addTab(createJsonPage(tabWidget), tr("JSON preview"));
@@ -239,8 +243,6 @@ QWidget* PreferenceDialog::createGeneralPage(QTabWidget* tabWidget)
     for (const labelqt::core::ApplicationLanguage& language : labelqt::core::availableApplicationLanguages()) {
         m_applicationLanguageComboBox->addItem(language.displayName, language.localeName);
     }
-    m_showAutomationRunLogCheckBox = new QCheckBox(tr("Show automation run log window"), generalPage);
-    m_showAutomationRunLogCheckBox->setChecked(defaultPreferences().showAutomationRunLog());
 
     auto* labelTableFontWidget = makeFontSelectorWidget(generalPage, m_labelTableFontLabel,
                                                         m_chooseLabelTableFontButton, m_resetLabelTableFontButton);
@@ -266,7 +268,6 @@ QWidget* PreferenceDialog::createGeneralPage(QTabWidget* tabWidget)
     generalLayout->addRow(tr("Qt widget style"), m_applicationStyleComboBox);
     generalLayout->addRow(tr("Breeze stylesheet theme"), m_applicationThemeComboBox);
     generalLayout->addRow(tr("Language"), m_applicationLanguageComboBox);
-    generalLayout->addRow(tr("Automation"), m_showAutomationRunLogCheckBox);
     generalLayout->addRow(tr("Maximum label table text rows"), m_tableMaxRowsSpinBox);
     generalLayout->addRow(tr("Label table font"), labelTableFontWidget);
     generalLayout->addRow(tr("Text editor font"), textEditorFontWidget);
@@ -276,6 +277,38 @@ QWidget* PreferenceDialog::createGeneralPage(QTabWidget* tabWidget)
     generalLayout->addRow(tr("Backup path"), m_backupPathEdit);
     generalLayout->addRow(tr("Backup interval seconds"), m_backupIntervalSpinBox);
     return generalPage;
+}
+
+QWidget* PreferenceDialog::createAutomationPage(QTabWidget* tabWidget)
+{
+    auto* automationPage = new QWidget(tabWidget);
+    auto* automationLayout = new QFormLayout(automationPage);
+
+    auto* pythonCommandWidget = new QWidget(automationPage);
+    auto* pythonCommandLayout = new QHBoxLayout(pythonCommandWidget);
+    pythonCommandLayout->setContentsMargins(0, 0, 0, 0);
+    pythonCommandLayout->setSpacing(6);
+    m_automationPythonCommandEdit = new QLineEdit(pythonCommandWidget);
+    m_automationPythonCommandEdit->setPlaceholderText(tr("Use bundled or system Python"));
+    m_chooseAutomationPythonButton = new QPushButton(tr("Browse..."), pythonCommandWidget);
+    pythonCommandLayout->addWidget(m_automationPythonCommandEdit, 1);
+    pythonCommandLayout->addWidget(m_chooseAutomationPythonButton);
+
+    m_automationPythonArgumentsEdit = new QLineEdit(automationPage);
+    m_automationPythonArgumentsEdit->setPlaceholderText(tr("Optional Python interpreter arguments"));
+    m_automationAutoInstallRequirementsCheckBox =
+        new QCheckBox(tr("Install requirements.txt before running scripts"), automationPage);
+    m_automationPipIndexUrlEdit = new QLineEdit(automationPage);
+    m_automationPipIndexUrlEdit->setPlaceholderText(tr("Use pip default index"));
+    m_showAutomationRunLogCheckBox = new QCheckBox(tr("Show automation run log window"), automationPage);
+    m_showAutomationRunLogCheckBox->setChecked(defaultPreferences().showAutomationRunLog());
+
+    automationLayout->addRow(tr("Python command"), pythonCommandWidget);
+    automationLayout->addRow(tr("Python arguments"), m_automationPythonArgumentsEdit);
+    automationLayout->addRow(tr("Dependencies"), m_automationAutoInstallRequirementsCheckBox);
+    automationLayout->addRow(tr("pip index URL"), m_automationPipIndexUrlEdit);
+    automationLayout->addRow(tr("Run log"), m_showAutomationRunLogCheckBox);
+    return automationPage;
 }
 
 QWidget* PreferenceDialog::createKeyMappingPage(QTabWidget* tabWidget)
@@ -394,6 +427,13 @@ void PreferenceDialog::connectPreferenceChangeSignals()
     connect(m_applicationStyleComboBox, &QComboBox::currentTextChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_applicationThemeComboBox, &QComboBox::currentIndexChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_applicationLanguageComboBox, &QComboBox::currentIndexChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_automationPythonCommandEdit, &QLineEdit::textChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_automationPythonArgumentsEdit, &QLineEdit::textChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_automationAutoInstallRequirementsCheckBox, &QCheckBox::toggled, this,
+            &PreferenceDialog::updateJsonPreview);
+    connect(m_automationPipIndexUrlEdit, &QLineEdit::textChanged, this, &PreferenceDialog::updateJsonPreview);
+    connect(m_chooseAutomationPythonButton, &QPushButton::clicked, this,
+            &PreferenceDialog::chooseAutomationPythonCommand);
     connect(m_showAutomationRunLogCheckBox, &QCheckBox::toggled, this, &PreferenceDialog::updateJsonPreview);
     connect(m_tableMaxRowsSpinBox, &QSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
     connect(m_chooseLabelTableFontButton, &QPushButton::clicked, this, &PreferenceDialog::chooseLabelTableFont);
@@ -485,6 +525,25 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     m_applicationLanguageComboBox->setCurrentIndex(languageIndex >= 0 ? languageIndex : 0);
     m_showAutomationRunLogCheckBox->setChecked(
         automation.value(QStringLiteral("showRunLog")).toBool(defaultPreferences().showAutomationRunLog()));
+    const QJsonObject automationPython = automation.value(QStringLiteral("python")).toObject();
+    m_automationPythonCommandEdit->setText(automationPython.value(QStringLiteral("command"))
+                                               .toString(defaultPreferences().automationPythonCommand()));
+    QStringList pythonArguments;
+    const QJsonArray pythonArgumentArray = automationPython.value(QStringLiteral("arguments")).toArray();
+    for (const QJsonValue& argument : pythonArgumentArray) {
+        if (argument.isString()) {
+            pythonArguments.append(argument.toString());
+        }
+    }
+    if (pythonArgumentArray.isEmpty()) {
+        pythonArguments = defaultPreferences().automationPythonArguments();
+    }
+    m_automationPythonArgumentsEdit->setText(labelqt::core::joinCommandLine(pythonArguments));
+    m_automationAutoInstallRequirementsCheckBox->setChecked(
+        automationPython.value(QStringLiteral("autoInstallRequirements"))
+            .toBool(defaultPreferences().automationAutoInstallRequirements()));
+    m_automationPipIndexUrlEdit->setText(automationPython.value(QStringLiteral("pipIndexUrl"))
+                                             .toString(defaultPreferences().automationPipIndexUrl()));
     m_automationShortcutTable->setRowCount(0);
     const QJsonObject automationShortcuts = automation.value(QStringLiteral("shortcuts")).toObject();
     QSet<QString> knownScriptIds;
@@ -662,6 +721,17 @@ QJsonDocument PreferenceDialog::documentFromUi() const
 
     QJsonObject automation;
     automation.insert(QStringLiteral("showRunLog"), m_showAutomationRunLogCheckBox->isChecked());
+    QJsonObject automationPython;
+    automationPython.insert(QStringLiteral("command"), m_automationPythonCommandEdit->text().trimmed());
+    QJsonArray automationPythonArguments;
+    for (const QString& argument : QProcess::splitCommand(m_automationPythonArgumentsEdit->text())) {
+        automationPythonArguments.append(argument);
+    }
+    automationPython.insert(QStringLiteral("arguments"), automationPythonArguments);
+    automationPython.insert(QStringLiteral("autoInstallRequirements"),
+                            m_automationAutoInstallRequirementsCheckBox->isChecked());
+    automationPython.insert(QStringLiteral("pipIndexUrl"), m_automationPipIndexUrlEdit->text().trimmed());
+    automation.insert(QStringLiteral("python"), automationPython);
     QJsonObject automationShortcuts;
     for (int row = 0; row < m_automationShortcutTable->rowCount(); ++row) {
         const QTableWidgetItem* item = m_automationShortcutTable->item(row, automationScriptColumn);
@@ -958,6 +1028,24 @@ void PreferenceDialog::updateMarkerTextBubbleFontSummary()
     m_markerTextBubbleFontLabel->setText(
         tr("%1, %2 pt").arg(m_markerTextBubbleFont.family()).arg(m_markerTextBubbleFont.pointSizeF(), 0, 'f', 1));
     m_markerTextBubbleFontLabel->setFont(font());
+}
+
+void PreferenceDialog::chooseAutomationPythonCommand()
+{
+#ifdef Q_OS_WIN
+    const QString filter = tr("Python executable (python.exe pythonw.exe *.exe);;All files (*)");
+#else
+    const QString filter = tr("Python executable (python python3 python*);;All files (*)");
+#endif
+    const QString path =
+        QFileDialog::getOpenFileName(this, tr("Choose Python executable"), m_automationPythonCommandEdit->text(),
+                                     filter);
+    if (path.isEmpty()) {
+        return;
+    }
+
+    m_automationPythonCommandEdit->setText(path);
+    updateJsonPreview();
 }
 
 QString PreferenceDialog::automationShortcutConflictText() const
