@@ -1,11 +1,13 @@
 #pragma once
 
 #include <QObject>
+#include <QPointer>
 #include <QVector>
 
 #include <functional>
 
 class QEvent;
+class QAbstractItemModel;
 class QTableView;
 
 class ViewportFittedTableColumns final : public QObject {
@@ -29,6 +31,7 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
+    void attachModel(QAbstractItemModel* model);
     void scheduleFitToViewport();
     int columnConfigIndex(int logicalIndex) const;
     int stretchColumnConfigIndex() const;
@@ -37,7 +40,9 @@ private:
     int defaultWidthSum() const;
 
     QTableView* m_tableView{nullptr};
+    QPointer<QAbstractItemModel> m_model;
     QVector<Column> m_columns;
     std::function<void()> m_columnsChangedCallback;
+    bool m_fitScheduled{false};
     bool m_isBalancing{false};
 };

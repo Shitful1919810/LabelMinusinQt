@@ -1,5 +1,6 @@
 #include "ui/ViewportFittedTableColumns.h"
 
+#include <QAbstractItemModel>
 #include <QEvent>
 #include <QHeaderView>
 #include <QSignalBlocker>
@@ -29,6 +30,7 @@ ViewportFittedTableColumns::ViewportFittedTableColumns(QTableView* tableView, QV
     m_tableView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_tableView->installEventFilter(this);
     m_tableView->viewport()->installEventFilter(this);
+    attachModel(m_tableView->model());
     scheduleFitToViewport();
 }
 
@@ -139,16 +141,49 @@ bool ViewportFittedTableColumns::eventFilter(QObject* watched, QEvent* event)
 
     if ((watched == m_tableView->viewport() && event->type() == QEvent::Resize) ||
         (watched == m_tableView && (event->type() == QEvent::Show || event->type() == QEvent::StyleChange ||
-                                    event->type() == QEvent::LayoutRequest || event->type() == QEvent::FontChange))) {
+                                    event->type() == QEvent::LayoutRequest || event->type() == QEvent::FontChange ||
+                                    event->type() == QEvent::PolishRequest))) {
         scheduleFitToViewport();
     }
-
+    if (watched == m_tableView && (event->type() == QEvent::Show || event->type() == QEvent::StyleChange)) {
+        QTimer::singleShot(50, this, &ViewportFittedTableColumns::scheduleFitToViewport);
+    }
     return QObject::eventFilter(watched, event);
+}
+
+void ViewportFittedTableColumns::attachModel(QAbstractItemModel* model)
+{
+    if (m_model == model) {
+        return;
+    }
+
+    if (m_model != nullptr) {
+        m_model->disconnect(this);
+    }
+    m_model = model;
+    if (m_model == nullptr) {
+        return;
+    }
+
+    connect(m_model, &QAbstractItemModel::modelReset, this, &ViewportFittedTableColumns::scheduleFitToViewport);
+    connect(m_model, &QAbstractItemModel::layoutChanged, this, &ViewportFittedTableColumns::scheduleFitToViewport);
+    connect(m_model, &QAbstractItemModel::rowsInserted, this, &ViewportFittedTableColumns::scheduleFitToViewport);
+    connect(m_model, &QAbstractItemModel::rowsRemoved, this, &ViewportFittedTableColumns::scheduleFitToViewport);
+    connect(m_model, &QAbstractItemModel::columnsInserted, this, &ViewportFittedTableColumns::scheduleFitToViewport);
+    connect(m_model, &QAbstractItemModel::columnsRemoved, this, &ViewportFittedTableColumns::scheduleFitToViewport);
 }
 
 void ViewportFittedTableColumns::scheduleFitToViewport()
 {
-    QTimer::singleShot(0, this, &ViewportFittedTableColumns::fitToViewport);
+    if (m_fitScheduled) {
+        return;
+    }
+
+    m_fitScheduled = true;
+    QTimer::singleShot(0, this, [this]() {
+        m_fitScheduled = false;
+        fitToViewport();
+    });
 }
 
 int ViewportFittedTableColumns::columnConfigIndex(int logicalIndex) const
