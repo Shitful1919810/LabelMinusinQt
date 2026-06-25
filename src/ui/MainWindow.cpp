@@ -180,6 +180,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_canvasTextEditController, &CanvasLabelTextEditController::closed, this, [this](int labelIndex) {
         if (m_canvas != nullptr) {
             m_canvas->clearLabelTextPreview(labelIndex);
+            m_canvas->setSelectedLabelTextBubblesVisible(true);
         }
     });
     connect(m_canvasTextEditController, &CanvasLabelTextEditController::textCommitted, this,
@@ -1637,6 +1638,7 @@ void MainWindow::openCanvasLabelTextEditor(int index, QPoint globalPosition)
     }
 
     commitCanvasLabelTextEditor();
+    m_canvas->setSelectedLabelTextBubblesVisible(false);
     selectLabel(index);
 
     m_canvasTextEditController->open(m_canvas->viewport(), m_currentImageIndex, index, image->labels.at(index).text(),

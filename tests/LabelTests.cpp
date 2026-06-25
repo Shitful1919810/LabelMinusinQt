@@ -237,11 +237,14 @@ private slots:
         model.setGroupFilter({QStringLiteral("框内"), QStringLiteral("框外")});
 
         QCOMPARE(model.rowCount(), 2);
+        QCOMPARE(model.data(model.index(0, LabelTableModel::NumberColumn)).toInt(), 1);
+        QCOMPARE(model.data(model.index(1, LabelTableModel::NumberColumn)).toInt(), 2);
         QCOMPARE(model.sourceIndexForRow(0), 0);
         QCOMPARE(model.sourceIndexForRow(1), 1);
 
         model.setGroupFilter({QStringLiteral("框外")});
         QCOMPARE(model.rowCount(), 1);
+        QCOMPARE(model.data(model.index(0, LabelTableModel::NumberColumn)).toInt(), 1);
         QCOMPARE(model.sourceIndexForRow(0), 1);
         QCOMPARE(model.rowForSourceIndex(0), -1);
         QCOMPARE(model.rowForSourceIndex(1), 0);

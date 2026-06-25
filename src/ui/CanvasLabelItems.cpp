@@ -31,15 +31,16 @@ int canvasLabelMarkerItemType()
     return markerType;
 }
 
-QString canvasLabelBubbleHtml(int labelIndex, const QString& text, const QColor& color)
+QString canvasLabelBubbleHtml(int displayNumber, const QString& text, const QColor& color)
 {
     return QStringLiteral("<span style=\"color:%1; font-weight:600;\">#%2</span> : %3")
-        .arg(color.name(), QString::number(labelIndex + 1), htmlEscapedWithLineBreaks(text));
+        .arg(color.name(), QString::number(displayNumber), htmlEscapedWithLineBreaks(text));
 }
 
-CanvasLabelMarkerItem::CanvasLabelMarkerItem(int labelIndex, bool selected, labelqt::core::LabelGroupStyle style,
-                                             QGraphicsItem* parent)
-    : QGraphicsItem(parent), m_labelIndex(labelIndex), m_selected(selected), m_style(std::move(style))
+CanvasLabelMarkerItem::CanvasLabelMarkerItem(int labelIndex, int displayNumber, bool selected,
+                                             labelqt::core::LabelGroupStyle style, QGraphicsItem* parent)
+    : QGraphicsItem(parent), m_labelIndex(labelIndex), m_displayNumber(displayNumber), m_selected(selected),
+      m_style(std::move(style))
 {
     setFlag(QGraphicsItem::ItemIgnoresTransformations);
     setZValue(10.0);
@@ -79,13 +80,14 @@ void CanvasLabelMarkerItem::paint(QPainter* painter, const QStyleOptionGraphicsI
     font.setPointSizeF(m_style.fontPointSize);
     font.setBold(true);
     painter->setFont(font);
-    const QString number = QString::number(m_labelIndex + 1);
+    const QString number = QString::number(m_displayNumber);
     painter->drawText(boundingRect(), Qt::AlignCenter, number);
 }
 
-CanvasLabelTextBubbleItem::CanvasLabelTextBubbleItem(int labelIndex, QString text, labelqt::core::LabelGroupStyle style,
-                                                     QFont bubbleFont, double opacity, QGraphicsItem* parent)
-    : QGraphicsItem(parent), m_labelIndex(labelIndex), m_text(std::move(text)), m_style(std::move(style)),
+CanvasLabelTextBubbleItem::CanvasLabelTextBubbleItem(int displayNumber, QString text,
+                                                     labelqt::core::LabelGroupStyle style, QFont bubbleFont,
+                                                     double opacity, QGraphicsItem* parent)
+    : QGraphicsItem(parent), m_displayNumber(displayNumber), m_text(std::move(text)), m_style(std::move(style)),
       m_bubbleFont(std::move(bubbleFont)), m_opacity(opacity)
 {
     setFlag(QGraphicsItem::ItemIgnoresTransformations);
@@ -120,5 +122,5 @@ void CanvasLabelTextBubbleItem::rebuildDocument()
     const QColor color = m_style.groupColor.isValid() ? m_style.groupColor : QColor(Qt::black);
     m_document.setDefaultFont(m_bubbleFont);
     m_document.setDocumentMargin(0.0);
-    m_document.setHtml(canvasLabelBubbleHtml(m_labelIndex, m_text, color));
+    m_document.setHtml(canvasLabelBubbleHtml(m_displayNumber, m_text, color));
 }

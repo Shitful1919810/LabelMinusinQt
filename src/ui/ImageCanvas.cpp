@@ -250,6 +250,19 @@ void ImageCanvas::setSelectedLabels(QVector<int> indexes)
     rebuildLabelItems();
 }
 
+void ImageCanvas::setSelectedLabelTextBubblesVisible(bool visible)
+{
+    if (m_selectedLabelTextBubblesVisible == visible) {
+        return;
+    }
+
+    m_selectedLabelTextBubblesVisible = visible;
+    if (!visible) {
+        hideHoveredLabelToolTip();
+    }
+    rebuildLabelItems();
+}
+
 void ImageCanvas::setLabelTextPreview(int index, const QString& text)
 {
     if (index < 0 || index >= m_labels.size()) {
@@ -635,21 +648,24 @@ void ImageCanvas::rebuildLabelItems()
     }
 
     const QRectF rect = m_pixmapItem->boundingRect();
+    int displayNumber = 0;
     for (int i = 0; i < m_labels.size(); ++i) {
         if (!isLabelVisible(m_labels.at(i))) {
             continue;
         }
 
+        ++displayNumber;
         const labelqt::core::LabelGroupStyle style = styleForGroup(m_labels.at(i).group());
-        auto* marker = new CanvasLabelMarkerItem(i, m_selectedLabels.contains(i), style);
+        auto* marker = new CanvasLabelMarkerItem(i, displayNumber, m_selectedLabels.contains(i), style);
         const QPointF position = m_labels.at(i).position();
         marker->setPos(rect.left() + position.x() * rect.width(), rect.top() + position.y() * rect.height());
         m_scene.addItem(marker);
         m_labelItems.append(marker);
 
-        if (m_interactionMode == InteractionMode::Label && m_selectedLabels.contains(i)) {
-            auto* bubble =
-                new CanvasLabelTextBubbleItem(i, displayTextForLabel(i), style, m_textBubbleFont, m_textBubbleOpacity);
+        if (m_selectedLabelTextBubblesVisible && m_interactionMode == InteractionMode::Label &&
+            m_selectedLabels.contains(i)) {
+            auto* bubble = new CanvasLabelTextBubbleItem(displayNumber, displayTextForLabel(i), style, m_textBubbleFont,
+                                                         m_textBubbleOpacity);
             bubble->setPos(marker->pos());
             m_scene.addItem(bubble);
             m_labelItems.append(bubble);
@@ -717,6 +733,21 @@ bool ImageCanvas::hasMoveLabelModifiers(Qt::KeyboardModifiers modifiers) const
     return (modifiers & relevantModifiers) == m_moveLabelModifiers;
 }
 
+int ImageCanvas::displayNumberForLabel(int index) const
+{
+    if (index < 0 || index >= m_labels.size() || !isLabelVisible(m_labels.at(index))) {
+        return 0;
+    }
+
+    int displayNumber = 0;
+    for (int i = 0; i <= index; ++i) {
+        if (isLabelVisible(m_labels.at(i))) {
+            ++displayNumber;
+        }
+    }
+    return displayNumber;
+}
+
 QString ImageCanvas::displayTextForLabel(int index) const
 {
     if (m_labelTextPreviews.contains(index)) {
@@ -758,7 +789,11 @@ void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, cons
 
         const QColor color = styleForGroup(label.group()).groupColor.isValid() ? styleForGroup(label.group()).groupColor
                                                                                : QColor(Qt::black);
-        lines.append(canvasLabelBubbleHtml(labelIndex, displayTextForLabel(labelIndex), color));
+        const int displayNumber = displayNumberForLabel(labelIndex);
+        if (displayNumber <= 0) {
+            continue;
+        }
+        lines.append(canvasLabelBubbleHtml(displayNumber, displayTextForLabel(labelIndex), color));
     }
 
     if (lines.isEmpty()) {

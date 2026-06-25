@@ -54,6 +54,7 @@ public:
     void setVisibleGroups(QStringList groups);
     void setSelectedLabel(int index);
     void setSelectedLabels(QVector<int> indexes);
+    void setSelectedLabelTextBubblesVisible(bool visible);
     void setLabelTextPreview(int index, const QString& text);
     void clearLabelTextPreview(int index);
     void centerOnLabel(int index);
@@ -98,6 +99,7 @@ private:
     void notifyViewportStateChanged();
     bool isLabelVisible(const labelqt::core::Label& label) const;
     bool hasMoveLabelModifiers(Qt::KeyboardModifiers modifiers) const;
+    int displayNumberForLabel(int index) const;
     QString displayTextForLabel(int index) const;
     void updateHoveredLabelToolTip(const QPoint& viewportPosition, const QPoint& globalPosition);
     void hideHoveredLabelToolTip();
@@ -122,6 +124,7 @@ private:
     QVector<QGraphicsItem*> m_labelItems;
     QString m_imagePath;
     QSet<int> m_selectedLabels;
+    bool m_selectedLabelTextBubblesVisible{true};
     int m_zoomPercent{100};
     double m_markerDiameterPixels{20.0};
     double m_markerFontPointSize{10.0};

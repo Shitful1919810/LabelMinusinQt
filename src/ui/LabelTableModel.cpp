@@ -98,7 +98,7 @@ QVariant LabelTableModel::data(const QModelIndex& index, int role) const
     if (role == Qt::DisplayRole || role == Qt::EditRole) {
         switch (index.column()) {
         case NumberColumn:
-            return sourceIndex + 1;
+            return index.row() + 1;
         case TextColumn:
             return label.text();
         case GroupColumn:
