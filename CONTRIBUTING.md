@@ -13,6 +13,7 @@ LabelQt is an independent C++/Qt 6 LabelPlus text project editor. Keep changes a
 - When caching raw pointers owned by Qt containers or parent objects, clear or null the cache before the owner clears/destructs. Prefer `QPointer` for cached `QObject`/`QWidget` references used across callbacks, queued events or delayed deletion.
 - Avoid clearing or rebuilding a `QMenu`/`QAction` hierarchy from a slot currently triggered by one of its own actions. If a running workflow needs to disable entries, update existing actions in place or defer the rebuild until the action call stack has returned.
 - Run `clang-format` with the repository `.clang-format` before committing substantial C++ changes.
+- Do not run `clang-format` on CMake files such as `CMakeLists.txt` or `CMakePresets.json`; keep CMake formatting manual and consistent with the surrounding file.
 - Do not introduce WPF, .NET or Windows-only dependencies on this branch.
 
 ## Architecture Boundaries
@@ -42,6 +43,14 @@ See `docs/architecture.md` for more detail.
 - Keep `MainWindow` as an orchestration layer for menus, widgets, signal/slot wiring and UI feedback.
 - Do not add new file-format parsing, project workflow, label mutation or session persistence logic directly to `MainWindow`.
 - Put non-widget workflow logic in `src/services`; UI classes can call services and then refresh controls.
+- Keep asynchronous image display work in `ImagePageViewController`: cache lookup, pending request IDs, loaded-image
+  validation, adjacent-page preloading and delayed view restoration belong there.
+- Keep page navigation widget refresh in `ProjectViewController`, and keep table/canvas/current-label selection
+  synchronization in `LabelSelectionController`.
+- Keep active text editor detection, commit and restore logic in `EditorStateController`.
+- Keep reusable preference controls in small helpers or widgets. Table-style preference pages should live in focused
+  widgets such as `GroupStyleEditorWidget` or `AutomationShortcutEditorWidget` instead of inline blocks in
+  `PreferenceDialog`.
 - Table models should emit edit requests and leave project mutation to controllers.
 - When a current-page label edit only changes marker/table/editor state, refresh labels in place instead of reloading the image.
 - Reserve full image reloads for real page/image changes, project open/creation, and explicit session restore paths.
@@ -93,6 +102,13 @@ cmake --build --preset linux-debug
 ctest --preset linux-debug
 scripts/check_translations.sh
 ```
+
+For Qt model/view or widget interaction changes:
+
+- Add `QAbstractItemModelTester` coverage for new or changed `QAbstractItemModel` classes when practical.
+- Add lightweight `QTest` widget interaction tests for bug-prone mouse/keyboard behavior, especially canvas marker
+  selection/movement, drag/drop ordering and table filtering.
+- Keep QWidget tests runnable in headless environments through the test target's offscreen platform setting.
 
 If ccache interferes with CMake compiler detection:
 

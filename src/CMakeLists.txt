@@ -12,12 +12,16 @@ set(LABELQT_CORE_SOURCES
 
 set(LABELQT_SERVICE_SOURCES
     services/ArchiveReader.cpp
+    services/AutomationManifestParser.cpp
     services/AutomationOperationApplier.cpp
+    services/AutomationPythonResolver.cpp
     services/AutomationService.cpp
     services/ImagePageCache.cpp
     services/ImagePageCache.h
     services/LabelEditController.cpp
     services/LabelNavigator.cpp
+    services/PageSourceInfoService.cpp
+    services/ProjectImageValidator.cpp
     services/ProjectPageOrderService.cpp
     services/ProjectMergeService.cpp
     services/ProjectController.cpp
@@ -58,21 +62,30 @@ set(LABELQT_UI_SOURCES
     ui/AutomationController.cpp
     ui/AutomationParameterDialog.cpp
     ui/AutomationRunDialog.cpp
+    ui/AutomationShortcutEditorWidget.cpp
     ui/AutomationShortcutController.cpp
+    ui/CanvasLabelItems.cpp
     ui/CanvasLabelTextEditController.cpp
     ui/CanvasLabelTextEditor.cpp
     ui/DialogWindowUtils.cpp
     ui/DialogWindowUtils.h
+    ui/EditorStateController.cpp
     ui/GroupFilterComboBox.cpp
+    ui/GroupStyleEditorWidget.cpp
     ui/ImageCanvas.cpp
+    ui/ImagePageViewController.cpp
     ui/LabelEditDelegates.cpp
+    ui/LabelSelectionController.cpp
     ui/LabelTableModel.cpp
     ui/MainWindow.cpp
     ui/MainWindowShortcutController.cpp
     ui/PageOrderDialog.cpp
     ui/PageOrderListModel.cpp
+    ui/PageSelectorComboBox.cpp
     ui/PreferenceDialog.cpp
+    ui/PreferenceDialogWidgets.cpp
     ui/ProjectMergeDialog.cpp
+    ui/ProjectViewController.cpp
     ui/ThemeManager.cpp
     ui/ViewportFittedTableColumns.cpp
 )

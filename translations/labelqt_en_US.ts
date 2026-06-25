@@ -473,6 +473,21 @@ Last error: %2</translation>
         <translation>Next</translation>
     </message>
     <message>
+        <location filename="../src/ui/MainWindow.cpp" line="2096"/>
+        <source>source #%1</source>
+        <translation>source #%1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/MainWindow.cpp" line="2099"/>
+        <source>unknown</source>
+        <translation>unknown</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/MainWindow.cpp" line="2102"/>
+        <source>Source: %1</source>
+        <translation>Source: %1</translation>
+    </message>
+    <message>
         <location filename="../src/ui/MainWindow.cpp" line="354"/>
         <source>Previous page</source>
         <translation>Previous page</translation>
@@ -637,6 +652,13 @@ Last error: %2</translation>
         <location filename="../src/ui/MainWindow.cpp" line="869"/>
         <source>Loaded recent project: %1</source>
         <translation>Loaded recent project: %1</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n image file(s) are missing.</source>
+        <translation>
+            <numerusform>%n image file is missing.</numerusform>
+            <numerusform>%n image files are missing.</numerusform>
+        </translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="889"/>
@@ -1559,6 +1581,98 @@ Last error: %2</translation>
     <message>
         <source>Python executable (python python3 python*);;All files (*)</source>
         <translation>Python executable (python python3 python*);;All files (*)</translation>
+    </message>
+</context>
+<context>
+    <name>AutomationShortcutEditorWidget</name>
+    <message>
+        <source>Assign shortcuts to automation scripts. Leave a shortcut empty to disable it.</source>
+        <translation>Assign shortcuts to automation scripts. Leave a shortcut empty to disable it.</translation>
+    </message>
+    <message>
+        <source>Automation script</source>
+        <translation>Automation script</translation>
+    </message>
+    <message>
+        <source>Shortcut</source>
+        <translation>Shortcut</translation>
+    </message>
+    <message>
+        <source>Shortcut %1 is assigned to both %2 and %3.</source>
+        <translation>Shortcut %1 is assigned to both %2 and %3.</translation>
+    </message>
+    <message>
+        <source>Official</source>
+        <translation>Official</translation>
+    </message>
+    <message>
+        <source>Custom</source>
+        <translation>Custom</translation>
+    </message>
+    <message>
+        <source>%1 / %2 / %3</source>
+        <translation>%1 / %2 / %3</translation>
+    </message>
+    <message>
+        <source>Missing script: %1</source>
+        <translation>Missing script: %1</translation>
+    </message>
+</context>
+<context>
+    <name>GroupStyleEditorWidget</name>
+    <message>
+        <source>Color</source>
+        <translation>Color</translation>
+    </message>
+    <message>
+        <source>Marker diameter</source>
+        <translation>Marker diameter</translation>
+    </message>
+    <message>
+        <source>Font size</source>
+        <translation>Font size</translation>
+    </message>
+    <message>
+        <source>Marker style</source>
+        <translation>Marker style</translation>
+    </message>
+    <message>
+        <source>Add group style</source>
+        <translation>Add group style</translation>
+    </message>
+    <message>
+        <source>Remove selected styles</source>
+        <translation>Remove selected styles</translation>
+    </message>
+    <message>
+        <source>Circle</source>
+        <translation>Circle</translation>
+    </message>
+    <message>
+        <source>Square</source>
+        <translation>Square</translation>
+    </message>
+    <message>
+        <source>Choose group color</source>
+        <translation>Choose group color</translation>
+    </message>
+</context>
+<context>
+    <name>ProjectViewController</name>
+    <message>
+        <location filename="../src/ui/ProjectViewController.cpp" line="93"/>
+        <source>source #%1</source>
+        <translation>source #%1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ProjectViewController.cpp" line="96"/>
+        <source>unknown</source>
+        <translation>unknown</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ProjectViewController.cpp" line="99"/>
+        <source>Source: %1</source>
+        <translation>Source: %1</translation>
     </message>
 </context>
 <context>

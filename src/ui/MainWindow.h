@@ -23,6 +23,7 @@
 #include <QVector>
 
 #include <memory>
+#include <optional>
 
 class QCloseEvent;
 class QAction;
@@ -39,9 +40,14 @@ class QToolButton;
 class AutomationController;
 class AutomationShortcutController;
 class CanvasLabelTextEditController;
+class EditorStateController;
 class LabelGroupDelegate;
+class LabelSelectionController;
 class LabelTextDelegate;
+class ImagePageViewController;
 class MainWindowShortcutController;
+class PageSelectorComboBox;
+class ProjectViewController;
 class ViewportFittedTableColumns;
 
 class MainWindow final : public QMainWindow {
@@ -59,13 +65,6 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
-    enum class ActiveTextInputMode {
-        None,
-        BottomEditor,
-        TableTextEditor,
-        CanvasTextEditor,
-    };
-
     void createActions();
     void createMenus();
     void createCentralWidget();
@@ -93,9 +92,7 @@ private:
     void reorderLabels(QVector<int> sourceIndexes, int visibleDropRow);
     void updateCurrentLabelText();
     bool updateCurrentLabelDetails(int index);
-    ActiveTextInputMode activeTextInputMode() const;
     void commitActiveTextInput();
-    void restoreTextInputModeAfterLabelNavigation(ActiveTextInputMode mode);
     void commitPendingTextEdit();
     void resetPendingTextEdit();
     void refreshLabelTableView();
@@ -132,11 +129,9 @@ private:
     void refreshProjectUi();
     void detachProjectViewsFromProjectData();
     void replaceProjectImages(QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName,
-                              int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter);
+                              int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter,
+                              std::optional<QStringList> commentLines = std::nullopt);
     void refreshImageUi();
-    void displayCachedOrRequestCurrentImage(const labelqt::core::ImageEntry& image);
-    void handleImageLoaded(quint64 requestId, const labelqt::services::ImagePageLoadResult& result);
-    void preloadAdjacentImages();
     QSize imagePreviewTargetSize() const;
     void refreshCanvasLabels();
     void refreshCurrentLabelUi();
@@ -183,17 +178,22 @@ private:
     LabelTableModel* m_labelModel{nullptr};
     LabelTextDelegate* m_labelTextDelegate{nullptr};
     LabelGroupDelegate* m_labelGroupDelegate{nullptr};
+    std::unique_ptr<LabelSelectionController> m_labelSelectionController;
     QTableView* m_labelView{nullptr};
     ViewportFittedTableColumns* m_labelTableColumns{nullptr};
     QPlainTextEdit* m_textEdit{nullptr};
     CanvasLabelTextEditController* m_canvasTextEditController{nullptr};
+    EditorStateController* m_editorStateController{nullptr};
     MainWindowShortcutController* m_shortcutController{nullptr};
     AutomationController* m_automationController{nullptr};
     AutomationShortcutController* m_automationShortcutController{nullptr};
-    QComboBox* m_imageComboBox{nullptr};
+    ImagePageViewController* m_imagePageViewController{nullptr};
+    ProjectViewController* m_projectViewController{nullptr};
+    PageSelectorComboBox* m_imageComboBox{nullptr};
     QComboBox* m_insertGroupComboBox{nullptr};
     GroupFilterComboBox* m_groupFilterComboBox{nullptr};
     QComboBox* m_labelGroupComboBox{nullptr};
+    QLabel* m_pageSourceLabel{nullptr};
     QLabel* m_warningLabel{nullptr};
     QLabel* m_operationMessageLabel{nullptr};
     QSlider* m_zoomSlider{nullptr};
@@ -237,6 +237,4 @@ private:
     labelqt::core::UndoStack m_undoStack;
     int m_operationMessageSerial{0};
     bool m_isAutomationRunning{false};
-    quint64 m_pendingImageRequestId{0};
-    QString m_pendingImagePath;
 };

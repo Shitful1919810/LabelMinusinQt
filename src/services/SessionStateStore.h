@@ -4,6 +4,7 @@
 #include <QPointF>
 #include <QString>
 #include <QStringList>
+#include <QVector>
 
 namespace labelqt::services {
 
@@ -21,6 +22,7 @@ struct ProjectSessionState {
     int zoomPercent{100};
     QPointF viewCenter{0.5, 0.5};
     int selectedLabelIndex{-1};
+    QVector<int> selectedLabelIndexes;
 };
 
 class SessionStateStore {

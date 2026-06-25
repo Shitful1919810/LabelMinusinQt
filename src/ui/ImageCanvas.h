@@ -27,6 +27,17 @@ public:
         Selection,
     };
 
+    enum class PointerInteractionState {
+        Idle,
+        PendingLabelCreate,
+        PendingLabelSelect,
+        PendingEmptyClick,
+        PendingLabelMove,
+        MovingLabel,
+        SelectingRegion,
+        MiddleButtonPanning,
+    };
+
     explicit ImageCanvas(QWidget* parent = nullptr);
     ~ImageCanvas() override;
 
@@ -100,6 +111,7 @@ private:
     void clearSelection();
     bool copyImageToClipboard();
     void updateCursorForInteractionMode();
+    void resetPointerInteraction();
 
     QGraphicsScene m_scene;
     QGraphicsPixmapItem* m_pixmapItem{nullptr};
@@ -123,13 +135,7 @@ private:
     bool m_hasUserZoom{false};
     bool m_isDestroying{false};
     bool m_readOnly{false};
-    bool m_pendingLabelCreate{false};
-    bool m_pendingLabelSelect{false};
-    bool m_pendingEmptyClick{false};
-    bool m_isMovingLabel{false};
-    bool m_pendingLabelMove{false};
-    bool m_isSelectingRegion{false};
-    bool m_isMiddleButtonPanning{false};
+    PointerInteractionState m_pointerState{PointerInteractionState::Idle};
     int m_pendingLabelSelectIndex{-1};
     int m_movingLabelIndex{-1};
     int m_pendingLabelMoveIndex{-1};

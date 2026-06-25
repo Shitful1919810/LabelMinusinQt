@@ -26,6 +26,7 @@ constexpr QLatin1StringView sessionZoomPercentKey{"zoomPercent"};
 constexpr QLatin1StringView sessionViewCenterXKey{"viewCenterX"};
 constexpr QLatin1StringView sessionViewCenterYKey{"viewCenterY"};
 constexpr QLatin1StringView sessionSelectedLabelIndexKey{"selectedLabelIndex"};
+constexpr QLatin1StringView sessionSelectedLabelIndexesKey{"selectedLabelIndexes"};
 constexpr QLatin1StringView recentProjectsGroup{"recentProjects"};
 constexpr QLatin1StringView recentProjectPathsKey{"paths"};
 constexpr QLatin1StringView fileDialogsGroup{"fileDialogs"};
@@ -74,6 +75,18 @@ ProjectSessionState SessionStateStore::loadProjectSession(const QString& project
     state.viewCenter = QPointF(settings.value(sessionViewCenterXKey, 0.5).toDouble(),
                                settings.value(sessionViewCenterYKey, 0.5).toDouble());
     state.selectedLabelIndex = settings.value(sessionSelectedLabelIndexKey, -1).toInt();
+    const QVariantList selectedLabelIndexValues = settings.value(sessionSelectedLabelIndexesKey).toList();
+    state.selectedLabelIndexes.reserve(selectedLabelIndexValues.size());
+    for (const QVariant& value : selectedLabelIndexValues) {
+        bool ok = false;
+        const int index = value.toInt(&ok);
+        if (ok && index >= 0 && !state.selectedLabelIndexes.contains(index)) {
+            state.selectedLabelIndexes.append(index);
+        }
+    }
+    if (state.selectedLabelIndexes.isEmpty() && state.selectedLabelIndex >= 0) {
+        state.selectedLabelIndexes.append(state.selectedLabelIndex);
+    }
     return state;
 }
 
@@ -93,6 +106,15 @@ void SessionStateStore::saveProjectSession(const QString& projectPath, const Pro
     settings.setValue(sessionViewCenterXKey, state.viewCenter.x());
     settings.setValue(sessionViewCenterYKey, state.viewCenter.y());
     settings.setValue(sessionSelectedLabelIndexKey, state.selectedLabelIndex);
+    QVariantList selectedLabelIndexValues;
+    selectedLabelIndexValues.reserve(state.selectedLabelIndexes.size());
+    for (int index : state.selectedLabelIndexes) {
+        if (index >= 0) {
+            selectedLabelIndexValues.append(index);
+        }
+    }
+    settings.setValue(sessionSelectedLabelIndexesKey, selectedLabelIndexValues);
+    settings.sync();
 }
 
 QStringList SessionStateStore::recentProjectPaths(int maximumCount) const

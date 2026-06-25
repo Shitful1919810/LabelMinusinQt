@@ -22,8 +22,24 @@ Qt Widgets classes live here:
 
 - `MainWindow`: top-level layout and UI wiring.
 - `ImageCanvas`: image preview, marker drawing, click-to-label and view interaction.
+- `CanvasLabelItems`: graphics items used by `ImageCanvas` for marker and marker-adjacent bubble rendering. Keep marker
+  paint details here so `ImageCanvas` can focus on interaction state.
+- `EditorStateController`: detects and commits the active label text editor, then restores the same editing mode after
+  keyboard label navigation. Keep table/bottom/canvas text-editor focus handling here instead of mixing it into
+  `MainWindow`.
+- `GroupStyleEditorWidget`: self-contained preference editor for `groupStyles`. Keep its table-cell construction,
+  color picking and JSON conversion inside the widget.
+- `AutomationShortcutEditorWidget`: self-contained preference editor for per-script automation shortcuts. Keep shortcut
+  table construction, missing-script rows, conflict detection and JSON conversion inside the widget.
+- `ImagePageViewController`: current image display coordination, including image-cache lookup, asynchronous load
+  completion checks and adjacent-page preloading. `MainWindow` should ask it to display/refresh the current page rather
+  than duplicating cache request state.
 - `MainWindowShortcutController`: main-window keyboard shortcut routing. It maps configured shortcuts to callbacks but
   does not mutate project data or widgets directly.
+- `ProjectViewController`: current-page navigation widgets, page source display and page-selector contents. Keep page
+  combo box/source-label refresh here instead of scattering it through `MainWindow`.
+- `LabelSelectionController`: synchronization between table selection, canvas marker selection and current-label editor
+  state. Keep selection semantics here so table-side and canvas-side selection do not drift apart.
 - `CanvasLabelTextEditController`: lifecycle controller for marker-adjacent label text editing on the image canvas.
 - `CanvasLabelTextEditor`: temporary marker-adjacent text editor widget for canvas-side label text edits.
 - `ProjectMergeDialog`: conflict-resolution dialog for offline page-based LabelPlus project merges.
@@ -41,6 +57,23 @@ signals, calling services and reflecting service results in widgets.
 
 Reusable or stateful widget fragments, such as floating editors and custom controls, should live in their own UI classes
 instead of being built inline in `MainWindow`.
+
+After the controller refactors, new UI code should follow these ownership lines:
+
+- Page image display belongs to `ImagePageViewController`. Cache hits, pending async request IDs, stale-load rejection,
+  adjacent-page preloading and "restore zoom/center after the pixmap exists" logic should stay there.
+- Canvas drawing belongs to `ImageCanvas` and `CanvasLabelItems`. `ImageCanvas` owns pointer interaction state and emits
+  user intent; it should not mutate the project directly.
+- Page navigation widgets and merge-source display belong to `ProjectViewController`.
+- Label selection semantics belong to `LabelSelectionController`; table selection and marker selection should not be
+  updated independently from separate call sites.
+- Active editor detection and editor-mode restoration belong to `EditorStateController`.
+- Preference page fragments with their own tables or JSON conversion belong in focused widgets, not in
+  `PreferenceDialog`.
+
+`MainWindow` may glue these pieces together with signals, callbacks and status messages. If a new feature needs private
+state, a second state machine, async request bookkeeping or data conversion that is not directly layout-related, first
+look for an existing controller/service home before adding another member to `MainWindow`.
 
 Qt ownership is allowed and expected, but cached pointers need clear lifetime boundaries. Composite widgets that connect
 signals from child/internal widgets should disconnect those connections before destruction starts tearing down owned
@@ -67,10 +100,16 @@ Application services belong here. They can use QtCore services such as file IO, 
 Qt Widgets. Current services include:
 
 - `ProjectController`: owns the open `Project`, project dirty state, file load/save and auto-backup writes.
+- `ProjectImageValidator`: checks project image references, such as missing page image files, and returns data-only
+  diagnostics for the UI to present non-blockingly.
 - `ProjectMergeService`: loads multiple LabelPlus text projects and prepares page-based merge plans.
 - `ProjectPageOrderService`: validates and applies image-page reorder vectors without depending on widgets.
 - `AutomationService`: discovers external Python automation scripts, exports project snapshots to JSON and runs scripts
   through `QProcess`.
+- `AutomationManifestParser`: parses automation `script.json` manifest fields and output JSON into typed service
+  structures. Keep manifest vocabulary changes here instead of adding ad-hoc parsing to `AutomationService`.
+- `AutomationPythonResolver`: resolves configured, bundled and system Python command candidates and formats the
+  user-facing "Python unavailable" diagnostic. Keep interpreter discovery separate from process lifetime management.
 - `LabelEditController`: applies label/group edits and registers undo commands without depending on widgets.
 - `LabelNavigator`: finds previous/next visible labels across pages using project data and the active group filter.
 - `SessionStateStore`: persists local window layout and per-project session state through `QSettings`.
@@ -119,6 +158,9 @@ operations.
 Changing automation running state should not rediscover or rebuild the automation menu, because scripts are launched
 from actions in that menu. Update action enabled states in place; reserve rediscovery/rebuild for the explicit refresh
 command or startup.
+Automation menu actions should also trigger scripts by stable script id rather than by cached vector index, and should
+defer execution with a queued or single-shot call so the menu's action dispatch stack has returned before parameter
+dialogs or message boxes are shown.
 
 ## UI Refresh Rules
 
@@ -131,6 +173,14 @@ For edits on the current page, keep the image scene stable and refresh only the 
 - Use label/model refresh helpers for marker, table and editor updates.
 - Undo replay on the current page should preserve zoom and view center.
 - Group, preference and label edits should not call full image refresh just to repaint markers.
+
+Because page images are loaded through an asynchronous cache, restoring view state must happen after the target pixmap is
+installed in `ImageCanvas`. Use `ImagePageViewController::restoreViewAfterCurrentImageDisplayed()` rather than calling
+`ImageCanvas::restoreView()` immediately after `refreshImageUi()` when the image may still be loading.
+
+`ImageCanvas::setImageLoading()` clears transient page state for a real page switch. `ImageCanvas::setImage()` should
+preserve already-restored selected marker indexes when it completes loading the same page, so asynchronous image load
+completion does not erase session-restored selection state.
 
 ## Dependency And License Boundaries
 
@@ -198,8 +248,12 @@ Invalid or unreadable preference values should fall back to defaults and be repo
 the status bar.
 
 The preference dialog should update the same JSON shape that `AppPreferences` reads and should reuse `AppPreferences`
-defaults instead of duplicating fallback values. User-facing preference text must still go through `tr()` and both
+defaults instead of duplicating fallback values. User-facing preference text must still go through `tr()` and all four
 translation files.
+
+Reusable preference editor fragments should live in small helpers such as `PreferenceDialogWidgets` when they are shared
+across pages or repeated in multiple places. The dialog should describe preference layout and data binding, not carry
+copies of low-level widget construction logic.
 
 When opened, the preference dialog should show the current runtime `AppPreferences`, including values that were applied
 but not yet saved to `preference.json`. The explicit reload action is the path that refreshes the dialog from disk.
@@ -264,10 +318,26 @@ Current session state includes:
 - Recent project file paths.
 - Last viewed page for each project file.
 - Image zoom percentage and normalized view center.
-- Last selected label index.
+- Last selected label index and current multi-selection label indexes.
 
 `SessionStateStore` clamps and validates restored values through `MainWindow`, so external edits to a project file, such
 as deleting pages, should not crash the next launch.
+
+Keep local session state in `SessionStateStore`. UI code should build a typed session-state object and let the store
+handle QSettings keys, canonical project paths and backward-compatible fallbacks.
+
+## Testing Strategy
+
+GUI code is tested in layers:
+
+- Put deterministic business rules in core/services and cover them with ordinary unit tests.
+- For `QAbstractItemModel` classes, add `QAbstractItemModelTester` when changing row/column behavior, filtering,
+  drag/drop, reset logic or item flags. This catches model-contract bugs before they become visual glitches.
+- For bug-prone widget interactions, add lightweight `QTest` interaction tests. Current high-value examples include
+  canvas marker Ctrl-click versus Ctrl-drag behavior, page-order drag/drop preserving all pages, and label-table group
+  filtering.
+- Tests should inspect emitted signals and model state where possible instead of relying on screenshots. Keep QWidget
+  tests runnable with the offscreen platform.
 
 ## Merge Source Metadata
 
@@ -294,3 +364,12 @@ rewriting a large single JSON object.
 The merge workflow lets the user adjust the final page order after resolving conflicts and before saving. Generate this
 metadata only after the final page order is known, otherwise compressed ranges may describe the pre-reorder sequence
 instead of the saved output.
+
+`PageSourceInfoService` is responsible for parsing and expanding this comment block into per-image source records. UI
+classes should consume that structured result and must not parse merge-source comment lines directly. The main window
+uses it only to show the current page's source in the image preview bottom bar.
+
+When page order changes, keep the source metadata bound to image names rather than page indexes. Use
+`ProjectPageOrderService` for page reordering so it can expand the old source ranges before the reorder and rewrite the
+comment block after the new image order is known. Undo/redo paths must carry both reordered images and comment lines as
+one project-level change.

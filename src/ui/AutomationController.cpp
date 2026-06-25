@@ -115,14 +115,11 @@ void AutomationController::rebuildMenu()
             const labelqt::services::AutomationScript& script = m_scripts.at(scriptIndex);
             QAction* scriptAction = menu->addAction(script.name);
             scriptAction->setObjectName(QStringLiteral("automationScriptAction"));
-            scriptAction->setData(scriptIndex);
+            scriptAction->setData(script.id);
             scriptAction->setToolTip(script.description);
             scriptAction->setEnabled(!m_running);
-            connect(scriptAction, &QAction::triggered, this, [this, scriptIndex]() {
-                if (scriptIndex < 0 || scriptIndex >= m_scripts.size()) {
-                    return;
-                }
-                runScript(m_scripts.at(scriptIndex));
+            connect(scriptAction, &QAction::triggered, this, [this, scriptId = script.id]() {
+                QTimer::singleShot(0, this, [this, scriptId]() { runScriptById(scriptId); });
             });
         };
 
@@ -185,14 +182,15 @@ void AutomationController::runScript(const labelqt::services::AutomationScript& 
 {
     if (!QFileInfo::exists(script.entryPath)) {
         showMissingScriptMessage(script.id);
-        refreshScripts();
+        QTimer::singleShot(0, this, &AutomationController::refreshScripts);
         return;
     }
     if (m_running) {
         return;
     }
     if (m_callbacks.isProjectEmpty == nullptr || m_callbacks.project == nullptr || m_callbacks.isProjectEmpty()) {
-        QMessageBox::information(m_window, tr("Automation"), tr("Open a project before running automation scripts."));
+        QMessageBox::information(m_window.data(), tr("Automation"),
+                                 tr("Open a project before running automation scripts."));
         return;
     }
 
@@ -203,32 +201,32 @@ void AutomationController::runScript(const labelqt::services::AutomationScript& 
     const QVector<labelqt::core::LabelGroupStyle> groupStyles =
         m_callbacks.groupStyles == nullptr ? QVector<labelqt::core::LabelGroupStyle>{} : m_callbacks.groupStyles();
     const std::optional<AutomationParameterDialog::Values> values =
-        AutomationParameterDialog::getValues(m_window, script, groups, groupStyles);
+        AutomationParameterDialog::getValues(m_window.data(), script, groups, groupStyles);
     if (!values.has_value()) {
         return;
     }
 
     QString automationError;
     if (!labelqt::services::AutomationService::storeParameterSecrets(script, values->secrets, &automationError)) {
-        QMessageBox::warning(m_window, tr("Automation"), automationError);
+        QMessageBox::warning(m_window.data(), tr("Automation"), automationError);
         return;
     }
 
     QMap<QString, QString> secretEnvironment;
     if (!labelqt::services::AutomationService::secretEnvironment(script, &secretEnvironment, &automationError)) {
-        QMessageBox::warning(m_window, tr("Automation"), automationError);
+        QMessageBox::warning(m_window.data(), tr("Automation"), automationError);
         return;
     }
 
     emit statusMessageRequested(tr("Running automation script: %1").arg(script.name), 0);
 
     auto* runner = new labelqt::services::AutomationRunner(this);
-    const bool willInstallRequirements = m_preferences.automationAutoInstallRequirements() &&
-                                         QFileInfo::exists(QDir(script.directoryPath)
-                                                               .filePath(QStringLiteral("requirements.txt")));
+    const bool willInstallRequirements =
+        m_preferences.automationAutoInstallRequirements() &&
+        QFileInfo::exists(QDir(script.directoryPath).filePath(QStringLiteral("requirements.txt")));
     AutomationRunDialog* dialog = nullptr;
     if (m_preferences.showAutomationRunLog() || willInstallRequirements) {
-        dialog = new AutomationRunDialog(script.name, m_window);
+        dialog = new AutomationRunDialog(script.name, m_window.data());
         dialog->setAttribute(Qt::WA_DeleteOnClose);
     }
     m_runner = runner;
@@ -290,7 +288,7 @@ void AutomationController::finishScript(labelqt::services::AutomationRunner* run
                 dialogPointer->appendStandardError(displayError + QLatin1Char('\n'));
             }
             else {
-                QMessageBox::critical(m_window, tr("Automation failed"), displayError);
+                QMessageBox::critical(m_window.data(), tr("Automation failed"), displayError);
             }
             emit statusMessageRequested(tr("Automation script failed: %1").arg(script.name), 5000);
             if (!dialogPointer.isNull() && !dialogPointer->isVisible()) {
@@ -306,7 +304,7 @@ void AutomationController::finishScript(labelqt::services::AutomationRunner* run
             const QString text = result.resultText.isEmpty() ? result.summary : result.resultText;
             QMessageBox::information(!dialogPointer.isNull() && dialogPointer->isVisible()
                                          ? static_cast<QWidget*>(dialogPointer.data())
-                                         : m_window,
+                                         : m_window.data(),
                                      title, text);
         }
         emit statusMessageRequested(tr("Automation script finished: %1").arg(script.name), 5000);

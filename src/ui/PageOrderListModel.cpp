@@ -174,11 +174,10 @@ QVariant PageOrderListModel::headerData(int section, Qt::Orientation orientation
 
 Qt::ItemFlags PageOrderListModel::flags(const QModelIndex& index) const
 {
-    Qt::ItemFlags itemFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDropEnabled;
-    if (index.isValid()) {
-        itemFlags |= Qt::ItemIsDragEnabled;
+    if (!index.isValid()) {
+        return Qt::ItemIsDropEnabled;
     }
-    return itemFlags;
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDropEnabled | Qt::ItemIsDragEnabled;
 }
 
 QStringList PageOrderListModel::mimeTypes() const
@@ -223,9 +222,7 @@ bool PageOrderListModel::dropMimeData(const QMimeData* data, Qt::DropAction acti
     std::sort(sourceRows.begin(), sourceRows.end());
     sourceRows.erase(std::unique(sourceRows.begin(), sourceRows.end()), sourceRows.end());
     sourceRows.erase(std::remove_if(sourceRows.begin(), sourceRows.end(),
-                                    [this](int sourceRow) {
-                                        return sourceRow < 0 || sourceRow >= m_order.size();
-                                    }),
+                                    [this](int sourceRow) { return sourceRow < 0 || sourceRow >= m_order.size(); }),
                      sourceRows.end());
     if (sourceRows.isEmpty()) {
         return false;

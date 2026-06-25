@@ -10,6 +10,7 @@
 #include <QVector>
 
 #include <functional>
+#include <optional>
 
 namespace labelqt::services {
 
@@ -22,9 +23,9 @@ struct ProjectViewState {
 
 class ProjectWorkflowController {
 public:
-    using ReplaceImagesCallback =
-        std::function<void(QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName,
-                           int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter)>;
+    using ReplaceImagesCallback = std::function<void(
+        QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName, int fallbackImageIndex,
+        int zoomPercent, QPointF normalizedCenter, std::optional<QStringList> commentLines)>;
     using DirtyCallback = std::function<void()>;
 
     ProjectWorkflowController(labelqt::core::Project& project, labelqt::core::UndoStack& undoStack,
@@ -34,9 +35,9 @@ public:
 
     ProjectMergePlan createMergePlan(const QStringList& paths) const;
     labelqt::core::Project mergedProject(ProjectMergePlan mergePlan, const QVector<int>& selectedCandidateIndexes,
-                                            const QString& savePath, const QVector<int>& pageOrder) const;
+                                         const QString& savePath, const QVector<int>& pageOrder) const;
     labelqt::core::Project mergedProjectPreview(const ProjectMergePlan& mergePlan,
-                                                   const QVector<int>& selectedCandidateIndexes) const;
+                                                const QVector<int>& selectedCandidateIndexes) const;
     void saveProject(const labelqt::core::Project& project, const QString& path) const;
     bool applyPageOrder(const QVector<int>& order, const ProjectViewState& viewState);
 

@@ -1,5 +1,7 @@
 #include "services/ProjectPageOrderService.h"
 
+#include "services/PageSourceInfoService.h"
+
 #include <QSet>
 
 namespace labelqt::services {
@@ -52,7 +54,9 @@ void ProjectPageOrderService::reorderImages(labelqt::core::Project& project, con
         return;
     }
 
+    const QHash<QString, PageSourceInfo> sourcesByImageName = PageSourceInfoService::sourcesForProject(project);
     project.images() = reorderedImages(project.images(), order);
+    PageSourceInfoService::rewriteCommentLinesForCurrentImageOrder(project, sourcesByImageName);
 }
 
 } // namespace labelqt::services

@@ -470,6 +470,21 @@ Last error: %2</source>
         <translation>次のページ</translation>
     </message>
     <message>
+        <location filename="../src/ui/MainWindow.cpp" line="2096"/>
+        <source>source #%1</source>
+        <translation>出所 #%1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/MainWindow.cpp" line="2099"/>
+        <source>unknown</source>
+        <translation>不明</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/MainWindow.cpp" line="2102"/>
+        <source>Source: %1</source>
+        <translation>出所：%1</translation>
+    </message>
+    <message>
         <location filename="../src/ui/MainWindow.cpp" line="354"/>
         <source>Previous page</source>
         <translation>前のページ</translation>
@@ -633,6 +648,12 @@ Last error: %2</source>
         <location filename="../src/ui/MainWindow.cpp" line="869"/>
         <source>Loaded recent project: %1</source>
         <translation>最近使用したプロジェクトを読み込みました: %1</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n image file(s) are missing.</source>
+        <translation>
+            <numerusform>%n 件の画像ファイルが見つかりません。</numerusform>
+        </translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="889"/>
@@ -1555,6 +1576,98 @@ Last error: %2</source>
     <message>
         <source>Python executable (python python3 python*);;All files (*)</source>
         <translation>Python 実行ファイル (python python3 python*);;すべてのファイル (*)</translation>
+    </message>
+</context>
+<context>
+    <name>AutomationShortcutEditorWidget</name>
+    <message>
+        <source>Assign shortcuts to automation scripts. Leave a shortcut empty to disable it.</source>
+        <translation>自動化スクリプトにショートカットを割り当てます。空欄にすると無効になります。</translation>
+    </message>
+    <message>
+        <source>Automation script</source>
+        <translation>自動化スクリプト</translation>
+    </message>
+    <message>
+        <source>Shortcut</source>
+        <translation>ショートカット</translation>
+    </message>
+    <message>
+        <source>Shortcut %1 is assigned to both %2 and %3.</source>
+        <translation>ショートカット %1 は %2 と %3 の両方に割り当てられています。</translation>
+    </message>
+    <message>
+        <source>Official</source>
+        <translation>公式</translation>
+    </message>
+    <message>
+        <source>Custom</source>
+        <translation>カスタム</translation>
+    </message>
+    <message>
+        <source>%1 / %2 / %3</source>
+        <translation>%1 / %2 / %3</translation>
+    </message>
+    <message>
+        <source>Missing script: %1</source>
+        <translation>見つからないスクリプト：%1</translation>
+    </message>
+</context>
+<context>
+    <name>GroupStyleEditorWidget</name>
+    <message>
+        <source>Color</source>
+        <translation>色</translation>
+    </message>
+    <message>
+        <source>Marker diameter</source>
+        <translation>マーカー直径</translation>
+    </message>
+    <message>
+        <source>Font size</source>
+        <translation>フォントサイズ</translation>
+    </message>
+    <message>
+        <source>Marker style</source>
+        <translation>マーカー形状</translation>
+    </message>
+    <message>
+        <source>Add group style</source>
+        <translation>グループスタイルを追加</translation>
+    </message>
+    <message>
+        <source>Remove selected styles</source>
+        <translation>選択中のスタイルを削除</translation>
+    </message>
+    <message>
+        <source>Circle</source>
+        <translation>円形</translation>
+    </message>
+    <message>
+        <source>Square</source>
+        <translation>四角形</translation>
+    </message>
+    <message>
+        <source>Choose group color</source>
+        <translation>グループの色を選択</translation>
+    </message>
+</context>
+<context>
+    <name>ProjectViewController</name>
+    <message>
+        <location filename="../src/ui/ProjectViewController.cpp" line="93"/>
+        <source>source #%1</source>
+        <translation>出所 #%1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ProjectViewController.cpp" line="96"/>
+        <source>unknown</source>
+        <translation>不明</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ProjectViewController.cpp" line="99"/>
+        <source>Source: %1</source>
+        <translation>出所：%1</translation>
     </message>
 </context>
 <context>

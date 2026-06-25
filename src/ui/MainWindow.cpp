@@ -2,15 +2,21 @@
 
 #include "services/AutomationOperationApplier.h"
 #include "services/LabelNavigator.h"
+#include "services/ProjectImageValidator.h"
 #include "services/SessionStateStore.h"
 #include "ui/AutomationController.h"
 #include "ui/AutomationShortcutController.h"
 #include "ui/CanvasLabelTextEditController.h"
+#include "ui/EditorStateController.h"
+#include "ui/ImagePageViewController.h"
 #include "ui/LabelEditDelegates.h"
+#include "ui/LabelSelectionController.h"
 #include "ui/MainWindowShortcutController.h"
 #include "ui/PageOrderDialog.h"
+#include "ui/PageSelectorComboBox.h"
 #include "ui/PreferenceDialog.h"
 #include "ui/ProjectMergeDialog.h"
+#include "ui/ProjectViewController.h"
 #include "ui/ThemeManager.h"
 #include "ui/ViewportFittedTableColumns.h"
 
@@ -29,9 +35,7 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QIcon>
-#include <QImage>
 #include <QInputDialog>
-#include <QItemSelection>
 #include <QItemSelectionModel>
 #include <QKeySequence>
 #include <QLabel>
@@ -68,17 +72,6 @@ constexpr int minimumLabelNumberColumnWidth = 40;
 constexpr int minimumLabelTextColumnWidth = 120;
 constexpr int minimumLabelGroupColumnWidth = 60;
 
-template <typename T>
-T* selfOrAncestor(QWidget* widget)
-{
-    while (widget != nullptr) {
-        if (auto* result = qobject_cast<T*>(widget)) {
-            return result;
-        }
-        widget = widget->parentWidget();
-    }
-    return nullptr;
-}
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -88,7 +81,6 @@ MainWindow::MainWindow(QWidget* parent)
     const labelqt::core::AppPreferencesLoadResult preferences = labelqt::core::AppPreferences::loadWithDiagnostics();
     m_preferences = preferences.preferences;
     m_preferenceWarnings = preferences.warnings;
-    connect(&m_imagePageCache, &labelqt::services::ImagePageCache::imageLoaded, this, &MainWindow::handleImageLoaded);
     qApp->installEventFilter(this);
     m_shortcutController = new MainWindowShortcutController(this, this);
     m_shortcutController->setPreferences(m_preferences);
@@ -159,9 +151,26 @@ MainWindow::MainWindow(QWidget* parent)
                     m_automationController->showMissingScriptMessage(scriptId);
                 }
             });
+    m_projectViewController = new ProjectViewController(this);
+    m_imagePageViewController = new ImagePageViewController(this);
+    m_imagePageViewController->setCache(&m_imagePageCache);
+    m_imagePageViewController->setProjectProvider([this]() -> const labelqt::core::Project& { return project(); });
+    m_imagePageViewController->setCurrentImageIndexProvider([this]() { return m_currentImageIndex; });
+    m_imagePageViewController->setPreviewTargetSizeProvider([this]() { return imagePreviewTargetSize(); });
+    connect(m_imagePageViewController, &ImagePageViewController::viewRestored, this, [this](int zoomPercent) {
+        if (m_zoomSlider == nullptr) {
+            return;
+        }
+        const QSignalBlocker zoomBlocker(m_zoomSlider);
+        m_zoomSlider->setValue(zoomPercent);
+    });
     m_canvasTextEditController = new CanvasLabelTextEditController(this);
     m_canvasTextEditController->setCommitShortcut(m_preferences.commitLabelTextShortcut());
     m_canvasTextEditController->setEditorOpacity(m_preferences.canvasLabelTextEditorOpacity());
+    m_editorStateController = new EditorStateController(this);
+    m_editorStateController->setCallbacks([this]() { commitCanvasLabelTextEditor(); },
+                                          [this]() { commitPendingTextEdit(); }, [this]() { editCurrentLabelText(); },
+                                          [this]() { openCanvasLabelTextEditorForCurrentLabel(); });
     connect(m_canvasTextEditController, &CanvasLabelTextEditController::previewTextChanged, this,
             [this](int labelIndex, const QString& text) {
                 if (m_canvas != nullptr) {
@@ -198,9 +207,9 @@ MainWindow::MainWindow(QWidget* parent)
         std::make_unique<labelqt::services::ProjectWorkflowController>(project(), m_undoStack, tr("Reorder pages"));
     m_projectWorkflowController->setCallbacks(
         [this](QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName, int fallbackImageIndex,
-               int zoomPercent, QPointF normalizedCenter) {
+               int zoomPercent, QPointF normalizedCenter, std::optional<QStringList> commentLines) {
             replaceProjectImages(std::move(images), preferredImageName, fallbackImageIndex, zoomPercent,
-                                 normalizedCenter);
+                                 normalizedCenter, std::move(commentLines));
         },
         [this]() { markDirty(); });
     m_labelEditController =
@@ -234,6 +243,7 @@ MainWindow::MainWindow(QWidget* parent)
             refreshCurrentLabelUi();
         },
         [this]() { markDirty(); });
+    m_labelSelectionController = std::make_unique<LabelSelectionController>();
 
     setWindowTitle(QStringLiteral("LabelQt"));
     resize(1200, 800);
@@ -412,6 +422,7 @@ void MainWindow::createCentralWidget()
 
     m_canvas = new ImageCanvas(leftPanel);
     m_canvas->setPreferences(m_preferences);
+    m_imagePageViewController->setCanvas(m_canvas);
     leftLayout->addWidget(m_canvas, 1);
 
     auto* bottomBar = new QWidget(leftPanel);
@@ -468,8 +479,13 @@ void MainWindow::createCentralWidget()
 
     m_previousButton = new QPushButton(tr("Previous"), bottomBar);
     m_nextButton = new QPushButton(tr("Next"), bottomBar);
-    m_imageComboBox = new QComboBox(bottomBar);
+    m_imageComboBox = new PageSelectorComboBox(bottomBar);
     m_imageComboBox->setMinimumWidth(160);
+    m_pageSourceLabel = new QLabel(bottomBar);
+    m_pageSourceLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_pageSourceLabel->setVisible(false);
+    m_projectViewController->setWidgets(m_imageComboBox, m_previousButton, m_nextButton, m_pageSourceLabel);
+    bottomLayout->addWidget(m_pageSourceLabel);
     bottomLayout->addWidget(m_previousButton);
     bottomLayout->addWidget(m_imageComboBox);
     bottomLayout->addWidget(m_nextButton);
@@ -564,6 +580,20 @@ void MainWindow::createCentralWidget()
     m_rootSplitter->setStretchFactor(0, 3);
     m_rootSplitter->setStretchFactor(1, 2);
     setCentralWidget(m_rootSplitter);
+
+    m_editorStateController->setWidgets(m_textEdit, m_labelView, m_canvasTextEditController);
+    m_labelSelectionController->setWidgets(m_labelModel, m_labelView, m_canvas);
+    m_labelSelectionController->setCallbacks([this](int labelIndex) { return updateCurrentLabelDetails(labelIndex); },
+                                             [this]() {
+                                                 m_currentLabelIndex = -1;
+                                                 if (m_textEdit != nullptr) {
+                                                     m_textEdit->clear();
+                                                 }
+                                                 resetPendingTextEdit();
+                                                 setEditorEnabled(false);
+                                             },
+                                             [this](int row) { capLabelRowHeight(row); },
+                                             [this]() { focusLabelTableSelection(); });
 
     connect(m_canvas, &ImageCanvas::labelCreateRequested, this, &MainWindow::addLabel);
     connect(m_canvas, &ImageCanvas::labelMoveRequested, this, &MainWindow::moveLabel);
@@ -903,7 +933,15 @@ bool MainWindow::loadProjectFile(const QString& path, bool showErrors, const QSt
         restoreProjectSessionState();
         m_sessionStateStore.addRecentProjectPath(project().filePath());
         updateRecentProjectsMenu();
-        statusBar()->showMessage(successMessage, 6000);
+        const QVector<labelqt::services::MissingProjectImage> missingImages =
+            labelqt::services::ProjectImageValidator::missingImages(project());
+        if (missingImages.isEmpty()) {
+            statusBar()->showMessage(successMessage, 6000);
+        }
+        else {
+            const int missingImageCount = static_cast<int>(missingImages.size());
+            statusBar()->showMessage(tr("%n image file(s) are missing.", nullptr, missingImageCount), 8000);
+        }
         return true;
     }
     catch (const std::exception& error) {
@@ -1155,32 +1193,10 @@ void MainWindow::selectImage(int index)
 
 void MainWindow::selectLabel(int index)
 {
-    if (!updateCurrentLabelDetails(index)) {
-        clearCurrentLabelSelection();
-        return;
-    }
-
     const bool wasUpdatingUi = m_isUpdatingUi;
     m_isUpdatingUi = true;
-    const int visibleRow = m_labelModel->rowForSourceIndex(index);
-    if (visibleRow >= 0) {
-        const QModelIndex rowIndex = m_labelModel->index(visibleRow, LabelTableModel::NumberColumn);
-        if (m_labelView->selectionModel() != nullptr) {
-            m_labelView->selectionModel()->select(rowIndex,
-                                                  QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
-            m_labelView->selectionModel()->setCurrentIndex(rowIndex,
-                                                           QItemSelectionModel::Current | QItemSelectionModel::Rows);
-        }
-        m_labelView->scrollTo(rowIndex, QAbstractItemView::EnsureVisible);
-        m_labelView->resizeRowToContents(visibleRow);
-        capLabelRowHeight(visibleRow);
-        focusLabelTableSelection();
-    }
-    else {
-        m_labelView->clearSelection();
-    }
-    m_canvas->setSelectedLabels({index});
-    setEditorEnabled(!m_isAutomationRunning);
+    const bool selected = m_labelSelectionController != nullptr && m_labelSelectionController->selectSingle(index);
+    setEditorEnabled(selected && !m_isAutomationRunning);
     m_isUpdatingUi = wasUpdatingUi;
 }
 
@@ -1446,78 +1462,10 @@ bool MainWindow::updateCurrentLabelDetails(int index)
     return true;
 }
 
-MainWindow::ActiveTextInputMode MainWindow::activeTextInputMode() const
-{
-    QWidget* focusWidget = QApplication::focusWidget();
-    auto* focusedTextEdit = selfOrAncestor<QPlainTextEdit>(focusWidget);
-    if (m_canvasTextEditController != nullptr && m_canvasTextEditController->hasEditorFocus()) {
-        return ActiveTextInputMode::CanvasTextEditor;
-    }
-    if (focusedTextEdit == m_textEdit) {
-        return ActiveTextInputMode::BottomEditor;
-    }
-    if (focusedTextEdit != nullptr && m_labelView != nullptr && m_labelView->isAncestorOf(focusedTextEdit)) {
-        return ActiveTextInputMode::TableTextEditor;
-    }
-    return ActiveTextInputMode::None;
-}
-
 void MainWindow::commitActiveTextInput()
 {
-    QWidget* focusWidget = QApplication::focusWidget();
-    auto* focusedTextEdit = selfOrAncestor<QPlainTextEdit>(focusWidget);
-    if (m_canvasTextEditController != nullptr && m_canvasTextEditController->hasEditorFocus()) {
-        commitCanvasLabelTextEditor();
-        return;
-    }
-    if (focusedTextEdit == m_textEdit) {
-        commitPendingTextEdit();
-        return;
-    }
-
-    if (m_labelView == nullptr) {
-        return;
-    }
-
-    QWidget* itemEditor = nullptr;
-    if (focusedTextEdit != nullptr && m_labelView->isAncestorOf(focusedTextEdit)) {
-        itemEditor = focusedTextEdit;
-    }
-    else if (auto* focusedComboBox = selfOrAncestor<QComboBox>(focusWidget);
-             focusedComboBox != nullptr && m_labelView->isAncestorOf(focusedComboBox)) {
-        itemEditor = focusedComboBox;
-    }
-
-    if (itemEditor == nullptr) {
-        return;
-    }
-
-    QMetaObject::invokeMethod(m_labelView, "commitData", Qt::DirectConnection, Q_ARG(QWidget*, itemEditor));
-    QMetaObject::invokeMethod(m_labelView, "closeEditor", Qt::DirectConnection, Q_ARG(QWidget*, itemEditor),
-                              Q_ARG(QAbstractItemDelegate::EndEditHint, QAbstractItemDelegate::NoHint));
-}
-
-void MainWindow::restoreTextInputModeAfterLabelNavigation(ActiveTextInputMode mode)
-{
-    if (currentImage() == nullptr || m_currentLabelIndex < 0) {
-        return;
-    }
-
-    switch (mode) {
-    case ActiveTextInputMode::BottomEditor:
-        if (m_textEdit != nullptr && m_textEdit->isEnabled()) {
-            m_textEdit->setFocus(Qt::ShortcutFocusReason);
-            m_textEdit->moveCursor(QTextCursor::End);
-        }
-        break;
-    case ActiveTextInputMode::TableTextEditor:
-        editCurrentLabelText();
-        break;
-    case ActiveTextInputMode::CanvasTextEditor:
-        openCanvasLabelTextEditorForCurrentLabel();
-        break;
-    case ActiveTextInputMode::None:
-        break;
+    if (m_editorStateController != nullptr) {
+        m_editorStateController->commitActive();
     }
 }
 
@@ -1567,13 +1515,11 @@ void MainWindow::refreshLabelViews()
 
 void MainWindow::clearCurrentLabelSelection()
 {
+    if (m_labelSelectionController != nullptr) {
+        m_labelSelectionController->clearSelection();
+        return;
+    }
     m_currentLabelIndex = -1;
-    if (m_canvas != nullptr) {
-        m_canvas->setSelectedLabels({});
-    }
-    if (m_labelView != nullptr) {
-        m_labelView->clearSelection();
-    }
     m_textEdit->clear();
     resetPendingTextEdit();
     setEditorEnabled(false);
@@ -1895,10 +1841,11 @@ void MainWindow::selectPreviousVisibleLabelFrom(int imageIndex, int labelIndex)
 
 void MainWindow::selectAdjacentVisibleLabelFromShortcut(bool previous)
 {
-    const ActiveTextInputMode textInputMode = activeTextInputMode();
+    const EditorStateController::Mode textInputMode =
+        m_editorStateController == nullptr ? EditorStateController::Mode::None : m_editorStateController->activeMode();
     const int navigationImageIndex = m_currentImageIndex;
     const int navigationLabelIndex = m_currentLabelIndex;
-    const bool suppressTableCommitSelection = textInputMode == ActiveTextInputMode::TableTextEditor;
+    const bool suppressTableCommitSelection = textInputMode == EditorStateController::Mode::TableTextEditor;
 
     if (suppressTableCommitSelection) {
         m_suppressNextTableCommitSelection = true;
@@ -1910,7 +1857,10 @@ void MainWindow::selectAdjacentVisibleLabelFromShortcut(bool previous)
     else {
         selectNextVisibleLabelFrom(navigationImageIndex, navigationLabelIndex);
     }
-    restoreTextInputModeAfterLabelNavigation(textInputMode);
+    if (m_editorStateController != nullptr) {
+        m_editorStateController->restoreAfterNavigation(textInputMode,
+                                                        currentImage() != nullptr && m_currentLabelIndex >= 0);
+    }
     if (suppressTableCommitSelection) {
         QTimer::singleShot(0, this, [this]() { m_suppressNextTableCommitSelection = false; });
     }
@@ -1976,93 +1926,27 @@ bool MainWindow::isLabelVisibleByGroupFilter(const labelqt::core::Label& label) 
 
 QVector<int> MainWindow::selectedLabelIndexes() const
 {
-    QVector<int> labelIndexes;
-    if (m_labelView == nullptr || m_labelModel == nullptr || m_labelView->selectionModel() == nullptr) {
-        return labelIndexes;
-    }
-
-    const QModelIndexList rows = m_labelView->selectionModel()->selectedRows();
-    labelIndexes.reserve(rows.size());
-    for (const QModelIndex& row : rows) {
-        const int sourceIndex = m_labelModel->sourceIndexForRow(row.row());
-        if (sourceIndex >= 0) {
-            labelIndexes.append(sourceIndex);
-        }
-    }
-
-    std::sort(labelIndexes.begin(), labelIndexes.end());
-    labelIndexes.erase(std::unique(labelIndexes.begin(), labelIndexes.end()), labelIndexes.end());
-    return labelIndexes;
+    return m_labelSelectionController == nullptr ? QVector<int>{} : m_labelSelectionController->selectedLabelIndexes();
 }
 
 void MainWindow::selectLabelIndexes(const QVector<int>& sourceIndexes, int primarySourceIndex)
 {
     labelqt::core::ImageEntry* image = currentImage();
-    if (image == nullptr || m_labelView == nullptr || m_labelView->selectionModel() == nullptr) {
+    if (image == nullptr || m_labelSelectionController == nullptr) {
         return;
     }
-
-    QVector<int> visibleSourceIndexes;
-    visibleSourceIndexes.reserve(sourceIndexes.size());
-    for (int sourceIndex : sourceIndexes) {
-        if (sourceIndex >= 0 && sourceIndex < image->labels.size() &&
-            m_labelModel->rowForSourceIndex(sourceIndex) >= 0) {
-            visibleSourceIndexes.append(sourceIndex);
-        }
-    }
-    std::sort(visibleSourceIndexes.begin(), visibleSourceIndexes.end());
-    visibleSourceIndexes.erase(std::unique(visibleSourceIndexes.begin(), visibleSourceIndexes.end()),
-                               visibleSourceIndexes.end());
 
     const bool wasUpdatingUi = m_isUpdatingUi;
     m_isUpdatingUi = true;
-    m_labelView->clearSelection();
-
-    if (visibleSourceIndexes.isEmpty()) {
-        clearCurrentLabelSelection();
-        m_isUpdatingUi = wasUpdatingUi;
-        return;
-    }
-
-    if (!visibleSourceIndexes.contains(primarySourceIndex)) {
-        primarySourceIndex = visibleSourceIndexes.last();
-    }
-    updateCurrentLabelDetails(primarySourceIndex);
-    if (m_canvas != nullptr) {
-        m_canvas->setSelectedLabels(visibleSourceIndexes);
-    }
-
-    QItemSelection selection;
-    for (int sourceIndex : visibleSourceIndexes) {
-        const int visibleRow = m_labelModel->rowForSourceIndex(sourceIndex);
-        if (visibleRow < 0) {
-            continue;
-        }
-        selection.select(m_labelModel->index(visibleRow, LabelTableModel::NumberColumn),
-                         m_labelModel->index(visibleRow, m_labelModel->columnCount() - 1));
-        m_labelView->resizeRowToContents(visibleRow);
-        capLabelRowHeight(visibleRow);
-    }
-
-    m_labelView->selectionModel()->select(selection, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
-    const int primaryVisibleRow = m_labelModel->rowForSourceIndex(primarySourceIndex);
-    if (primaryVisibleRow >= 0) {
-        const QModelIndex primaryIndex = m_labelModel->index(primaryVisibleRow, LabelTableModel::NumberColumn);
-        m_labelView->selectionModel()->setCurrentIndex(primaryIndex,
-                                                       QItemSelectionModel::Current | QItemSelectionModel::Rows);
-        m_labelView->scrollTo(primaryIndex, QAbstractItemView::EnsureVisible);
-        focusLabelTableSelection();
-    }
-    m_labelView->viewport()->update();
+    m_labelSelectionController->selectIndexes(*image, sourceIndexes, primarySourceIndex);
     m_isUpdatingUi = wasUpdatingUi;
 }
 
 void MainWindow::refreshProjectUi()
 {
     m_isUpdatingUi = true;
-    m_imageComboBox->clear();
-    for (const labelqt::core::ImageEntry& image : project().images()) {
-        m_imageComboBox->addItem(image.name);
+    if (m_projectViewController != nullptr) {
+        m_projectViewController->refreshProject(project());
     }
     refreshGroupUi();
     m_isUpdatingUi = false;
@@ -2088,16 +1972,23 @@ void MainWindow::detachProjectViewsFromProjectData()
         m_canvas->setLabels({});
         m_canvas->setSelectedLabels({});
     }
+    if (m_projectViewController != nullptr) {
+        m_projectViewController->clear();
+    }
     m_currentLabelIndex = -1;
     m_isUpdatingUi = false;
 }
 
 void MainWindow::replaceProjectImages(QVector<labelqt::core::ImageEntry> images, const QString& preferredImageName,
-                                      int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter)
+                                      int fallbackImageIndex, int zoomPercent, QPointF normalizedCenter,
+                                      std::optional<QStringList> commentLines)
 {
     detachProjectViewsFromProjectData();
 
     project().images() = std::move(images);
+    if (commentLines.has_value()) {
+        project().setCommentLines(std::move(*commentLines));
+    }
     refreshProjectUi();
 
     int restoredImageIndex = -1;
@@ -2116,12 +2007,8 @@ void MainWindow::replaceProjectImages(QVector<labelqt::core::ImageEntry> images,
     if (restoredImageIndex >= 0) {
         m_currentImageIndex = restoredImageIndex;
         refreshImageUi();
-        if (m_canvas != nullptr) {
-            m_canvas->restoreView(zoomPercent, normalizedCenter);
-            if (m_zoomSlider != nullptr) {
-                const QSignalBlocker zoomBlocker(m_zoomSlider);
-                m_zoomSlider->setValue(m_canvas->zoomPercent());
-            }
+        if (m_imagePageViewController != nullptr) {
+            m_imagePageViewController->restoreViewAfterCurrentImageDisplayed(zoomPercent, normalizedCenter);
         }
     }
 }
@@ -2133,9 +2020,10 @@ void MainWindow::refreshImageUi()
     const labelqt::core::ImageEntry* image = currentImage();
     if (image == nullptr) {
         m_labelModel->setLabels(nullptr);
-        m_pendingImageRequestId = 0;
-        m_pendingImagePath.clear();
-        m_canvas->setImage(QString(), QImage(), {});
+        m_imagePageViewController->clear();
+        if (m_projectViewController != nullptr) {
+            m_projectViewController->refreshCurrentPage(project(), m_currentImageIndex);
+        }
         m_textEdit->clear();
         resetPendingTextEdit();
         setEditorEnabled(false);
@@ -2143,66 +2031,19 @@ void MainWindow::refreshImageUi()
         return;
     }
 
-    m_imageComboBox->setCurrentIndex(m_currentImageIndex);
-    m_previousButton->setEnabled(m_currentImageIndex > 0);
-    m_nextButton->setEnabled(m_currentImageIndex >= 0 && m_currentImageIndex < project().images().size() - 1);
-    displayCachedOrRequestCurrentImage(*image);
+    if (m_projectViewController != nullptr) {
+        m_projectViewController->refreshCurrentPage(project(), m_currentImageIndex);
+    }
+    if (m_canvas != nullptr) {
+        m_canvas->setSelectedLabels({});
+    }
+    m_imagePageViewController->displayCurrentImage();
     m_labelModel->setLabels(&project().images()[m_currentImageIndex].labels);
     resizeLabelRowsToContents();
     m_textEdit->clear();
     resetPendingTextEdit();
     setEditorEnabled(false);
     m_isUpdatingUi = false;
-}
-
-void MainWindow::displayCachedOrRequestCurrentImage(const labelqt::core::ImageEntry& image)
-{
-    const QSize targetSize = imagePreviewTargetSize();
-    if (auto cachedImage = m_imagePageCache.cachedImage(image.path, targetSize)) {
-        m_pendingImageRequestId = 0;
-        m_pendingImagePath.clear();
-        m_canvas->setImage(cachedImage->path, cachedImage->image, image.labels);
-        preloadAdjacentImages();
-        return;
-    }
-
-    m_canvas->setImageLoading(image.path, image.labels);
-    m_pendingImagePath = image.path;
-    m_pendingImageRequestId = m_imagePageCache.requestImage(image.path, targetSize);
-}
-
-void MainWindow::handleImageLoaded(quint64 requestId, const labelqt::services::ImagePageLoadResult& result)
-{
-    if (requestId == 0 || requestId != m_pendingImageRequestId || result.path != m_pendingImagePath) {
-        return;
-    }
-
-    const labelqt::core::ImageEntry* image = currentImage();
-    if (image == nullptr || image->path != result.path) {
-        return;
-    }
-
-    m_pendingImageRequestId = 0;
-    m_pendingImagePath.clear();
-    m_canvas->setImage(result.path, result.image, image->labels);
-    preloadAdjacentImages();
-}
-
-void MainWindow::preloadAdjacentImages()
-{
-    if (project().isEmpty() || m_currentImageIndex < 0) {
-        return;
-    }
-
-    QStringList paths;
-    const QVector<labelqt::core::ImageEntry>& images = project().images();
-    if (m_currentImageIndex > 0) {
-        paths.append(images.at(m_currentImageIndex - 1).path);
-    }
-    if (m_currentImageIndex + 1 < images.size()) {
-        paths.append(images.at(m_currentImageIndex + 1).path);
-    }
-    m_imagePageCache.preloadImages(paths, imagePreviewTargetSize());
 }
 
 QSize MainWindow::imagePreviewTargetSize() const
@@ -2217,7 +2058,7 @@ void MainWindow::refreshCanvasLabels()
         return;
     }
 
-    m_canvas->setLabels(image->labels);
+    m_imagePageViewController->refreshCurrentLabels();
 }
 
 void MainWindow::refreshCurrentLabelUi()
@@ -2417,17 +2258,24 @@ void MainWindow::restoreProjectSessionState()
     m_currentImageIndex = imageIndex;
     m_currentLabelIndex = -1;
     refreshImageUi();
-    m_canvas->restoreView(state.zoomPercent, state.viewCenter);
-    {
-        const QSignalBlocker zoomBlocker(m_zoomSlider);
-        m_zoomSlider->setValue(m_canvas->zoomPercent());
+    if (m_imagePageViewController != nullptr) {
+        m_imagePageViewController->restoreViewAfterCurrentImageDisplayed(state.zoomPercent, state.viewCenter);
     }
 
     const labelqt::core::ImageEntry* image = currentImage();
-    if (image != nullptr && state.selectedLabelIndex >= 0 && state.selectedLabelIndex < image->labels.size() &&
-        !image->labels.at(state.selectedLabelIndex).isDeleted() &&
-        m_labelModel->rowForSourceIndex(state.selectedLabelIndex) >= 0) {
-        selectLabel(state.selectedLabelIndex);
+    QVector<int> selectedLabelIndexes;
+    selectedLabelIndexes.reserve(state.selectedLabelIndexes.size());
+    for (int labelIndex : state.selectedLabelIndexes) {
+        if (image != nullptr && labelIndex >= 0 && labelIndex < image->labels.size() &&
+            !image->labels.at(labelIndex).isDeleted() && m_labelModel->rowForSourceIndex(labelIndex) >= 0) {
+            selectedLabelIndexes.append(labelIndex);
+        }
+    }
+    if (!selectedLabelIndexes.isEmpty()) {
+        const int primaryLabelIndex = selectedLabelIndexes.contains(state.selectedLabelIndex)
+                                          ? state.selectedLabelIndex
+                                          : selectedLabelIndexes.last();
+        selectLabelIndexes(selectedLabelIndexes, primaryLabelIndex);
     }
 }
 
@@ -2445,6 +2293,7 @@ void MainWindow::saveProjectSessionState() const
     state.zoomPercent = m_canvas->zoomPercent();
     state.viewCenter = m_canvas->normalizedViewCenter();
     state.selectedLabelIndex = m_currentLabelIndex;
+    state.selectedLabelIndexes = selectedLabelIndexes();
     m_sessionStateStore.saveProjectSession(project().filePath(), state);
 }
 

@@ -51,8 +51,7 @@ signals:
     void scriptsChanged(const QVector<labelqt::services::AutomationScript>& scripts);
     void discoveryWarningsFound(const QStringList& warnings);
     void runningChanged(bool running);
-    void operationsReady(const QString& scriptName,
-                         const QVector<labelqt::services::AutomationOperation>& operations);
+    void operationsReady(const QString& scriptName, const QVector<labelqt::services::AutomationOperation>& operations);
     void statusMessageRequested(const QString& message, int timeoutMs);
 
 private:
@@ -60,11 +59,10 @@ private:
     void updateMenuEnabledState();
     void runScript(const labelqt::services::AutomationScript& script);
     void finishScript(labelqt::services::AutomationRunner* runner, AutomationRunDialog* dialog,
-                      labelqt::services::AutomationScript script,
-                      const labelqt::services::AutomationRunResult& result);
+                      labelqt::services::AutomationScript script, const labelqt::services::AutomationRunResult& result);
     void setRunning(bool running);
 
-    QWidget* m_window{nullptr};
+    QPointer<QWidget> m_window;
     QMenu* m_menu{nullptr};
     QAction* m_cancelAction{nullptr};
     Callbacks m_callbacks;

@@ -25,9 +25,9 @@ ProjectMergePlan ProjectWorkflowController::createMergePlan(const QStringList& p
 }
 
 labelqt::core::Project ProjectWorkflowController::mergedProject(ProjectMergePlan mergePlan,
-                                                                   const QVector<int>& selectedCandidateIndexes,
-                                                                   const QString& savePath,
-                                                                   const QVector<int>& pageOrder) const
+                                                                const QVector<int>& selectedCandidateIndexes,
+                                                                const QString& savePath,
+                                                                const QVector<int>& pageOrder) const
 {
     return ProjectMergeService::mergedProjectWithSelections(std::move(mergePlan), selectedCandidateIndexes, savePath,
                                                             pageOrder);
@@ -53,29 +53,33 @@ bool ProjectWorkflowController::applyPageOrder(const QVector<int>& order, const 
     }
 
     const QVector<labelqt::core::ImageEntry> oldImages = m_project.images();
-    const QVector<labelqt::core::ImageEntry> newImages =
-        ProjectPageOrderService::reorderedImages(m_project.images(), order);
+    const QStringList oldCommentLines = m_project.commentLines();
+
+    labelqt::core::Project reorderedProject = m_project;
+    ProjectPageOrderService::reorderImages(reorderedProject, order);
+    const QVector<labelqt::core::ImageEntry> newImages = reorderedProject.images();
+    const QStringList newCommentLines = reorderedProject.commentLines();
 
     if (m_replaceImages) {
         m_replaceImages(newImages, viewState.currentImageName, viewState.fallbackImageIndex, viewState.zoomPercent,
-                        viewState.normalizedCenter);
+                        viewState.normalizedCenter, newCommentLines);
     }
 
     m_undoStack.push(
         m_reorderPagesText, m_reorderPagesText, m_reorderPagesText,
-        [this, oldImages, viewState]() {
+        [this, oldImages, viewState, oldCommentLines]() {
             if (m_replaceImages) {
                 m_replaceImages(oldImages, viewState.currentImageName, viewState.fallbackImageIndex,
-                                viewState.zoomPercent, viewState.normalizedCenter);
+                                viewState.zoomPercent, viewState.normalizedCenter, oldCommentLines);
             }
             if (m_dirty) {
                 m_dirty();
             }
         },
-        [this, newImages, viewState]() {
+        [this, newImages, viewState, newCommentLines]() {
             if (m_replaceImages) {
                 m_replaceImages(newImages, viewState.currentImageName, viewState.fallbackImageIndex,
-                                viewState.zoomPercent, viewState.normalizedCenter);
+                                viewState.zoomPercent, viewState.normalizedCenter, newCommentLines);
             }
             if (m_dirty) {
                 m_dirty();

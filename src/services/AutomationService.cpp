@@ -1,6 +1,8 @@
 #include "services/AutomationService.h"
 
 #include "core/CommandLineUtils.h"
+#include "services/AutomationManifestParser.h"
+#include "services/AutomationPythonResolver.h"
 #include "services/SecretStore.h"
 
 #include <QCoreApplication>
@@ -77,8 +79,7 @@ QJsonObject projectToJson(const labelqt::core::Project& project, int currentImag
     };
 }
 
-QJsonObject selectionToJson(const labelqt::core::Project& project, int currentImageIndex,
-                            AutomationSelection selection)
+QJsonObject selectionToJson(const labelqt::core::Project& project, int currentImageIndex, AutomationSelection selection)
 {
     const bool hasSelection = selection.hasSelection && currentImageIndex >= 0 &&
                               currentImageIndex < project.images().size() && selection.normalizedRect.width() > 0.0 &&
@@ -164,101 +165,11 @@ QJsonObject inputPayload(const labelqt::core::Project& project, int currentImage
     };
 }
 
-QString stringFromJsonValue(const QJsonValue& value)
-{
-    if (value.isString()) {
-        return value.toString();
-    }
-    if (value.isBool()) {
-        return value.toBool() ? QStringLiteral("true") : QStringLiteral("false");
-    }
-    if (value.isDouble()) {
-        return QString::number(value.toDouble());
-    }
-    return {};
-}
-
 QString commandDisplayText(const QString& program, const QStringList& arguments)
 {
     QStringList command = {program};
     command.append(arguments);
     return labelqt::core::joinCommandLine(command);
-}
-
-void appendPythonCommand(QVector<AutomationPythonCommand>* commands, const QString& program,
-                         const QStringList& arguments)
-{
-    if (commands == nullptr || program.trimmed().isEmpty()) {
-        return;
-    }
-
-    AutomationPythonCommand command;
-    command.program = program.trimmed();
-    command.arguments = arguments;
-    command.displayText = commandDisplayText(command.program, command.arguments);
-    const auto duplicate = std::find_if(commands->cbegin(), commands->cend(), [&command](const auto& candidate) {
-        return candidate.program == command.program && candidate.arguments == command.arguments;
-    });
-    if (duplicate == commands->cend()) {
-        commands->append(command);
-    }
-}
-
-void appendPythonCommandString(QVector<AutomationPythonCommand>* commands, const QString& commandText,
-                               const QStringList& extraArguments = {})
-{
-    const QString trimmedCommand = commandText.trimmed();
-    if (trimmedCommand.isEmpty()) {
-        return;
-    }
-
-    if (QFileInfo::exists(trimmedCommand)) {
-        appendPythonCommand(commands, trimmedCommand, extraArguments);
-        return;
-    }
-
-    QStringList parts = QProcess::splitCommand(trimmedCommand);
-    if (parts.isEmpty()) {
-        return;
-    }
-
-    const QString program = parts.takeFirst();
-    parts.append(extraArguments);
-    appendPythonCommand(commands, program, parts);
-}
-
-QVector<AutomationPythonCommand> pythonProgramCandidates(const AutomationPythonSettings& settings)
-{
-    QVector<AutomationPythonCommand> commands;
-    if (!settings.command.trimmed().isEmpty()) {
-        appendPythonCommandString(&commands, settings.command, settings.arguments);
-        return commands;
-    }
-
-    const QByteArray configuredPython = qgetenv("LABELQT_PYTHON");
-    if (!configuredPython.trimmed().isEmpty()) {
-        appendPythonCommandString(&commands, QString::fromLocal8Bit(configuredPython));
-    }
-
-    const QString bundledPython = QDir(QCoreApplication::applicationDirPath()).filePath(
-#ifdef Q_OS_WIN
-        QStringLiteral("python/python.exe")
-#else
-        QStringLiteral("python/bin/python3")
-#endif
-    );
-    if (QFileInfo::exists(bundledPython)) {
-        appendPythonCommand(&commands, bundledPython, {});
-    }
-
-#ifdef Q_OS_WIN
-    appendPythonCommand(&commands, QStringLiteral("python"), {});
-    appendPythonCommand(&commands, QStringLiteral("py"), {});
-#else
-    appendPythonCommand(&commands, QStringLiteral("python3"), {});
-    appendPythonCommand(&commands, QStringLiteral("python"), {});
-#endif
-    return commands;
 }
 
 bool writeJsonFile(const QString& path, const QJsonObject& object, QString* error)
@@ -294,129 +205,6 @@ bool readJsonFile(const QString& path, QJsonObject* object, QString* error)
     }
     *object = document.object();
     return true;
-}
-
-QString pythonUnavailableError(const QVector<AutomationPythonCommand>& candidates, const QString& lastError)
-{
-    QStringList triedPrograms;
-    triedPrograms.reserve(candidates.size());
-    for (const AutomationPythonCommand& command : candidates) {
-        triedPrograms.append(command.displayText);
-    }
-    // clang-format off
-    return QCoreApplication::translate("AutomationService", "Python was not found. Install Python 3, configure the Python command in Preferences, or place a portable Python runtime next to LabelQt.\n\nTried: %1\nLast error: %2")
-        .arg(triedPrograms.join(QStringLiteral(", ")), lastError);
-    // clang-format on
-}
-
-QVector<AutomationParameter> parametersFromManifest(const QJsonObject& manifest)
-{
-    QVector<AutomationParameter> parameters;
-    const QJsonArray parameterArray = manifest.value(QStringLiteral("parameters")).toArray();
-    for (const QJsonValue& value : parameterArray) {
-        const QJsonObject object = value.toObject();
-        const QString key = object.value(QStringLiteral("key")).toString().trimmed();
-        if (key.isEmpty()) {
-            continue;
-        }
-
-        AutomationParameter parameter;
-        parameter.key = key;
-        parameter.label = object.value(QStringLiteral("label")).toString(key);
-        parameter.type = object.value(QStringLiteral("type")).toString(QStringLiteral("text"));
-        parameter.defaultValue = stringFromJsonValue(object.value(QStringLiteral("default")));
-        parameter.secretKey = object.value(QStringLiteral("secretKey")).toString(key);
-        parameter.secretService = object.value(QStringLiteral("service")).toString(QStringLiteral("LabelQt"));
-        parameter.secretAccount = object.value(QStringLiteral("account")).toString(parameter.secretKey);
-        parameter.secretEnvironment = object.value(QStringLiteral("environment")).toString();
-        const QJsonArray options = object.value(QStringLiteral("options")).toArray();
-        for (const QJsonValue& option : options) {
-            const QString optionText = stringFromJsonValue(option).trimmed();
-            if (!optionText.isEmpty()) {
-                parameter.options.append(optionText);
-            }
-        }
-        parameters.append(parameter);
-    }
-    return parameters;
-}
-
-QVector<AutomationSecret> secretsFromManifest(const QJsonObject& manifest)
-{
-    QVector<AutomationSecret> secrets;
-    const QJsonArray secretArray = manifest.value(QStringLiteral("secrets")).toArray();
-    for (const QJsonValue& value : secretArray) {
-        const QJsonObject object = value.toObject();
-        const QString key = object.value(QStringLiteral("key")).toString().trimmed();
-        const QString environment = object.value(QStringLiteral("environment")).toString().trimmed();
-        if (key.isEmpty() || environment.isEmpty()) {
-            continue;
-        }
-
-        AutomationSecret secret;
-        secret.key = key;
-        secret.label = object.value(QStringLiteral("label")).toString(key);
-        secret.service = object.value(QStringLiteral("service")).toString(QStringLiteral("LabelQt"));
-        secret.account = object.value(QStringLiteral("account")).toString(key);
-        secret.environment = environment;
-        secret.required = object.value(QStringLiteral("required")).toBool(true);
-        secrets.append(secret);
-    }
-    return secrets;
-}
-
-QMap<QString, QString> environmentFromManifest(const QJsonObject& manifest)
-{
-    QMap<QString, QString> environment;
-    const QJsonObject object = manifest.value(QStringLiteral("environment")).toObject();
-    for (auto it = object.constBegin(); it != object.constEnd(); ++it) {
-        if (!it.value().isString() || it.key().trimmed().isEmpty()) {
-            continue;
-        }
-        environment.insert(it.key(), it.value().toString());
-    }
-    return environment;
-}
-
-QVector<AutomationOperation> operationsFromOutput(const QJsonObject& output)
-{
-    QVector<AutomationOperation> operations;
-    const QJsonArray operationArray = output.value(QStringLiteral("operations")).toArray();
-    for (const QJsonValue& value : operationArray) {
-        const QJsonObject object = value.toObject();
-        const QString type = object.value(QStringLiteral("type")).toString().trimmed();
-        if (type.isEmpty()) {
-            continue;
-        }
-
-        AutomationOperation operation;
-        operation.type = type;
-        operation.page = object.value(QStringLiteral("page")).toString();
-        operation.labelIndex = object.value(QStringLiteral("labelIndex")).toInt(-1);
-        operation.group = object.value(QStringLiteral("group")).toString();
-        operation.text = object.value(QStringLiteral("text")).toString();
-        operation.x = object.value(QStringLiteral("x")).toDouble(0.0);
-        operation.y = object.value(QStringLiteral("y")).toDouble(0.0);
-        operations.append(operation);
-    }
-    return operations;
-}
-
-AutomationRunResult resultFromOutput(const QJsonObject& output)
-{
-    AutomationRunResult result;
-    result.success = true;
-    result.summary = output.value(QStringLiteral("summary")).toString();
-    result.operations = operationsFromOutput(output);
-    result.quiet = output.value(QStringLiteral("quiet")).toBool(false);
-
-    const QJsonObject resultObject = output.value(QStringLiteral("result")).toObject();
-    result.resultTitle = resultObject.value(QStringLiteral("title")).toString();
-    result.resultText = resultObject.value(QStringLiteral("text")).toString();
-    if (result.resultText.isEmpty() && output.contains(QStringLiteral("message"))) {
-        result.resultText = output.value(QStringLiteral("message")).toString();
-    }
-    return result;
 }
 
 QString scriptIdForDirectory(const QFileInfo& scriptDirectory, bool official)
@@ -481,9 +269,9 @@ bool appendScriptFromManifest(QVector<AutomationScript>* scripts, const QFileInf
     script.directoryName = directoryManifest.value(QStringLiteral("name")).toString(scriptDirectory.fileName());
     script.directoryPath = scriptDirectory.absoluteFilePath();
     script.entryPath = entryPath;
-    script.parameters = parametersFromManifest(scriptManifest);
-    script.secrets = secretsFromManifest(scriptManifest);
-    script.environment = environmentFromManifest(scriptManifest);
+    script.parameters = AutomationManifestParser::parametersFromManifest(scriptManifest);
+    script.secrets = AutomationManifestParser::secretsFromManifest(scriptManifest);
+    script.environment = AutomationManifestParser::environmentFromManifest(scriptManifest);
     script.official = official;
     script.directoryOrder = directoryIndex;
     script.scriptOrder = scriptIndex;
@@ -640,7 +428,7 @@ void AutomationRunner::start(const AutomationScript& script, const labelqt::core
     m_script = script;
     m_environmentOverrides = environmentOverrides;
     m_pythonSettings = std::move(pythonSettings);
-    m_pythonCandidates = pythonProgramCandidates(m_pythonSettings);
+    m_pythonCandidates = AutomationPythonResolver::candidates(m_pythonSettings);
     m_candidateIndex = 0;
     m_lastFailure = {};
     m_cancelRequested = false;
@@ -705,7 +493,7 @@ void AutomationRunner::startNextCandidate()
         }
     }
 
-    m_lastFailure.error = pythonUnavailableError(m_pythonCandidates, m_lastFailure.error);
+    m_lastFailure.error = AutomationPythonResolver::unavailableError(m_pythonCandidates, m_lastFailure.error);
     finishWithResult(m_lastFailure);
 }
 
@@ -754,8 +542,9 @@ void AutomationRunner::handleStarted()
         const QString phaseText = m_phase == RunPhase::InstallRequirements
                                       ? QCoreApplication::translate("AutomationService", "Installing requirements")
                                       : QCoreApplication::translate("AutomationService", "Running script");
-        emit standardOutputReceived(QStringLiteral("%1: %2\n")
-                                        .arg(phaseText, commandDisplayText(m_process->program(), m_process->arguments())));
+        emit standardOutputReceived(
+            QStringLiteral("%1: %2\n")
+                .arg(phaseText, commandDisplayText(m_process->program(), m_process->arguments())));
     }
 }
 
@@ -801,7 +590,7 @@ void AutomationRunner::handleFinished(int exitCode, QProcess::ExitStatus exitSta
         return;
     }
 
-    AutomationRunResult result = resultFromOutput(output);
+    AutomationRunResult result = AutomationManifestParser::resultFromOutput(output);
     result.standardOutput = m_lastFailure.standardOutput;
     result.standardError = m_lastFailure.standardError;
     finishWithResult(result);

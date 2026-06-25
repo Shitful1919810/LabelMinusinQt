@@ -470,6 +470,21 @@ Last error: %2</source>
         <translation>下一頁</translation>
     </message>
     <message>
+        <location filename="../src/ui/MainWindow.cpp" line="2096"/>
+        <source>source #%1</source>
+        <translation>來源 #%1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/MainWindow.cpp" line="2099"/>
+        <source>unknown</source>
+        <translation>未知</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/MainWindow.cpp" line="2102"/>
+        <source>Source: %1</source>
+        <translation>來源：%1</translation>
+    </message>
+    <message>
         <location filename="../src/ui/MainWindow.cpp" line="354"/>
         <source>Previous page</source>
         <translation>上一頁</translation>
@@ -633,6 +648,12 @@ Last error: %2</source>
         <location filename="../src/ui/MainWindow.cpp" line="869"/>
         <source>Loaded recent project: %1</source>
         <translation>已載入最近專案：%1</translation>
+    </message>
+    <message numerus="yes">
+        <source>%n image file(s) are missing.</source>
+        <translation>
+            <numerusform>%n 張圖片遺失。</numerusform>
+        </translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="889"/>
@@ -1555,6 +1576,98 @@ Last error: %2</source>
     <message>
         <source>Python executable (python python3 python*);;All files (*)</source>
         <translation>Python 可執行檔 (python python3 python*);;所有檔案 (*)</translation>
+    </message>
+</context>
+<context>
+    <name>AutomationShortcutEditorWidget</name>
+    <message>
+        <source>Assign shortcuts to automation scripts. Leave a shortcut empty to disable it.</source>
+        <translation>為自動化腳本指派快捷鍵。留空表示停用。</translation>
+    </message>
+    <message>
+        <source>Automation script</source>
+        <translation>自動化腳本</translation>
+    </message>
+    <message>
+        <source>Shortcut</source>
+        <translation>快捷鍵</translation>
+    </message>
+    <message>
+        <source>Shortcut %1 is assigned to both %2 and %3.</source>
+        <translation>快捷鍵 %1 同時指派給了 %2 和 %3。</translation>
+    </message>
+    <message>
+        <source>Official</source>
+        <translation>官方</translation>
+    </message>
+    <message>
+        <source>Custom</source>
+        <translation>自訂</translation>
+    </message>
+    <message>
+        <source>%1 / %2 / %3</source>
+        <translation>%1 / %2 / %3</translation>
+    </message>
+    <message>
+        <source>Missing script: %1</source>
+        <translation>缺少腳本：%1</translation>
+    </message>
+</context>
+<context>
+    <name>GroupStyleEditorWidget</name>
+    <message>
+        <source>Color</source>
+        <translation>色彩</translation>
+    </message>
+    <message>
+        <source>Marker diameter</source>
+        <translation>標記直徑</translation>
+    </message>
+    <message>
+        <source>Font size</source>
+        <translation>字型大小</translation>
+    </message>
+    <message>
+        <source>Marker style</source>
+        <translation>標記形狀</translation>
+    </message>
+    <message>
+        <source>Add group style</source>
+        <translation>新增群組樣式</translation>
+    </message>
+    <message>
+        <source>Remove selected styles</source>
+        <translation>刪除選取樣式</translation>
+    </message>
+    <message>
+        <source>Circle</source>
+        <translation>圓形</translation>
+    </message>
+    <message>
+        <source>Square</source>
+        <translation>方形</translation>
+    </message>
+    <message>
+        <source>Choose group color</source>
+        <translation>選擇群組色彩</translation>
+    </message>
+</context>
+<context>
+    <name>ProjectViewController</name>
+    <message>
+        <location filename="../src/ui/ProjectViewController.cpp" line="93"/>
+        <source>source #%1</source>
+        <translation>來源 #%1</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ProjectViewController.cpp" line="96"/>
+        <source>unknown</source>
+        <translation>未知</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ProjectViewController.cpp" line="99"/>
+        <source>Source: %1</source>
+        <translation>來源：%1</translation>
     </message>
 </context>
 <context>

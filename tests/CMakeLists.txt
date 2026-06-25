@@ -1,4 +1,4 @@
-find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Test)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Gui Test Widgets)
 
 qt_add_executable(LabelQtTests
     LabelTests.cpp
@@ -9,8 +9,15 @@ qt_add_executable(LabelQtTests
     ../src/core/Project.cpp
     ../src/services/AutomationOperationApplier.cpp
     ../src/services/LabelNavigator.cpp
+    ../src/services/PageSourceInfoService.cpp
+    ../src/services/ProjectImageValidator.cpp
     ../src/services/ProjectMergeService.cpp
     ../src/services/ProjectPageOrderService.cpp
+    ../src/services/SessionStateStore.cpp
+    ../src/ui/CanvasLabelItems.cpp
+    ../src/ui/ImageCanvas.cpp
+    ../src/ui/LabelTableModel.cpp
+    ../src/ui/PageOrderListModel.cpp
 )
 
 target_include_directories(LabelQtTests
@@ -23,8 +30,10 @@ target_link_libraries(LabelQtTests
         Qt6::Core
         Qt6::Gui
         Qt6::Test
+        Qt6::Widgets
 )
 
 labelqt_enable_warnings(LabelQtTests)
 
 add_test(NAME LabelQtTests COMMAND $<TARGET_FILE:LabelQtTests>)
+set_tests_properties(LabelQtTests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

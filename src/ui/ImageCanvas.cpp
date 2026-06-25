@@ -1,7 +1,8 @@
 #include "ui/ImageCanvas.h"
 
+#include "ui/CanvasLabelItems.h"
+
 #include <QApplication>
-#include <QBrush>
 #include <QClipboard>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
@@ -14,141 +15,11 @@
 #include <QPen>
 #include <QPixmap>
 #include <QScrollBar>
-#include <QTextDocument>
 #include <QWheelEvent>
 
 #include <algorithm>
 #include <cmath>
 #include <utility>
-
-namespace {
-constexpr int markerType = QGraphicsItem::UserType + 100;
-
-QString htmlEscapedWithLineBreaks(QString text)
-{
-    text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
-    text.replace(QLatin1Char('\r'), QLatin1Char('\n'));
-
-    QStringList escapedLines;
-    const QStringList lines = text.split(QLatin1Char('\n'));
-    escapedLines.reserve(lines.size());
-    for (const QString& line : lines) {
-        escapedLines.append(line.toHtmlEscaped());
-    }
-    return escapedLines.join(QStringLiteral("<br/>"));
-}
-
-QString labelBubbleHtml(int labelIndex, const QString& text, const QColor& color)
-{
-    return QStringLiteral("<span style=\"color:%1; font-weight:600;\">#%2</span> : %3")
-        .arg(color.name(), QString::number(labelIndex + 1), htmlEscapedWithLineBreaks(text));
-}
-
-class LabelMarkerItem final : public QGraphicsItem {
-public:
-    LabelMarkerItem(int labelIndex, bool selected, labelqt::core::LabelGroupStyle style,
-                    QGraphicsItem* parent = nullptr)
-        : QGraphicsItem(parent), m_labelIndex(labelIndex), m_selected(selected), m_style(std::move(style))
-    {
-        setFlag(QGraphicsItem::ItemIgnoresTransformations);
-        setZValue(10.0);
-    }
-
-    int type() const override
-    {
-        return markerType;
-    }
-
-    int labelIndex() const noexcept
-    {
-        return m_labelIndex;
-    }
-
-    QRectF boundingRect() const override
-    {
-        const double radius = m_style.markerDiameter / 2.0;
-        return QRectF(-radius, -radius, m_style.markerDiameter, m_style.markerDiameter);
-    }
-
-    void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override
-    {
-        painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->setPen(QPen(m_selected ? QColor(46, 103, 230) : Qt::white, m_selected ? 3.0 : 1.5));
-        painter->setBrush(m_style.groupColor.isValid() ? m_style.groupColor : Qt::black);
-        const QRectF shapeRect = boundingRect().adjusted(1.0, 1.0, -1.0, -1.0);
-        if (m_style.markerShape == labelqt::core::MarkerShape::Square) {
-            painter->drawRect(shapeRect);
-        }
-        else {
-            painter->drawEllipse(shapeRect);
-        }
-
-        painter->setPen(Qt::white);
-        QFont font = painter->font();
-        font.setPointSizeF(m_style.fontPointSize);
-        font.setBold(true);
-        painter->setFont(font);
-        const QString number = QString::number(m_labelIndex + 1);
-        painter->drawText(boundingRect(), Qt::AlignCenter, number);
-    }
-
-private:
-    int m_labelIndex;
-    bool m_selected;
-    labelqt::core::LabelGroupStyle m_style;
-};
-
-class LabelTextBubbleItem final : public QGraphicsItem {
-public:
-    LabelTextBubbleItem(int labelIndex, QString text, labelqt::core::LabelGroupStyle style, QFont bubbleFont,
-                        double opacity, QGraphicsItem* parent = nullptr)
-        : QGraphicsItem(parent), m_labelIndex(labelIndex), m_text(std::move(text)), m_style(std::move(style)),
-          m_bubbleFont(std::move(bubbleFont)), m_opacity(opacity)
-    {
-        setFlag(QGraphicsItem::ItemIgnoresTransformations);
-        setZValue(11.0);
-        rebuildDocument();
-    }
-
-    QRectF boundingRect() const override
-    {
-        const QSizeF textSize = m_document.size();
-        return QRectF(m_style.markerDiameter / 2.0 + 8.0, -textSize.height() / 2.0 - 6.0, textSize.width() + 16.0,
-                      textSize.height() + 12.0);
-    }
-
-    void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override
-    {
-        painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->setOpacity(m_opacity);
-        const QPalette palette = QApplication::palette();
-        painter->setPen(QPen(palette.color(QPalette::Mid), 1.0));
-        painter->setBrush(palette.color(QPalette::ToolTipBase));
-        painter->drawRoundedRect(boundingRect(), 3.0, 3.0);
-
-        painter->save();
-        painter->translate(boundingRect().topLeft() + QPointF(8.0, 6.0));
-        m_document.drawContents(painter);
-        painter->restore();
-    }
-
-private:
-    void rebuildDocument()
-    {
-        const QColor color = m_style.groupColor.isValid() ? m_style.groupColor : QColor(Qt::black);
-        m_document.setDefaultFont(m_bubbleFont);
-        m_document.setDocumentMargin(0.0);
-        m_document.setHtml(labelBubbleHtml(m_labelIndex, m_text, color));
-    }
-
-    int m_labelIndex;
-    QString m_text;
-    labelqt::core::LabelGroupStyle m_style;
-    QFont m_bubbleFont;
-    double m_opacity{1.0};
-    QTextDocument m_document;
-};
-} // namespace
 
 ImageCanvas::ImageCanvas(QWidget* parent) : QGraphicsView(parent)
 {
@@ -197,16 +68,7 @@ void ImageCanvas::setInteractionMode(InteractionMode mode)
     }
 
     m_interactionMode = mode;
-    m_pendingLabelCreate = false;
-    m_pendingLabelSelect = false;
-    m_pendingLabelSelectIndex = -1;
-    m_pendingLabelSelectModifiers = Qt::NoModifier;
-    m_pendingLabelMove = false;
-    m_pendingLabelMoveIndex = -1;
-    m_isMovingLabel = false;
-    m_movingLabelIndex = -1;
-    m_isSelectingRegion = false;
-    m_isMiddleButtonPanning = false;
+    resetPointerInteraction();
     hideHoveredLabelToolTip();
     setDragMode(m_interactionMode == InteractionMode::Label ? QGraphicsView::ScrollHandDrag : QGraphicsView::NoDrag);
     updateCursorForInteractionMode();
@@ -229,11 +91,7 @@ void ImageCanvas::setReadOnly(bool readOnly)
     }
 
     m_readOnly = readOnly;
-    m_pendingLabelCreate = false;
-    m_pendingLabelMove = false;
-    m_pendingLabelMoveIndex = -1;
-    m_isMovingLabel = false;
-    m_movingLabelIndex = -1;
+    resetPointerInteraction();
 }
 
 bool ImageCanvas::isReadOnly() const noexcept
@@ -269,10 +127,17 @@ void ImageCanvas::setImage(const QString& path, const QImage& image, const QVect
     hideHoveredLabelToolTip();
     m_imagePath = path;
     m_labels = labels;
-    m_selectedLabels.clear();
+    for (auto it = m_selectedLabels.begin(); it != m_selectedLabels.end();) {
+        if (*it < 0 || *it >= m_labels.size()) {
+            it = m_selectedLabels.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
     m_labelTextPreviews.clear();
     m_normalizedSelectionRect = {};
-    m_isSelectingRegion = false;
+    resetPointerInteraction();
 
     clearSceneItems();
     if (image.isNull()) {
@@ -301,7 +166,7 @@ void ImageCanvas::setImageLoading(const QString& path, const QVector<labelqt::co
     m_selectedLabels.clear();
     m_labelTextPreviews.clear();
     m_normalizedSelectionRect = {};
-    m_isSelectingRegion = false;
+    resetPointerInteraction();
 
     clearSceneItems();
     showSceneMessage(tr("Loading image..."));
@@ -504,16 +369,9 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::MiddleButton) {
         setFocus();
-        m_isMiddleButtonPanning = true;
+        resetPointerInteraction();
+        m_pointerState = PointerInteractionState::MiddleButtonPanning;
         m_lastMiddlePanPosition = event->pos();
-        m_pendingLabelCreate = false;
-        m_pendingLabelSelect = false;
-        m_pendingEmptyClick = false;
-        m_pendingLabelSelectIndex = -1;
-        m_pendingLabelSelectModifiers = Qt::NoModifier;
-        m_pendingLabelMove = false;
-        m_pendingLabelMoveIndex = -1;
-        m_isSelectingRegion = false;
         hideHoveredLabelToolTip();
         viewport()->setCursor(Qt::ClosedHandCursor);
         event->accept();
@@ -529,28 +387,26 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
 
     if (event->button() == Qt::LeftButton) {
         setFocus();
-        m_pendingLabelCreate = false;
-        m_pendingLabelSelect = false;
-        m_pendingEmptyClick = false;
-        m_pendingLabelSelectIndex = -1;
-        m_pendingLabelSelectModifiers = Qt::NoModifier;
-        m_pendingLabelMove = false;
-        m_pendingLabelMoveIndex = -1;
+        resetPointerInteraction();
         bool pressedMarker = false;
 
         QGraphicsItem* item = itemAt(event->pos());
         while (item != nullptr) {
-            if (item->type() == markerType) {
-                auto* marker = static_cast<LabelMarkerItem*>(item);
+            if (item->type() == canvasLabelMarkerItemType()) {
+                auto* marker = static_cast<CanvasLabelMarkerItem*>(item);
                 pressedMarker = true;
                 const int labelIndex = marker->labelIndex();
-                m_pendingLabelSelect = true;
                 m_pendingLabelSelectIndex = labelIndex;
                 m_pendingLabelSelectModifiers = event->modifiers();
                 m_labelSelectPressPosition = event->pos();
                 if (!m_readOnly && hasMoveLabelModifiers(event->modifiers())) {
-                    m_pendingLabelMove = true;
+                    m_pointerState = PointerInteractionState::PendingLabelMove;
                     m_pendingLabelMoveIndex = labelIndex;
+                    event->accept();
+                    return;
+                }
+                else {
+                    m_pointerState = PointerInteractionState::PendingLabelSelect;
                 }
                 break;
             }
@@ -558,10 +414,10 @@ void ImageCanvas::mousePressEvent(QMouseEvent* event)
         }
 
         if (!pressedMarker) {
-            m_pendingEmptyClick = true;
+            m_pointerState = PointerInteractionState::PendingEmptyClick;
             m_emptyClickPressPosition = event->pos();
             if (!m_readOnly && m_pixmapItem != nullptr && m_pixmapItem->contains(mapToScene(event->pos()))) {
-                m_pendingLabelCreate = true;
+                m_pointerState = PointerInteractionState::PendingLabelCreate;
                 m_labelCreatePressPosition = event->pos();
             }
         }
@@ -579,12 +435,12 @@ void ImageCanvas::mouseDoubleClickEvent(QMouseEvent* event)
 
     if (event->button() == Qt::LeftButton && !m_readOnly) {
         setFocus();
-        m_pendingLabelCreate = false;
+        resetPointerInteraction();
 
         QGraphicsItem* item = itemAt(event->pos());
         while (item != nullptr) {
-            if (item->type() == markerType) {
-                auto* marker = static_cast<LabelMarkerItem*>(item);
+            if (item->type() == canvasLabelMarkerItemType()) {
+                auto* marker = static_cast<CanvasLabelMarkerItem*>(item);
                 const int labelIndex = marker->labelIndex();
                 emit labelSelected(labelIndex);
                 emit labelTextEditRequested(labelIndex, event->globalPosition().toPoint());
@@ -601,7 +457,7 @@ void ImageCanvas::mouseDoubleClickEvent(QMouseEvent* event)
 
 void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
 {
-    if (m_isMiddleButtonPanning) {
+    if (m_pointerState == PointerInteractionState::MiddleButtonPanning) {
         const QPoint delta = event->pos() - m_lastMiddlePanPosition;
         horizontalScrollBar()->setValue(horizontalScrollBar()->value() - delta.x());
         verticalScrollBar()->setValue(verticalScrollBar()->value() - delta.y());
@@ -612,27 +468,25 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    if (m_interactionMode == InteractionMode::Selection && m_isSelectingRegion) {
+    if (m_interactionMode == InteractionMode::Selection && m_pointerState == PointerInteractionState::SelectingRegion) {
         updateSelection(event->pos());
         event->accept();
         return;
     }
 
-    if (!m_readOnly && m_isMovingLabel && m_pixmapItem != nullptr && m_movingLabelIndex >= 0 &&
-        m_movingLabelIndex < m_labels.size()) {
+    if (!m_readOnly && m_pointerState == PointerInteractionState::MovingLabel && m_pixmapItem != nullptr &&
+        m_movingLabelIndex >= 0 && m_movingLabelIndex < m_labels.size()) {
         m_labels[m_movingLabelIndex].setPosition(normalizedPositionFromScene(mapToScene(event->pos())));
         rebuildLabelItems();
         event->accept();
         return;
     }
 
-    if (!m_readOnly && m_pendingLabelMove &&
+    if (!m_readOnly && m_pointerState == PointerInteractionState::PendingLabelMove &&
         (event->pos() - m_labelSelectPressPosition).manhattanLength() >= QApplication::startDragDistance()) {
-        m_isMovingLabel = true;
+        m_pointerState = PointerInteractionState::MovingLabel;
         m_movingLabelIndex = m_pendingLabelMoveIndex;
-        m_pendingLabelMove = false;
         m_pendingLabelMoveIndex = -1;
-        m_pendingLabelSelect = false;
         m_pendingLabelSelectIndex = -1;
         m_pendingLabelSelectModifiers = Qt::NoModifier;
         emit labelSelected(m_movingLabelIndex);
@@ -640,21 +494,25 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
         event->accept();
         return;
     }
+    if (m_pointerState == PointerInteractionState::PendingLabelMove) {
+        hideHoveredLabelToolTip();
+        event->accept();
+        return;
+    }
 
-    if (m_pendingLabelCreate &&
+    if (m_pointerState == PointerInteractionState::PendingLabelCreate &&
         (event->pos() - m_labelCreatePressPosition).manhattanLength() >= QApplication::startDragDistance()) {
-        m_pendingLabelCreate = false;
+        m_pointerState = PointerInteractionState::Idle;
     }
-    if (m_pendingEmptyClick &&
+    if (m_pointerState == PointerInteractionState::PendingEmptyClick &&
         (event->pos() - m_emptyClickPressPosition).manhattanLength() >= QApplication::startDragDistance()) {
-        m_pendingEmptyClick = false;
+        m_pointerState = PointerInteractionState::Idle;
     }
-    if (m_pendingLabelSelect &&
+    if (m_pointerState == PointerInteractionState::PendingLabelSelect &&
         (event->pos() - m_labelSelectPressPosition).manhattanLength() >= QApplication::startDragDistance()) {
-        m_pendingLabelSelect = false;
+        m_pointerState = PointerInteractionState::Idle;
         m_pendingLabelSelectIndex = -1;
         m_pendingLabelSelectModifiers = Qt::NoModifier;
-        m_pendingLabelMove = false;
         m_pendingLabelMoveIndex = -1;
     }
 
@@ -669,23 +527,24 @@ void ImageCanvas::mouseMoveEvent(QMouseEvent* event)
 
 void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
 {
-    if (event->button() == Qt::MiddleButton && m_isMiddleButtonPanning) {
-        m_isMiddleButtonPanning = false;
+    if (event->button() == Qt::MiddleButton && m_pointerState == PointerInteractionState::MiddleButtonPanning) {
+        m_pointerState = PointerInteractionState::Idle;
         updateCursorForInteractionMode();
         notifyViewportStateChanged();
         event->accept();
         return;
     }
 
-    if (m_interactionMode == InteractionMode::Selection && event->button() == Qt::LeftButton && m_isSelectingRegion) {
+    if (m_interactionMode == InteractionMode::Selection && event->button() == Qt::LeftButton &&
+        m_pointerState == PointerInteractionState::SelectingRegion) {
         finishSelection(event->pos());
         event->accept();
         return;
     }
 
-    if (!m_readOnly && event->button() == Qt::LeftButton && m_isMovingLabel) {
+    if (!m_readOnly && event->button() == Qt::LeftButton && m_pointerState == PointerInteractionState::MovingLabel) {
         const int labelIndex = m_movingLabelIndex;
-        m_isMovingLabel = false;
+        m_pointerState = PointerInteractionState::Idle;
         m_movingLabelIndex = -1;
         if (m_pixmapItem != nullptr && labelIndex >= 0 && labelIndex < m_labels.size()) {
             const QPointF normalizedPosition = normalizedPositionFromScene(mapToScene(event->pos()));
@@ -698,24 +557,27 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
     }
 
     const bool shouldCreateLabel =
-        !m_readOnly && event->button() == Qt::LeftButton && m_pendingLabelCreate &&
+        !m_readOnly && event->button() == Qt::LeftButton &&
+        m_pointerState == PointerInteractionState::PendingLabelCreate &&
         (event->pos() - m_labelCreatePressPosition).manhattanLength() < QApplication::startDragDistance() &&
         m_pixmapItem != nullptr && m_pixmapItem->contains(mapToScene(event->pos()));
     const bool shouldClearLabelSelection =
-        event->button() == Qt::LeftButton && m_pendingEmptyClick &&
+        event->button() == Qt::LeftButton && m_pointerState == PointerInteractionState::PendingEmptyClick &&
         (event->pos() - m_emptyClickPressPosition).manhattanLength() < QApplication::startDragDistance() &&
         m_selectedLabels.size() >= 2;
     const bool shouldSelectLabel =
-        event->button() == Qt::LeftButton && m_pendingLabelSelect &&
+        event->button() == Qt::LeftButton &&
+        (m_pointerState == PointerInteractionState::PendingLabelSelect ||
+         m_pointerState == PointerInteractionState::PendingLabelMove) &&
         (event->pos() - m_labelSelectPressPosition).manhattanLength() < QApplication::startDragDistance() &&
         m_pendingLabelSelectIndex >= 0 && m_pendingLabelSelectIndex < m_labels.size();
+    const bool shouldForwardReleaseToView = m_pointerState != PointerInteractionState::PendingLabelMove;
 
-    m_pendingLabelCreate = false;
-    m_pendingLabelSelect = false;
-    m_pendingEmptyClick = false;
-    m_pendingLabelMove = false;
+    m_pointerState = PointerInteractionState::Idle;
     m_pendingLabelMoveIndex = -1;
-    QGraphicsView::mouseReleaseEvent(event);
+    if (shouldForwardReleaseToView) {
+        QGraphicsView::mouseReleaseEvent(event);
+    }
 
     if (shouldClearLabelSelection) {
         emit emptyAreaClicked();
@@ -728,6 +590,9 @@ void ImageCanvas::mouseReleaseEvent(QMouseEvent* event)
     }
     m_pendingLabelSelectIndex = -1;
     m_pendingLabelSelectModifiers = Qt::NoModifier;
+    if (!shouldForwardReleaseToView) {
+        event->accept();
+    }
 }
 
 void ImageCanvas::wheelEvent(QWheelEvent* event)
@@ -749,8 +614,8 @@ void ImageCanvas::resizeEvent(QResizeEvent* event)
 
 void ImageCanvas::leaveEvent(QEvent* event)
 {
-    if (m_isMiddleButtonPanning) {
-        m_isMiddleButtonPanning = false;
+    if (m_pointerState == PointerInteractionState::MiddleButtonPanning) {
+        m_pointerState = PointerInteractionState::Idle;
         updateCursorForInteractionMode();
     }
     hideHoveredLabelToolTip();
@@ -776,7 +641,7 @@ void ImageCanvas::rebuildLabelItems()
         }
 
         const labelqt::core::LabelGroupStyle style = styleForGroup(m_labels.at(i).group());
-        auto* marker = new LabelMarkerItem(i, m_selectedLabels.contains(i), style);
+        auto* marker = new CanvasLabelMarkerItem(i, m_selectedLabels.contains(i), style);
         const QPointF position = m_labels.at(i).position();
         marker->setPos(rect.left() + position.x() * rect.width(), rect.top() + position.y() * rect.height());
         m_scene.addItem(marker);
@@ -784,7 +649,7 @@ void ImageCanvas::rebuildLabelItems()
 
         if (m_interactionMode == InteractionMode::Label && m_selectedLabels.contains(i)) {
             auto* bubble =
-                new LabelTextBubbleItem(i, displayTextForLabel(i), style, m_textBubbleFont, m_textBubbleOpacity);
+                new CanvasLabelTextBubbleItem(i, displayTextForLabel(i), style, m_textBubbleFont, m_textBubbleOpacity);
             bubble->setPos(marker->pos());
             m_scene.addItem(bubble);
             m_labelItems.append(bubble);
@@ -871,14 +736,14 @@ void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, cons
     QSet<int> seenLabels;
     const QList<QGraphicsItem*> hoveredItems = items(viewportPosition);
     for (QGraphicsItem* item : hoveredItems) {
-        while (item != nullptr && item->type() != markerType) {
+        while (item != nullptr && item->type() != canvasLabelMarkerItemType()) {
             item = item->parentItem();
         }
         if (item == nullptr) {
             continue;
         }
 
-        const auto* marker = static_cast<LabelMarkerItem*>(item);
+        const auto* marker = static_cast<CanvasLabelMarkerItem*>(item);
         const int labelIndex = marker->labelIndex();
         if (seenLabels.contains(labelIndex) || m_selectedLabels.contains(labelIndex) || labelIndex < 0 ||
             labelIndex >= m_labels.size()) {
@@ -893,7 +758,7 @@ void ImageCanvas::updateHoveredLabelToolTip(const QPoint& viewportPosition, cons
 
         const QColor color = styleForGroup(label.group()).groupColor.isValid() ? styleForGroup(label.group()).groupColor
                                                                                : QColor(Qt::black);
-        lines.append(labelBubbleHtml(labelIndex, displayTextForLabel(labelIndex), color));
+        lines.append(canvasLabelBubbleHtml(labelIndex, displayTextForLabel(labelIndex), color));
     }
 
     if (lines.isEmpty()) {
@@ -954,14 +819,10 @@ void ImageCanvas::beginSelection(QPoint viewportPosition)
         return;
     }
 
-    m_pendingLabelCreate = false;
-    m_pendingLabelSelect = false;
-    m_pendingLabelSelectIndex = -1;
-    m_isMovingLabel = false;
-    m_movingLabelIndex = -1;
+    resetPointerInteraction();
     hideHoveredLabelToolTip();
 
-    m_isSelectingRegion = true;
+    m_pointerState = PointerInteractionState::SelectingRegion;
     m_selectionStartScenePosition = mapToScene(viewportPosition);
     if (m_selectionItem == nullptr) {
         m_selectionItem = m_scene.addRect({}, QPen(QColor(46, 103, 230), 2.0, Qt::DashLine), QColor(46, 103, 230, 40));
@@ -984,7 +845,7 @@ void ImageCanvas::updateSelection(QPoint viewportPosition)
 void ImageCanvas::finishSelection(QPoint viewportPosition)
 {
     updateSelection(viewportPosition);
-    m_isSelectingRegion = false;
+    m_pointerState = PointerInteractionState::Idle;
 
     if (m_selectionItem == nullptr || m_normalizedSelectionRect.width() <= 0.0 ||
         m_normalizedSelectionRect.height() <= 0.0) {
@@ -1004,7 +865,9 @@ void ImageCanvas::clearSelection()
         m_selectionItem = nullptr;
     }
     m_normalizedSelectionRect = {};
-    m_isSelectingRegion = false;
+    if (m_pointerState == PointerInteractionState::SelectingRegion) {
+        m_pointerState = PointerInteractionState::Idle;
+    }
 }
 
 bool ImageCanvas::copyImageToClipboard()
@@ -1041,6 +904,15 @@ void ImageCanvas::updateCursorForInteractionMode()
     }
 
     viewport()->unsetCursor();
+}
+
+void ImageCanvas::resetPointerInteraction()
+{
+    m_pointerState = PointerInteractionState::Idle;
+    m_pendingLabelSelectIndex = -1;
+    m_pendingLabelMoveIndex = -1;
+    m_movingLabelIndex = -1;
+    m_pendingLabelSelectModifiers = Qt::NoModifier;
 }
 
 labelqt::core::LabelGroupStyle ImageCanvas::styleForGroup(const QString& group) const

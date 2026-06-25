@@ -36,6 +36,7 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 ## Required Conventions
 
 - Follow `CONTRIBUTING.md` and `docs/architecture.md`.
+- Never run `clang-format` on CMake files such as `CMakeLists.txt` or `CMakePresets.json`; format CMake changes manually to match the existing style.
 - New user-visible UI text must use `tr()`.
 - When adding or changing `tr()` strings, update `translations/labelqt_zh_CN.ts`, `translations/labelqt_zh_TW.ts`, `translations/labelqt_ja_JP.ts` and `translations/labelqt_en_US.ts`.
 - Run `scripts/check_translations.sh` after UI text changes.
@@ -43,7 +44,17 @@ cmake -E env CCACHE_DISABLE=1 ctest --preset linux-debug
 - Reversible project edits must use the Qt-backed `UndoStack`; add undo and redo behavior in the same change that introduces the edit.
 - Label edits should go through `LabelEditController` rather than adding new label mutation paths in `MainWindow`.
 - Keep `MainWindow` focused on UI orchestration; put project workflow, session state and mutation logic in services.
+- Keep image loading, image-cache coordination, adjacent-page preloading and delayed viewport restoration in
+  `ImagePageViewController`; do not reintroduce ad hoc image-load request state in `MainWindow`.
+- Keep page combo box/source-label refresh in `ProjectViewController`, and keep table/canvas selection synchronization in
+  `LabelSelectionController`.
+- Keep text editor focus/commit/restore behavior in `EditorStateController`; `MainWindow` should call it rather than
+  duplicating active-editor detection.
+- Keep preference subpage table logic in focused widgets such as `GroupStyleEditorWidget` and
+  `AutomationShortcutEditorWidget`; do not grow large table-building blocks back into `PreferenceDialog`.
 - Current-page label changes should update table/marker state in place and must not reload the image unless the current image actually changes.
+- Model/view changes, especially drag/drop or filtering in table/list models, should include Qt model tests with
+  `QAbstractItemModelTester` where practical.
 - Composite Qt widgets that connect signals from child/internal widgets must disconnect those internal signal connections during destruction before owned child objects start tearing down.
 - If code caches raw pointers owned by Qt containers or parent objects, such as `QGraphicsScene` items or child widgets, clear or null those cached pointers before the owner clears/destructs. Use `QPointer` for cached `QObject`/`QWidget` references whose lifetime may end outside the current synchronous scope.
 - Do not destroy or rebuild a `QMenu`/`QAction` tree from inside a slot triggered by one of its own actions. During long-running or nested-event-loop workflows, update enabled/visible state in place; rebuild menus only after the triggering call stack has unwound.

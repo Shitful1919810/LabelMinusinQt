@@ -4,14 +4,27 @@
 #include "core/Project.h"
 #include "services/AutomationOperationApplier.h"
 #include "services/LabelNavigator.h"
+#include "services/PageSourceInfoService.h"
+#include "services/ProjectImageValidator.h"
 #include "services/ProjectMergeService.h"
 #include "services/ProjectPageOrderService.h"
+#include "services/SessionStateStore.h"
+#include "ui/ImageCanvas.h"
+#include "ui/LabelTableModel.h"
+#include "ui/PageOrderListModel.h"
 
+#include <QAbstractItemModelTester>
 #include <QDir>
 #include <QFile>
 #include <QKeySequence>
+#include <QMimeData>
+#include <QSettings>
+#include <QSignalSpy>
 #include <QTextStream>
+#include <QUuid>
 #include <QtTest/QtTest>
+
+#include <memory>
 
 using labelqt::core::Label;
 using labelqt::core::LabelPlusDocument;
@@ -20,6 +33,15 @@ class LabelTests final : public QObject {
     Q_OBJECT
 
 private slots:
+    void initTestCase()
+    {
+        QCoreApplication::setOrganizationName(QStringLiteral("LabelQtTests"));
+        QCoreApplication::setApplicationName(QStringLiteral("LabelQtTests"));
+        QSettings::setDefaultFormat(QSettings::IniFormat);
+        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
+                           QDir::temp().filePath(QStringLiteral("labelqt_test_settings")));
+    }
+
     void positionIsClamped()
     {
         Label label("text", "group", QPointF(-1.0, 2.0));
@@ -73,8 +95,7 @@ private slots:
         QCOMPARE(next.imageIndex, 1);
         QCOMPARE(next.labelIndex, 0);
 
-        const auto previous =
-            labelqt::services::LabelNavigator::previousVisibleLabel(project, {1, 0, visibleGroups});
+        const auto previous = labelqt::services::LabelNavigator::previousVisibleLabel(project, {1, 0, visibleGroups});
         QVERIFY(previous.isValid());
         QCOMPARE(previous.imageIndex, 0);
         QCOMPARE(previous.labelIndex, 1);
@@ -97,8 +118,7 @@ private slots:
         QCOMPARE(next.imageIndex, 1);
         QCOMPARE(next.labelIndex, 1);
 
-        const auto previous =
-            labelqt::services::LabelNavigator::previousVisibleLabel(project, {1, 1, visibleGroups});
+        const auto previous = labelqt::services::LabelNavigator::previousVisibleLabel(project, {1, 1, visibleGroups});
         QVERIFY(previous.isValid());
         QCOMPARE(previous.imageIndex, 0);
         QCOMPARE(previous.labelIndex, 1);
@@ -199,6 +219,170 @@ private slots:
         QCOMPARE(project.images().first().labels.at(0).position().x(), 0.2);
         QCOMPARE(project.images().first().labels.at(0).position().y(), 0.3);
         QVERIFY(!project.images().first().labels.at(1).isDeleted());
+    }
+
+    void labelTableModelPassesModelTesterAndFiltersGroups()
+    {
+        QVector<Label> labels{
+            Label(QStringLiteral("inside"), QStringLiteral("框内"), {0.2, 0.3}),
+            Label(QStringLiteral("outside"), QStringLiteral("框外"), {0.4, 0.5}),
+            Label(QStringLiteral("deleted"), QStringLiteral("框内"), {0.6, 0.7}),
+        };
+        labels[2].setDeleted(true);
+
+        LabelTableModel model;
+        const QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
+        model.setGroups({QStringLiteral("框内"), QStringLiteral("框外")}, {});
+        model.setLabels(&labels);
+        model.setGroupFilter({QStringLiteral("框内"), QStringLiteral("框外")});
+
+        QCOMPARE(model.rowCount(), 2);
+        QCOMPARE(model.sourceIndexForRow(0), 0);
+        QCOMPARE(model.sourceIndexForRow(1), 1);
+
+        model.setGroupFilter({QStringLiteral("框外")});
+        QCOMPARE(model.rowCount(), 1);
+        QCOMPARE(model.sourceIndexForRow(0), 1);
+        QCOMPARE(model.rowForSourceIndex(0), -1);
+        QCOMPARE(model.rowForSourceIndex(1), 0);
+    }
+
+    void pageOrderListModelPassesModelTesterAndKeepsPagesAfterDragDrop()
+    {
+        labelqt::core::Project project;
+        for (int i = 0; i < 6; ++i) {
+            project.images().append(
+                labelqt::core::ImageEntry{QStringLiteral("%1.png").arg(i, 3, 10, QLatin1Char('0')), {}, {}});
+        }
+
+        PageOrderListModel model(project);
+        const QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+        std::unique_ptr<QMimeData> firstMove(model.mimeData({model.index(1, PageOrderListModel::ImageNameColumn),
+                                                             model.index(2, PageOrderListModel::ImageNameColumn)}));
+        QVERIFY(firstMove != nullptr);
+        QVERIFY(model.dropMimeData(firstMove.get(), Qt::MoveAction, 5, 0, {}));
+        QCOMPARE(model.pageOrder(), QVector<int>({0, 3, 4, 1, 2, 5}));
+        QCOMPARE(model.lastMovedSourceIndexes(), QVector<int>({1, 2}));
+
+        std::unique_ptr<QMimeData> secondMove(model.mimeData({model.index(3, PageOrderListModel::ImageNameColumn),
+                                                              model.index(4, PageOrderListModel::ImageNameColumn)}));
+        QVERIFY(secondMove != nullptr);
+        QVERIFY(model.dropMimeData(secondMove.get(), Qt::MoveAction, 0, 0, {}));
+        QCOMPARE(model.pageOrder(), QVector<int>({1, 2, 0, 3, 4, 5}));
+
+        QVector<int> sortedOrder = model.pageOrder();
+        std::sort(sortedOrder.begin(), sortedOrder.end());
+        QCOMPARE(sortedOrder, QVector<int>({0, 1, 2, 3, 4, 5}));
+    }
+
+    void sessionStateStorePersistsMultiSelectedLabels()
+    {
+        const QString projectPath =
+            QDir::temp().filePath(QStringLiteral("labelqt_session_%1.txt").arg(QUuid::createUuid().toString()));
+        QFile projectFile(projectPath);
+        QVERIFY(projectFile.open(QIODevice::WriteOnly | QIODevice::Text));
+        projectFile.close();
+
+        labelqt::services::ProjectSessionState state;
+        state.isValid = true;
+        state.imageName = QStringLiteral("012.png");
+        state.imageIndex = 6;
+        state.zoomPercent = 175;
+        state.viewCenter = QPointF(0.25, 0.75);
+        state.selectedLabelIndex = 5;
+        state.selectedLabelIndexes = {1, 5, 8};
+
+        labelqt::services::SessionStateStore store;
+        store.saveProjectSession(projectPath, state);
+        const labelqt::services::ProjectSessionState loaded = store.loadProjectSession(projectPath);
+
+        QVERIFY(loaded.isValid);
+        QCOMPARE(loaded.imageName, QStringLiteral("012.png"));
+        QCOMPARE(loaded.imageIndex, 6);
+        QCOMPARE(loaded.zoomPercent, 175);
+        QCOMPARE(loaded.viewCenter, QPointF(0.25, 0.75));
+        QCOMPARE(loaded.selectedLabelIndex, 5);
+        QCOMPARE(loaded.selectedLabelIndexes, QVector<int>({1, 5, 8}));
+    }
+
+    void projectImageValidatorFindsMissingImages()
+    {
+        const QString dirPath = QDir::temp().filePath(QStringLiteral("labelqt_missing_images_test"));
+        QDir().mkpath(dirPath);
+
+        const QString existingPath = QDir(dirPath).filePath(QStringLiteral("001.png"));
+        QFile existingFile(existingPath);
+        QVERIFY(existingFile.open(QIODevice::WriteOnly));
+        existingFile.close();
+
+        labelqt::core::Project project;
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), existingPath, {}});
+        project.images().append(labelqt::core::ImageEntry{
+            QStringLiteral("002.png"), QDir(dirPath).filePath(QStringLiteral("002.png")), {}});
+
+        const QVector<labelqt::services::MissingProjectImage> missingImages =
+            labelqt::services::ProjectImageValidator::missingImages(project);
+
+        QCOMPARE(missingImages.size(), 1);
+        QCOMPARE(missingImages.first().imageIndex, 1);
+        QCOMPARE(missingImages.first().imageName, QStringLiteral("002.png"));
+        QCOMPARE(missingImages.first().imagePath, QDir(dirPath).filePath(QStringLiteral("002.png")));
+    }
+
+    void imageCanvasCtrlClickMarkerEmitsMultiSelectClickWhenCtrlMovesMarker()
+    {
+        ImageCanvas canvas;
+        canvas.resize(640, 480);
+        canvas.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+
+        QVector<Label> labels{
+            Label(QStringLiteral("first"), QStringLiteral("框内"), {0.5, 0.5}),
+            Label(QStringLiteral("second"), QStringLiteral("框外"), {0.7, 0.5}),
+        };
+        canvas.setGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        canvas.setVisibleGroups({QStringLiteral("框内"), QStringLiteral("框外")});
+        canvas.setImage(QStringLiteral("test.png"), QImage(200, 200, QImage::Format_ARGB32_Premultiplied), labels);
+
+        const QPoint markerPosition = canvas.mapFromGlobal(canvas.globalPositionForLabel(0));
+        QSignalSpy clickSpy(&canvas, &ImageCanvas::labelClicked);
+        QSignalSpy moveSpy(&canvas, &ImageCanvas::labelMoveRequested);
+
+        QTest::mouseClick(canvas.viewport(), Qt::LeftButton, Qt::ControlModifier, markerPosition);
+
+        QCOMPARE(clickSpy.count(), 1);
+        QCOMPARE(moveSpy.count(), 0);
+        QCOMPARE(clickSpy.first().at(0).toInt(), 0);
+        QVERIFY(qvariant_cast<Qt::KeyboardModifiers>(clickSpy.first().at(1)).testFlag(Qt::ControlModifier));
+    }
+
+    void imageCanvasCtrlDragMarkerMovesLabelWithoutStartingViewPan()
+    {
+        ImageCanvas canvas;
+        canvas.resize(640, 480);
+        canvas.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+
+        QVector<Label> labels{Label(QStringLiteral("first"), QStringLiteral("框内"), {0.5, 0.5})};
+        canvas.setGroups({QStringLiteral("框内")});
+        canvas.setVisibleGroups({QStringLiteral("框内")});
+        canvas.setImage(QStringLiteral("test.png"), QImage(200, 200, QImage::Format_ARGB32_Premultiplied), labels);
+
+        const QPoint markerPosition = canvas.mapFromGlobal(canvas.globalPositionForLabel(0));
+        const QPoint dragPosition = markerPosition + QPoint(QApplication::startDragDistance() + 30, 0);
+        QSignalSpy clickSpy(&canvas, &ImageCanvas::labelClicked);
+        QSignalSpy moveSpy(&canvas, &ImageCanvas::labelMoveRequested);
+
+        QTest::mousePress(canvas.viewport(), Qt::LeftButton, Qt::ControlModifier, markerPosition);
+        QTest::mouseMove(canvas.viewport(), dragPosition);
+        QTest::mouseRelease(canvas.viewport(), Qt::LeftButton, Qt::ControlModifier, dragPosition);
+
+        QCOMPARE(clickSpy.count(), 0);
+        QCOMPARE(moveSpy.count(), 1);
+        QCOMPARE(moveSpy.first().at(0).toInt(), 0);
+        const QPointF movedPosition = moveSpy.first().at(1).toPointF();
+        QVERIFY(movedPosition.x() > 0.5);
     }
 
     void projectMergeUsesSingleInvolvedPageAutomatically()
@@ -333,12 +517,52 @@ private slots:
         QVERIFY(merged.commentLines().at(2).contains(QStringLiteral("\"sourceIndex\":1")));
     }
 
+    void pageSourceInfoServiceExpandsMergeSourceRanges()
+    {
+        const QString dirPath = QDir::temp().filePath("labelqt_page_source_info_test");
+        QDir().mkpath(dirPath);
+
+        labelqt::core::Project project;
+        project.setFilePath(QDir(dirPath).filePath("merged.txt"));
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
+        project.images().append(labelqt::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
+        project.setCommentLines({
+            QStringLiteral("# LabelQtMergeSources v2"),
+            QStringLiteral("# "
+                           "{\"firstImage\":\"003.png\",\"lastImage\":\"003.png\",\"sourceIndex\":2,\"sourcePath\":"
+                           "\"parts/b.txt\"}"),
+            QStringLiteral(
+                "# {\"firstImage\":\"001.png\",\"lastImage\":\"002.png\",\"sourceIndex\":1,\"sourcePath\":\"a.txt\"}"),
+            QStringLiteral("# EndLabelQtMergeSources"),
+        });
+
+        const auto sources = labelqt::services::PageSourceInfoService::sourcesForProject(project);
+        QCOMPARE(sources.size(), 3);
+        QCOMPARE(sources.value(QStringLiteral("003.png")).sourceIndex, 2);
+        QCOMPARE(sources.value(QStringLiteral("003.png")).sourcePath, QDir(dirPath).filePath("parts/b.txt"));
+        QCOMPARE(sources.value(QStringLiteral("001.png")).sourceIndex, 1);
+        QCOMPARE(sources.value(QStringLiteral("002.png")).sourceIndex, 1);
+        QCOMPARE(sources.value(QStringLiteral("001.png")).sourcePath, QDir(dirPath).filePath("a.txt"));
+    }
+
     void projectPageOrderServiceReordersImages()
     {
         labelqt::core::Project project;
+        const QString dirPath = QDir::temp().filePath("labelqt_page_order_service_test");
+        QDir().mkpath(dirPath);
+        project.setFilePath(QDir(dirPath).filePath("merged.txt"));
         project.images().append(labelqt::core::ImageEntry{QStringLiteral("001.png"), {}, {}});
         project.images().append(labelqt::core::ImageEntry{QStringLiteral("002.png"), {}, {}});
         project.images().append(labelqt::core::ImageEntry{QStringLiteral("003.png"), {}, {}});
+        project.setCommentLines({
+            QStringLiteral("# LabelQtMergeSources v2"),
+            QStringLiteral(
+                "# {\"firstImage\":\"001.png\",\"lastImage\":\"002.png\",\"sourceIndex\":1,\"sourcePath\":\"a.txt\"}"),
+            QStringLiteral(
+                "# {\"firstImage\":\"003.png\",\"lastImage\":\"003.png\",\"sourceIndex\":2,\"sourcePath\":\"b.txt\"}"),
+            QStringLiteral("# EndLabelQtMergeSources"),
+        });
 
         QVERIFY(labelqt::services::ProjectPageOrderService::isValidOrder({2, 0, 1}, 3));
         QVERIFY(labelqt::services::ProjectPageOrderService::isValidOrder({2, 0}, 3));
@@ -349,6 +573,13 @@ private slots:
         QCOMPARE(project.images().size(), 2);
         QCOMPARE(project.images().at(0).name, QStringLiteral("003.png"));
         QCOMPARE(project.images().at(1).name, QStringLiteral("001.png"));
+
+        const auto sources = labelqt::services::PageSourceInfoService::sourcesForProject(project);
+        QCOMPARE(sources.value(QStringLiteral("003.png")).sourceIndex, 2);
+        QCOMPARE(sources.value(QStringLiteral("001.png")).sourceIndex, 1);
+        QVERIFY(project.commentLines().at(1).contains(QStringLiteral("\"firstImage\":\"003.png\"")));
+        QVERIFY(project.commentLines().at(2).contains(QStringLiteral("\"firstImage\":\"001.png\"")));
+        QVERIFY(project.commentLines().at(2).contains(QStringLiteral("\"lastImage\":\"001.png\"")));
     }
 
     void labelPlusDocumentPreservesCommentLines()
@@ -548,6 +779,6 @@ private slots:
     }
 };
 
-QTEST_GUILESS_MAIN(LabelTests)
+QTEST_MAIN(LabelTests)
 
 #include "LabelTests.moc"

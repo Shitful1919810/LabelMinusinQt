@@ -2,20 +2,21 @@
 
 #include "core/CommandLineUtils.h"
 #include "core/TranslationManager.h"
+#include "ui/AutomationShortcutEditorWidget.h"
+#include "ui/GroupStyleEditorWidget.h"
+#include "ui/PreferenceDialogWidgets.h"
 #include "ui/ThemeManager.h"
 
 #include <QCheckBox>
-#include <QColorDialog>
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
-#include <QFileDialog>
 #include <QFile>
+#include <QFileDialog>
 #include <QFontDialog>
 #include <QFormLayout>
 #include <QHBoxLayout>
-#include <QHeaderView>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QKeySequence>
@@ -26,98 +27,18 @@
 #include <QProcess>
 #include <QPushButton>
 #include <QScrollBar>
-#include <QSet>
 #include <QSpinBox>
 #include <QStyleFactory>
 #include <QTabWidget>
-#include <QTableWidget>
-#include <QTableWidgetItem>
 #include <QUrl>
 #include <QVBoxLayout>
 
 #include <algorithm>
 #include <cmath>
-#include <map>
 #include <optional>
 
 namespace {
-constexpr int colorColumn = 0;
-constexpr int diameterColumn = 1;
-constexpr int fontColumn = 2;
-constexpr int shapeColumn = 3;
-constexpr int automationScriptColumn = 0;
-constexpr int automationShortcutColumn = 1;
-constexpr int automationScriptIdRole = Qt::UserRole + 1;
-
-QColor colorFromStyleObject(const QJsonObject& style)
-{
-    const QJsonValue value = style.value(QStringLiteral("groupColor"));
-    if (value.isString()) {
-        const QColor color(value.toString());
-        return color.isValid() ? color : QColor(QStringLiteral("#000000"));
-    }
-    return QColor(QStringLiteral("#000000"));
-}
-
-QString markerStyleFromObject(const QJsonObject& style)
-{
-    const QString markerStyle = style.value(QStringLiteral("markerStyle")).toString(QStringLiteral("circle"));
-    return markerStyle == QStringLiteral("square") ? QStringLiteral("square") : QStringLiteral("circle");
-}
-
-QDoubleSpinBox* makePositiveDoubleSpinBox(double value, double minimum, double maximum)
-{
-    auto* spinBox = new QDoubleSpinBox;
-    spinBox->setRange(minimum, maximum);
-    spinBox->setDecimals(2);
-    spinBox->setSingleStep(1.0);
-    spinBox->setValue(value);
-    return spinBox;
-}
-
-QWidget* makeFontSelectorWidget(QWidget* parent, QLabel*& label, QPushButton*& chooseButton, QPushButton*& resetButton)
-{
-    auto* widget = new QWidget(parent);
-    auto* layout = new QHBoxLayout(widget);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(6);
-    label = new QLabel(widget);
-    label->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    chooseButton = new QPushButton(PreferenceDialog::tr("Choose Font..."), widget);
-    resetButton = new QPushButton(PreferenceDialog::tr("Use Default"), widget);
-    layout->addWidget(label, 1);
-    layout->addWidget(chooseButton);
-    layout->addWidget(resetButton);
-    return widget;
-}
-
-QWidget* makePercentScrollBarWidget(QWidget* parent, QScrollBar*& scrollBar, QLabel*& label, int value)
-{
-    auto* widget = new QWidget(parent);
-    auto* layout = new QHBoxLayout(widget);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(6);
-    scrollBar = new QScrollBar(Qt::Horizontal, widget);
-    scrollBar->setRange(0, 100);
-    scrollBar->setSingleStep(5);
-    scrollBar->setPageStep(10);
-    scrollBar->setValue(value);
-    label = new QLabel(widget);
-    label->setMinimumWidth(label->fontMetrics().horizontalAdvance(QStringLiteral("100%")));
-    label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    layout->addWidget(scrollBar, 1);
-    layout->addWidget(label);
-    return widget;
-}
-
-QComboBox* makeModifierComboBox(QWidget* parent)
-{
-    auto* comboBox = new QComboBox(parent);
-    comboBox->setEditable(true);
-    comboBox->addItems({QStringLiteral("ctrl"), QStringLiteral("shift"), QStringLiteral("alt"), QStringLiteral("meta"),
-                        QStringLiteral("ctrl+shift"), QStringLiteral("none")});
-    return comboBox;
-}
+using namespace labelqt::ui::PreferenceDialogWidgets;
 
 QString comboBoxDataOrText(const QComboBox* comboBox)
 {
@@ -357,21 +278,11 @@ QWidget* PreferenceDialog::createAutomationShortcutsPage(QTabWidget* tabWidget)
     auto* page = new QWidget(tabWidget);
     auto* layout = new QVBoxLayout(page);
 
-    auto* descriptionLabel =
-        new QLabel(tr("Assign shortcuts to automation scripts. Leave a shortcut empty to disable it."), page);
-    descriptionLabel->setWordWrap(true);
-    layout->addWidget(descriptionLabel);
-
-    m_automationShortcutTable = new QTableWidget(page);
-    m_automationShortcutTable->setColumnCount(2);
-    m_automationShortcutTable->setHorizontalHeaderLabels({tr("Automation script"), tr("Shortcut")});
-    m_automationShortcutTable->horizontalHeader()->setSectionResizeMode(automationScriptColumn, QHeaderView::Stretch);
-    m_automationShortcutTable->horizontalHeader()->setSectionResizeMode(automationShortcutColumn,
-                                                                        QHeaderView::ResizeToContents);
-    m_automationShortcutTable->verticalHeader()->setVisible(false);
-    m_automationShortcutTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_automationShortcutTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    layout->addWidget(m_automationShortcutTable, 1);
+    m_automationShortcutEditor = new AutomationShortcutEditorWidget(page);
+    m_automationShortcutEditor->setScripts(m_automationScripts);
+    connect(m_automationShortcutEditor, &AutomationShortcutEditorWidget::changed, this,
+            &PreferenceDialog::updateJsonPreview);
+    layout->addWidget(m_automationShortcutEditor, 1);
 
     return page;
 }
@@ -381,32 +292,9 @@ QWidget* PreferenceDialog::createGroupStylesPage(QTabWidget* tabWidget)
     auto* groupPage = new QWidget(tabWidget);
     auto* groupLayout = new QVBoxLayout(groupPage);
 
-    m_groupStyleTable = new QTableWidget(groupPage);
-    m_groupStyleTable->setColumnCount(4);
-    m_groupStyleTable->setHorizontalHeaderLabels(
-        {tr("Color"), tr("Marker diameter"), tr("Font size"), tr("Marker style")});
-    m_groupStyleTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    m_groupStyleTable->verticalHeader()->setVisible(false);
-    m_groupStyleTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    m_groupStyleTable->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    groupLayout->addWidget(m_groupStyleTable, 1);
-
-    auto* groupButtonLayout = new QHBoxLayout;
-    auto* addStyleButton = new QPushButton(tr("Add group style"), groupPage);
-    auto* removeStyleButton = new QPushButton(tr("Remove selected styles"), groupPage);
-    groupButtonLayout->addWidget(addStyleButton);
-    groupButtonLayout->addWidget(removeStyleButton);
-    groupButtonLayout->addStretch();
-    groupLayout->addLayout(groupButtonLayout);
-
-    connect(addStyleButton, &QPushButton::clicked, this, [this]() {
-        addGroupStyleRow();
-        updateJsonPreview();
-    });
-    connect(removeStyleButton, &QPushButton::clicked, this, [this]() {
-        removeSelectedGroupStyleRows();
-        updateJsonPreview();
-    });
+    m_groupStyleEditor = new GroupStyleEditorWidget(groupPage);
+    groupLayout->addWidget(m_groupStyleEditor, 1);
+    connect(m_groupStyleEditor, &GroupStyleEditorWidget::changed, this, &PreferenceDialog::updateJsonPreview);
     return groupPage;
 }
 
@@ -526,8 +414,8 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     m_showAutomationRunLogCheckBox->setChecked(
         automation.value(QStringLiteral("showRunLog")).toBool(defaultPreferences().showAutomationRunLog()));
     const QJsonObject automationPython = automation.value(QStringLiteral("python")).toObject();
-    m_automationPythonCommandEdit->setText(automationPython.value(QStringLiteral("command"))
-                                               .toString(defaultPreferences().automationPythonCommand()));
+    m_automationPythonCommandEdit->setText(
+        automationPython.value(QStringLiteral("command")).toString(defaultPreferences().automationPythonCommand()));
     QStringList pythonArguments;
     const QJsonArray pythonArgumentArray = automationPython.value(QStringLiteral("arguments")).toArray();
     for (const QJsonValue& argument : pythonArgumentArray) {
@@ -542,46 +430,10 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     m_automationAutoInstallRequirementsCheckBox->setChecked(
         automationPython.value(QStringLiteral("autoInstallRequirements"))
             .toBool(defaultPreferences().automationAutoInstallRequirements()));
-    m_automationPipIndexUrlEdit->setText(automationPython.value(QStringLiteral("pipIndexUrl"))
-                                             .toString(defaultPreferences().automationPipIndexUrl()));
-    m_automationShortcutTable->setRowCount(0);
+    m_automationPipIndexUrlEdit->setText(
+        automationPython.value(QStringLiteral("pipIndexUrl")).toString(defaultPreferences().automationPipIndexUrl()));
     const QJsonObject automationShortcuts = automation.value(QStringLiteral("shortcuts")).toObject();
-    QSet<QString> knownScriptIds;
-    for (const labelqt::services::AutomationScript& script : std::as_const(m_automationScripts)) {
-        knownScriptIds.insert(script.id);
-        const int row = m_automationShortcutTable->rowCount();
-        m_automationShortcutTable->insertRow(row);
-
-        const QString source = script.official ? tr("Official") : tr("Custom");
-        auto* item = new QTableWidgetItem(tr("%1 / %2 / %3").arg(source, script.directoryName, script.name));
-        item->setData(automationScriptIdRole, script.id);
-        item->setToolTip(script.description);
-        m_automationShortcutTable->setItem(row, automationScriptColumn, item);
-
-        const QKeySequence shortcut =
-            QKeySequence::fromString(automationShortcuts.value(script.id).toString(), QKeySequence::PortableText);
-        auto* shortcutEdit = new QKeySequenceEdit(shortcut, m_automationShortcutTable);
-        connect(shortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
-        m_automationShortcutTable->setCellWidget(row, automationShortcutColumn, shortcutEdit);
-    }
-
-    for (auto it = automationShortcuts.constBegin(); it != automationShortcuts.constEnd(); ++it) {
-        if (knownScriptIds.contains(it.key())) {
-            continue;
-        }
-
-        const int row = m_automationShortcutTable->rowCount();
-        m_automationShortcutTable->insertRow(row);
-        auto* item = new QTableWidgetItem(tr("Missing script: %1").arg(it.key()));
-        item->setData(automationScriptIdRole, it.key());
-        item->setForeground(QColor(QStringLiteral("#b26a00")));
-        m_automationShortcutTable->setItem(row, automationScriptColumn, item);
-
-        const QKeySequence shortcut = QKeySequence::fromString(it.value().toString(), QKeySequence::PortableText);
-        auto* shortcutEdit = new QKeySequenceEdit(shortcut, m_automationShortcutTable);
-        connect(shortcutEdit, &QKeySequenceEdit::keySequenceChanged, this, &PreferenceDialog::updateJsonPreview);
-        m_automationShortcutTable->setCellWidget(row, automationShortcutColumn, shortcutEdit);
-    }
+    m_automationShortcutEditor->loadShortcuts(automationShortcuts);
 
     m_tableMaxRowsSpinBox->setValue(
         labelTable.value(QStringLiteral("maxTextRows")).toInt(defaultPreferences().labelTableMaxTextRows()));
@@ -699,11 +551,9 @@ void PreferenceDialog::loadDocument(const QJsonDocument& document)
     m_backupIntervalSpinBox->setValue(
         root.value(QStringLiteral("backupIntervalSeconds")).toInt(defaultPreferences().backupIntervalSeconds()));
 
-    m_groupStyleTable->setRowCount(0);
+    m_groupStyleEditor->setMarkerDefaults(m_markerDiameterSpinBox->value(), m_markerFontSpinBox->value());
     const QJsonArray groupStyles = root.value(QStringLiteral("groupStyles")).toArray();
-    for (const QJsonValue& value : groupStyles) {
-        addGroupStyleRow(value.toObject());
-    }
+    m_groupStyleEditor->loadStyles(groupStyles);
 
     updateJsonPreview();
 }
@@ -732,20 +582,7 @@ QJsonDocument PreferenceDialog::documentFromUi() const
                             m_automationAutoInstallRequirementsCheckBox->isChecked());
     automationPython.insert(QStringLiteral("pipIndexUrl"), m_automationPipIndexUrlEdit->text().trimmed());
     automation.insert(QStringLiteral("python"), automationPython);
-    QJsonObject automationShortcuts;
-    for (int row = 0; row < m_automationShortcutTable->rowCount(); ++row) {
-        const QTableWidgetItem* item = m_automationShortcutTable->item(row, automationScriptColumn);
-        const auto* shortcutEdit =
-            qobject_cast<QKeySequenceEdit*>(m_automationShortcutTable->cellWidget(row, automationShortcutColumn));
-        if (item == nullptr || shortcutEdit == nullptr || shortcutEdit->keySequence().isEmpty()) {
-            continue;
-        }
-
-        const QString scriptId = item->data(automationScriptIdRole).toString();
-        if (!scriptId.isEmpty()) {
-            automationShortcuts.insert(scriptId, shortcutEdit->keySequence().toString(QKeySequence::PortableText));
-        }
-    }
+    const QJsonObject automationShortcuts = m_automationShortcutEditor->shortcuts();
     automation.insert(QStringLiteral("shortcuts"), automationShortcuts);
 
     QJsonObject labelTable;
@@ -795,24 +632,7 @@ QJsonDocument PreferenceDialog::documentFromUi() const
     input.insert(QStringLiteral("commitLabelTextShortcut"),
                  m_commitLabelTextShortcutEdit->keySequence().toString(QKeySequence::PortableText));
 
-    QJsonArray groupStyles;
-    for (int row = 0; row < m_groupStyleTable->rowCount(); ++row) {
-        auto* colorButton = qobject_cast<QPushButton*>(m_groupStyleTable->cellWidget(row, colorColumn));
-        auto* diameterSpinBox = qobject_cast<QDoubleSpinBox*>(m_groupStyleTable->cellWidget(row, diameterColumn));
-        auto* fontSpinBox = qobject_cast<QDoubleSpinBox*>(m_groupStyleTable->cellWidget(row, fontColumn));
-        auto* shapeComboBox = qobject_cast<QComboBox*>(m_groupStyleTable->cellWidget(row, shapeColumn));
-        if (colorButton == nullptr || diameterSpinBox == nullptr || fontSpinBox == nullptr ||
-            shapeComboBox == nullptr) {
-            continue;
-        }
-
-        QJsonObject style;
-        style.insert(QStringLiteral("groupColor"), colorButton->property("color").toString());
-        style.insert(QStringLiteral("markerDiameter"), diameterSpinBox->value());
-        style.insert(QStringLiteral("fontPointSize"), fontSpinBox->value());
-        style.insert(QStringLiteral("markerStyle"), shapeComboBox->currentData().toString());
-        groupStyles.append(style);
-    }
+    const QJsonArray groupStyles = m_groupStyleEditor->styles();
 
     QJsonObject root;
     root.insert(QStringLiteral("appearance"), appearance);
@@ -842,192 +662,99 @@ void PreferenceDialog::setMessage(const QString& message, bool warning)
     m_messageLabel->setVisible(!message.isEmpty());
 }
 
-void PreferenceDialog::addGroupStyleRow(const QJsonObject& style)
-{
-    const int row = m_groupStyleTable->rowCount();
-    m_groupStyleTable->insertRow(row);
-    m_groupStyleTable->setVerticalHeaderItem(row, new QTableWidgetItem(QString::number(row + 1)));
-
-    const QColor color = colorFromStyleObject(style);
-    auto* colorButton = new QPushButton(color.name(), m_groupStyleTable);
-    colorButton->setProperty("color", color.name());
-    colorButton->setStyleSheet(QStringLiteral("QPushButton { color: %1; }").arg(color.name()));
-    m_groupStyleTable->setCellWidget(row, colorColumn, colorButton);
-
-    auto* diameterSpinBox = makePositiveDoubleSpinBox(
-        style.value(QStringLiteral("markerDiameter")).toDouble(m_markerDiameterSpinBox->value()), 1.0, 256.0);
-    m_groupStyleTable->setCellWidget(row, diameterColumn, diameterSpinBox);
-
-    auto* fontSpinBox = makePositiveDoubleSpinBox(
-        style.value(QStringLiteral("fontPointSize")).toDouble(m_markerFontSpinBox->value()), 0.1, 256.0);
-    m_groupStyleTable->setCellWidget(row, fontColumn, fontSpinBox);
-
-    auto* shapeComboBox = new QComboBox(m_groupStyleTable);
-    shapeComboBox->addItem(tr("Circle"), QStringLiteral("circle"));
-    shapeComboBox->addItem(tr("Square"), QStringLiteral("square"));
-    shapeComboBox->setCurrentIndex(markerStyleFromObject(style) == QStringLiteral("square") ? 1 : 0);
-    m_groupStyleTable->setCellWidget(row, shapeColumn, shapeComboBox);
-
-    connect(colorButton, &QPushButton::clicked, this, [this, row]() { chooseGroupColor(row); });
-    connect(diameterSpinBox, &QDoubleSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
-    connect(fontSpinBox, &QDoubleSpinBox::valueChanged, this, &PreferenceDialog::updateJsonPreview);
-    connect(shapeComboBox, &QComboBox::currentIndexChanged, this, &PreferenceDialog::updateJsonPreview);
-}
-
-void PreferenceDialog::addGroupStyleRow()
-{
-    addGroupStyleRow(QJsonObject{});
-}
-
-void PreferenceDialog::removeSelectedGroupStyleRows()
-{
-    QList<int> rows;
-    const QModelIndexList selectedRows = m_groupStyleTable->selectionModel()->selectedRows();
-    rows.reserve(selectedRows.size());
-    for (const QModelIndex& index : selectedRows) {
-        rows.append(index.row());
-    }
-    std::sort(rows.begin(), rows.end(), std::greater<>());
-    for (int row : rows) {
-        m_groupStyleTable->removeRow(row);
-    }
-}
-
-void PreferenceDialog::chooseGroupColor(int row)
-{
-    auto* colorButton = qobject_cast<QPushButton*>(m_groupStyleTable->cellWidget(row, colorColumn));
-    if (colorButton == nullptr) {
-        return;
-    }
-
-    const QColor currentColor(colorButton->property("color").toString());
-    const QColor color = QColorDialog::getColor(currentColor, this, tr("Choose group color"));
-    if (!color.isValid()) {
-        return;
-    }
-
-    colorButton->setProperty("color", color.name());
-    colorButton->setText(color.name());
-    colorButton->setStyleSheet(QStringLiteral("QPushButton { color: %1; }").arg(color.name()));
-    updateJsonPreview();
-}
-
 void PreferenceDialog::chooseLabelTableFont()
 {
-    const std::optional<QFont> font = chooseFontWithQtDialog(
-        this, m_usesDefaultLabelTableFont ? this->font() : m_labelTableFont, tr("Choose label table font"));
-    if (!font.has_value()) {
-        return;
-    }
-
-    m_labelTableFont = font.value();
-    m_usesDefaultLabelTableFont = false;
-    updateLabelTableFontSummary();
-    updateJsonPreview();
+    chooseConfiguredFont(&m_labelTableFont, &m_usesDefaultLabelTableFont, m_labelTableFontLabel,
+                         tr("Choose label table font"));
 }
 
 void PreferenceDialog::resetLabelTableFont()
 {
-    m_labelTableFont = font();
-    m_usesDefaultLabelTableFont = true;
-    updateLabelTableFontSummary();
-    updateJsonPreview();
+    resetConfiguredFont(&m_labelTableFont, &m_usesDefaultLabelTableFont, m_labelTableFontLabel);
 }
 
 void PreferenceDialog::updateLabelTableFontSummary()
 {
-    if (m_labelTableFontLabel == nullptr) {
-        return;
-    }
-
-    if (m_usesDefaultLabelTableFont) {
-        m_labelTableFontLabel->setText(tr("Default font and size"));
-        m_labelTableFontLabel->setFont(font());
-        return;
-    }
-
-    m_labelTableFontLabel->setText(
-        tr("%1, %2 pt").arg(m_labelTableFont.family()).arg(m_labelTableFont.pointSizeF(), 0, 'f', 1));
-    m_labelTableFontLabel->setFont(font());
+    updateFontSummary(m_labelTableFontLabel, m_labelTableFont, m_usesDefaultLabelTableFont);
 }
 
 void PreferenceDialog::chooseTextEditorFont()
 {
-    const std::optional<QFont> font = chooseFontWithQtDialog(
-        this, m_usesDefaultTextEditorFont ? this->font() : m_textEditorFont, tr("Choose text editor font"));
-    if (!font.has_value()) {
-        return;
-    }
-
-    m_textEditorFont = font.value();
-    m_usesDefaultTextEditorFont = false;
-    updateTextEditorFontSummary();
-    updateJsonPreview();
+    chooseConfiguredFont(&m_textEditorFont, &m_usesDefaultTextEditorFont, m_textEditorFontLabel,
+                         tr("Choose text editor font"));
 }
 
 void PreferenceDialog::resetTextEditorFont()
 {
-    m_textEditorFont = font();
-    m_usesDefaultTextEditorFont = true;
-    updateTextEditorFontSummary();
-    updateJsonPreview();
+    resetConfiguredFont(&m_textEditorFont, &m_usesDefaultTextEditorFont, m_textEditorFontLabel);
 }
 
 void PreferenceDialog::updateTextEditorFontSummary()
 {
-    if (m_textEditorFontLabel == nullptr) {
-        return;
-    }
-
-    if (m_usesDefaultTextEditorFont) {
-        m_textEditorFontLabel->setText(tr("Default font and size"));
-        m_textEditorFontLabel->setFont(font());
-        return;
-    }
-
-    m_textEditorFontLabel->setText(
-        tr("%1, %2 pt").arg(m_textEditorFont.family()).arg(m_textEditorFont.pointSizeF(), 0, 'f', 1));
-    m_textEditorFontLabel->setFont(font());
+    updateFontSummary(m_textEditorFontLabel, m_textEditorFont, m_usesDefaultTextEditorFont);
 }
 
 void PreferenceDialog::chooseMarkerTextBubbleFont()
 {
-    const std::optional<QFont> selectedFont =
-        chooseFontWithQtDialog(this, m_usesDefaultMarkerTextBubbleFont ? this->font() : m_markerTextBubbleFont,
-                               tr("Choose marker text bubble font"));
-    if (!selectedFont.has_value()) {
-        return;
-    }
-
-    m_markerTextBubbleFont = selectedFont.value();
-    m_usesDefaultMarkerTextBubbleFont = false;
-    updateMarkerTextBubbleFontSummary();
-    updateJsonPreview();
+    chooseConfiguredFont(&m_markerTextBubbleFont, &m_usesDefaultMarkerTextBubbleFont, m_markerTextBubbleFontLabel,
+                         tr("Choose marker text bubble font"));
 }
 
 void PreferenceDialog::resetMarkerTextBubbleFont()
 {
-    m_markerTextBubbleFont = font();
-    m_usesDefaultMarkerTextBubbleFont = true;
-    updateMarkerTextBubbleFontSummary();
-    updateJsonPreview();
+    resetConfiguredFont(&m_markerTextBubbleFont, &m_usesDefaultMarkerTextBubbleFont, m_markerTextBubbleFontLabel);
 }
 
 void PreferenceDialog::updateMarkerTextBubbleFontSummary()
 {
-    if (m_markerTextBubbleFontLabel == nullptr) {
+    updateFontSummary(m_markerTextBubbleFontLabel, m_markerTextBubbleFont, m_usesDefaultMarkerTextBubbleFont);
+}
+
+void PreferenceDialog::chooseConfiguredFont(QFont* targetFont, bool* usesDefaultFont, QLabel* summaryLabel,
+                                            const QString& title)
+{
+    if (targetFont == nullptr || usesDefaultFont == nullptr) {
         return;
     }
 
-    if (m_usesDefaultMarkerTextBubbleFont) {
-        m_markerTextBubbleFontLabel->setText(tr("Default font and size"));
-        m_markerTextBubbleFontLabel->setFont(font());
+    const std::optional<QFont> selectedFont =
+        chooseFontWithQtDialog(this, *usesDefaultFont ? font() : *targetFont, title);
+    if (!selectedFont.has_value()) {
         return;
     }
 
-    m_markerTextBubbleFontLabel->setText(
-        tr("%1, %2 pt").arg(m_markerTextBubbleFont.family()).arg(m_markerTextBubbleFont.pointSizeF(), 0, 'f', 1));
-    m_markerTextBubbleFontLabel->setFont(font());
+    *targetFont = selectedFont.value();
+    *usesDefaultFont = false;
+    updateFontSummary(summaryLabel, *targetFont, *usesDefaultFont);
+    updateJsonPreview();
+}
+
+void PreferenceDialog::resetConfiguredFont(QFont* targetFont, bool* usesDefaultFont, QLabel* summaryLabel)
+{
+    if (targetFont == nullptr || usesDefaultFont == nullptr) {
+        return;
+    }
+
+    *targetFont = font();
+    *usesDefaultFont = true;
+    updateFontSummary(summaryLabel, *targetFont, *usesDefaultFont);
+    updateJsonPreview();
+}
+
+void PreferenceDialog::updateFontSummary(QLabel* summaryLabel, const QFont& targetFont, bool usesDefaultFont)
+{
+    if (summaryLabel == nullptr) {
+        return;
+    }
+
+    if (usesDefaultFont) {
+        summaryLabel->setText(tr("Default font and size"));
+        summaryLabel->setFont(font());
+        return;
+    }
+
+    summaryLabel->setText(tr("%1, %2 pt").arg(targetFont.family()).arg(targetFont.pointSizeF(), 0, 'f', 1));
+    summaryLabel->setFont(font());
 }
 
 void PreferenceDialog::chooseAutomationPythonCommand()
@@ -1037,9 +764,8 @@ void PreferenceDialog::chooseAutomationPythonCommand()
 #else
     const QString filter = tr("Python executable (python python3 python*);;All files (*)");
 #endif
-    const QString path =
-        QFileDialog::getOpenFileName(this, tr("Choose Python executable"), m_automationPythonCommandEdit->text(),
-                                     filter);
+    const QString path = QFileDialog::getOpenFileName(this, tr("Choose Python executable"),
+                                                      m_automationPythonCommandEdit->text(), filter);
     if (path.isEmpty()) {
         return;
     }
@@ -1048,30 +774,9 @@ void PreferenceDialog::chooseAutomationPythonCommand()
     updateJsonPreview();
 }
 
-QString PreferenceDialog::automationShortcutConflictText() const
-{
-    std::map<QString, QString> scriptNameByShortcut;
-    for (int row = 0; row < m_automationShortcutTable->rowCount(); ++row) {
-        const QTableWidgetItem* item = m_automationShortcutTable->item(row, automationScriptColumn);
-        const auto* shortcutEdit =
-            qobject_cast<QKeySequenceEdit*>(m_automationShortcutTable->cellWidget(row, automationShortcutColumn));
-        if (item == nullptr || shortcutEdit == nullptr || shortcutEdit->keySequence().isEmpty()) {
-            continue;
-        }
-
-        const QString shortcutText = shortcutEdit->keySequence().toString(QKeySequence::PortableText);
-        const auto [existing, inserted] = scriptNameByShortcut.emplace(shortcutText, item->text());
-        if (!inserted) {
-            return tr("%1 is already assigned to %2; clear one automation shortcut before saving.")
-                .arg(shortcutText, existing->second);
-        }
-    }
-    return {};
-}
-
 void PreferenceDialog::savePreferences()
 {
-    const QString shortcutConflict = automationShortcutConflictText();
+    const QString shortcutConflict = m_automationShortcutEditor->conflictText();
     if (!shortcutConflict.isEmpty()) {
         setMessage(shortcutConflict, true);
         return;

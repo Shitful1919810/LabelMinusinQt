@@ -18,9 +18,10 @@ class QPlainTextEdit;
 class QPushButton;
 class QScrollBar;
 class QSpinBox;
-class QTableWidget;
 class QTabWidget;
 class QWidget;
+class AutomationShortcutEditorWidget;
+class GroupStyleEditorWidget;
 
 class PreferenceDialog final : public QDialog {
     Q_OBJECT
@@ -46,10 +47,6 @@ private:
     QJsonDocument documentFromUi() const;
     void updateJsonPreview();
     void setMessage(const QString& message, bool warning = false);
-    void addGroupStyleRow();
-    void addGroupStyleRow(const QJsonObject& style);
-    void removeSelectedGroupStyleRows();
-    void chooseGroupColor(int row);
     void chooseLabelTableFont();
     void resetLabelTableFont();
     void updateLabelTableFontSummary();
@@ -60,7 +57,9 @@ private:
     void resetMarkerTextBubbleFont();
     void updateMarkerTextBubbleFontSummary();
     void chooseAutomationPythonCommand();
-    QString automationShortcutConflictText() const;
+    void chooseConfiguredFont(QFont* targetFont, bool* usesDefaultFont, QLabel* summaryLabel, const QString& title);
+    void resetConfiguredFont(QFont* targetFont, bool* usesDefaultFont, QLabel* summaryLabel);
+    void updateFontSummary(QLabel* summaryLabel, const QFont& targetFont, bool usesDefaultFont);
     void savePreferences();
     void openPreferenceFile();
 
@@ -103,10 +102,10 @@ private:
     QKeySequenceEdit* m_nextPageShortcutEdit{nullptr};
     QKeySequenceEdit* m_editLabelTextShortcutEdit{nullptr};
     QKeySequenceEdit* m_commitLabelTextShortcutEdit{nullptr};
-    QTableWidget* m_automationShortcutTable{nullptr};
+    AutomationShortcutEditorWidget* m_automationShortcutEditor{nullptr};
     QLineEdit* m_backupPathEdit{nullptr};
     QSpinBox* m_backupIntervalSpinBox{nullptr};
-    QTableWidget* m_groupStyleTable{nullptr};
+    GroupStyleEditorWidget* m_groupStyleEditor{nullptr};
     QPlainTextEdit* m_jsonPreview{nullptr};
     QLabel* m_messageLabel{nullptr};
     QPushButton* m_saveButton{nullptr};
