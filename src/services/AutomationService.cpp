@@ -511,6 +511,8 @@ void AutomationRunner::startProcess(const AutomationPythonCommand& command, QStr
     m_process = new QProcess(this);
     m_process->setWorkingDirectory(m_script.directoryPath);
     QProcessEnvironment processEnvironment = QProcessEnvironment::systemEnvironment();
+    processEnvironment.insert(QStringLiteral("PYTHONUTF8"), QStringLiteral("1"));
+    processEnvironment.insert(QStringLiteral("PYTHONIOENCODING"), QStringLiteral("utf-8"));
     for (auto it = m_script.environment.constBegin(); it != m_script.environment.constEnd(); ++it) {
         processEnvironment.insert(it.key(), it.value());
     }
