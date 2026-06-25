@@ -29,6 +29,7 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
+    void scheduleFitToViewport();
     int columnConfigIndex(int logicalIndex) const;
     int stretchColumnConfigIndex() const;
     int minimumWidthExcept(int excludedConfigIndex) const;

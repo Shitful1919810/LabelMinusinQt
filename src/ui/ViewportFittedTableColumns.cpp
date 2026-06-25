@@ -27,7 +27,9 @@ ViewportFittedTableColumns::ViewportFittedTableColumns(QTableView* tableView, QV
     header->setSectionResizeMode(m_columns.last().logicalIndex, QHeaderView::Fixed);
     header->setMinimumSectionSize(narrowViewportMinimumWidth);
     m_tableView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_tableView->installEventFilter(this);
     m_tableView->viewport()->installEventFilter(this);
+    scheduleFitToViewport();
 }
 
 void ViewportFittedTableColumns::fitToViewport()
@@ -131,11 +133,22 @@ void ViewportFittedTableColumns::setColumnsChangedCallback(std::function<void()>
 
 bool ViewportFittedTableColumns::eventFilter(QObject* watched, QEvent* event)
 {
-    if (m_tableView != nullptr && watched == m_tableView->viewport() && event->type() == QEvent::Resize) {
-        QTimer::singleShot(0, this, &ViewportFittedTableColumns::fitToViewport);
+    if (m_tableView == nullptr) {
+        return QObject::eventFilter(watched, event);
+    }
+
+    if ((watched == m_tableView->viewport() && event->type() == QEvent::Resize) ||
+        (watched == m_tableView && (event->type() == QEvent::Show || event->type() == QEvent::StyleChange ||
+                                    event->type() == QEvent::LayoutRequest || event->type() == QEvent::FontChange))) {
+        scheduleFitToViewport();
     }
 
     return QObject::eventFilter(watched, event);
+}
+
+void ViewportFittedTableColumns::scheduleFitToViewport()
+{
+    QTimer::singleShot(0, this, &ViewportFittedTableColumns::fitToViewport);
 }
 
 int ViewportFittedTableColumns::columnConfigIndex(int logicalIndex) const

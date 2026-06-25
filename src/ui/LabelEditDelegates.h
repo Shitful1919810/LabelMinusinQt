@@ -9,6 +9,8 @@
 #include <QStyledItemDelegate>
 #include <QVector>
 
+class QPlainTextEdit;
+
 class LabelTextDelegate final : public QStyledItemDelegate {
     Q_OBJECT
 
@@ -32,6 +34,8 @@ protected:
     bool eventFilter(QObject* object, QEvent* event) override;
 
 private:
+    void scheduleEditorHeightHint(QPlainTextEdit* editor, QPersistentModelIndex index) const;
+
     QKeySequence m_commitShortcut{QStringLiteral("Ctrl+Return")};
 };
 

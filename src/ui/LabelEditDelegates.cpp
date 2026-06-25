@@ -68,6 +68,7 @@ QWidget* LabelTextDelegate::createEditor(QWidget* parent, const QStyleOptionView
                     emit delegate->editorTextPreviewFinished(persistentIndex);
                 }
             });
+    scheduleEditorHeightHint(editor, QPersistentModelIndex(index));
     return editor;
 }
 
@@ -87,8 +88,7 @@ void LabelTextDelegate::setEditorData(QWidget* editor, const QModelIndex& index)
             guardedEditor->setTextCursor(cursor);
         }
     });
-    emit const_cast<LabelTextDelegate*>(this)->editorHeightHintChanged(QPersistentModelIndex(index), textEdit,
-                                                                       textEditorHeightHint(textEdit));
+    scheduleEditorHeightHint(textEdit, QPersistentModelIndex(index));
 }
 
 void LabelTextDelegate::setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const
@@ -110,9 +110,27 @@ QSize LabelTextDelegate::sizeHint(const QStyleOptionViewItem& option, const QMod
 }
 
 void LabelTextDelegate::updateEditorGeometry(QWidget* editor, const QStyleOptionViewItem& option,
-                                             const QModelIndex&) const
+                                             const QModelIndex& index) const
 {
     editor->setGeometry(option.rect);
+    scheduleEditorHeightHint(qobject_cast<QPlainTextEdit*>(editor), QPersistentModelIndex(index));
+}
+
+void LabelTextDelegate::scheduleEditorHeightHint(QPlainTextEdit* editor, QPersistentModelIndex index) const
+{
+    if (editor == nullptr || !index.isValid()) {
+        return;
+    }
+
+    const auto* delegate = this;
+    QTimer::singleShot(0, editor, [delegate, guardedEditor = QPointer<QPlainTextEdit>(editor), index]() {
+        if (guardedEditor == nullptr || !index.isValid()) {
+            return;
+        }
+
+        emit const_cast<LabelTextDelegate*>(delegate)->editorHeightHintChanged(index, guardedEditor,
+                                                                               textEditorHeightHint(guardedEditor));
+    });
 }
 
 bool LabelTextDelegate::eventFilter(QObject* object, QEvent* event)
