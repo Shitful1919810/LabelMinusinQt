@@ -59,6 +59,7 @@ void PageOrderDialog::buildUi()
 
     auto* splitter = new QSplitter(Qt::Horizontal, this);
     m_canvas = new ImageCanvas(splitter);
+    m_canvas->setReadOnly(true);
     m_canvas->setPreferences(m_preferences);
     m_canvas->setGroups(m_project.groups());
     m_canvas->setVisibleGroups(m_project.groups());

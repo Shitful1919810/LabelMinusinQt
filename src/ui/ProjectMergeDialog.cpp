@@ -163,6 +163,7 @@ QWidget* ProjectMergeDialog::createCandidateWidget(int conflictIndex, int candid
     auto* canvas = new ImageCanvas(groupBox);
     canvas->setMinimumHeight(360);
     canvas->setMinimumWidth(600);
+    canvas->setReadOnly(true);
     canvas->setPreferences(m_preferences);
     canvas->setGroups(m_mergePlan.mergedProject.groups());
     canvas->setVisibleGroups(m_mergePlan.mergedProject.groups());
