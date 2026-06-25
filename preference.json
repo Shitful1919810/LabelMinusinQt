@@ -64,8 +64,8 @@
         "maxTextRows": 4
     },
     "labelTextEditor": {
-        "fontFamily": "思源宋体 CN",
-        "fontPointSize": 12
+        "fontFamily": "",
+        "fontPointSize": 0
     },
     "markerTextBubble": {
         "fontFamily": "",
