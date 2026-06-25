@@ -1,25 +1,15 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelqt_automation import AutomationContext, as_bool
-
-CONFIG_PATH = Path(__file__).with_name("config.json")
+from labelqt_automation import AutomationContext, as_bool, load_script_config, save_script_config
 
 
 def read_existing_config() -> dict[str, Any]:
-    if not CONFIG_PATH.exists():
-        return {}
-    try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as config_file:
-            config = json.load(config_file)
-        return config if isinstance(config, dict) else {}
-    except Exception:
-        return {}
+    return load_script_config(__file__)
 
 
 def main() -> None:
@@ -44,12 +34,10 @@ def main() -> None:
         }
     )
 
-    with open(CONFIG_PATH, "w", encoding="utf-8") as config_file:
-        json.dump(config, config_file, ensure_ascii=False, indent=2)
-        config_file.write("\n")
+    config_path = save_script_config(__file__, config)
 
     lines = [
-        f"Saved OCR configuration to {CONFIG_PATH}",
+        f"Saved OCR configuration to {config_path}",
         "",
         f"engine: {config['engine']}",
         f"language: {config['language']}",

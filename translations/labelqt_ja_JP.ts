@@ -227,6 +227,10 @@ Last error: %2</source>
         <source>Failed to install automation requirements with exit code %1.</source>
         <translation>自動化の依存関係のインストールに失敗しました。終了コード: %1。</translation>
     </message>
+    <message>
+        <source>JSON root must be an object.</source>
+        <translation>JSON のルートはオブジェクトである必要があります。</translation>
+    </message>
 </context>
 <context>
     <name>GroupFilterComboBox</name>

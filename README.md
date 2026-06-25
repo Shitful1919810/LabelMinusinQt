@@ -23,15 +23,15 @@ LabelQt 是一个使用 C++/Qt 6 开发的跨平台 LabelPlus 文本工程编辑
 - 鼠标悬停在图像 marker 上时显示标签文本提示。
 - 提供撤销/重做能力，覆盖新增、删除、移动、文本编辑、类别修改、标签排序和页面排序等工程编辑操作。
 - 支持按间隔自动备份已修改的 LabelPlus 文本工程。
-- 支持通过“自动化”菜单运行外部 Python 自动化脚本，当前内置标签字数统计、分组互换、OCR 预览和 AI 翻译示例脚本。
+- 支持通过“自动化”菜单运行外部 Python 自动化脚本，当前内置测试脚本、OCR 与 AI 翻译脚本，并提供脚本开发 SDK。
 - 偏好设置窗口支持通过系统字体选择器分别调整标签列表和大文本编辑框字体。
 - 支持通过偏好设置启用内置 Breeze 风格 QSS 主题。
-- 提供简体中文和英文界面文本，并使用 Qt Linguist 工作流生成翻译资源。
+- 提供简体中文、繁体中文、日文和英文界面文本，并使用 Qt Linguist 工作流生成翻译资源。
 - `preference.json` 支持对界面交互和 marker 样式做运行时调优。
 
 ## 当前状态
 
-项目仍处于早期开发和功能重构阶段，重点是完善 LabelPlus 文本工程的基础编辑流程，并逐步扩展 OCR、自动化脚本、AI 翻译、协作合并和平台集成等能力。
+项目处于首个公开版本的收尾阶段，基础 LabelPlus 编辑、协作合并、页面顺序调整、自动化脚本、OCR 和 AI 翻译工作流已经具备基础可用形态。后续仍会继续打磨跨平台体验、发布打包和自动化脚本生态。
 
 ## 致谢
 
@@ -43,7 +43,7 @@ LabelQt 的早期产品方向、基础编辑工作流以及部分 OCR 流程设�
 
 ## 许可说明
 
-本项目源码使用仓库内 `LICENSE.txt` 声明的许可证。Qt 本身不属于本项目源码的一部分，使用和分发 Qt
+本项目源码使用仓库内 `LICENSE.txt` 声明的 MIT 许可证。Qt 本身不属于本项目源码的一部分，使用和分发 Qt
 时需要遵守 Qt 对应的开源或商业许可。
 
 当前程序链接 Qt 6 的 `Core`、`Gui`、`Widgets` 模块；检测到 Qt Svg 时会额外链接 `Svg`，用于更完整地支持内置 Breeze 主题中的 SVG 图标。发布源码仓库时不要提交 Qt 源码或 Qt
@@ -59,15 +59,19 @@ Qt GRPC、Qt HTTP Server、Qt MQTT、Qt Virtual Keyboard、Qt Wayland Compositor
 模块前请先核对 Qt 官方许可文档。
 
 仓库内置的 BreezeStyleSheets 主题资源位于 `resources/themes/breeze`，遵循 MIT 许可证；其中部分 SVG
-图标资源带有 Apache License 2.0 notice。详见 `THIRD_PARTY_NOTICES.md`。
+图标资源带有 Apache License 2.0 notice。QtKeychain、可选 LibArchive、内置主题资源、官方 Python
+脚本依赖和外部 API 的说明见 `THIRD_PARTY_NOTICES.md`。如果发布包选择捆绑 Python 运行时、OCR
+模型或 Python wheel，还需要额外附带这些组件自己的许可证与 notice。
 
 ## 环境要求
 
-- CMake 3.25 或更高版本。
+- CMake 3.24 或更高版本。
 - Ninja，或 Windows 上的 Visual Studio 2022 生成器。
 - 支持 C++20 的编译器。
-- Qt 6，至少需要 Qt Widgets；建议安装 Qt Svg 以完整显示内置 Breeze 主题图标；开发翻译资源时还需要 Qt Linguist Tools。
+- Qt 6.5 或更高版本，至少需要 Qt Core、Gui、Widgets；建议安装 Qt Svg 以完整显示内置 Breeze 主题图标；开发翻译资源时还需要 Qt Linguist Tools。
 - QtKeychain，用于通过系统密钥环保存自动化脚本所需的 API key 等敏感信息。
+- LibArchive 为可选依赖，用于扩展压缩包读取格式。
+- Python 3 为自动化脚本运行时依赖；只使用主程序基础编辑功能时不是必需项。
 
 ## 构建
 
@@ -218,13 +222,24 @@ cmake --build --preset windows-vs-release --target deploy_windows
 
 也可以在程序内通过“文件 > 偏好设置”打开偏好设置窗口，使用结构化表单编辑常用选项，或直接调用系统文本编辑器打开 `preference.json`。
 
-当前默认配置示例：
+完整示例见仓库根目录 `preference.json`。如果该文件缺失或损坏，程序会使用 `AppPreferences` 中的内置默认值。下面片段展示主要结构：
 
 ```json
 {
   "appearance": {
+    "language": "",
     "style": "",
     "theme": ""
+  },
+  "automation": {
+    "python": {
+      "arguments": [],
+      "autoInstallRequirements": false,
+      "command": "",
+      "pipIndexUrl": ""
+    },
+    "shortcuts": {},
+    "showRunLog": false
   },
   "backupPath": "bak",
   "backupIntervalSeconds": 60,
@@ -235,7 +250,7 @@ cmake --build --preset windows-vs-release --target deploy_windows
   "labelTable": {
     "fontFamily": "",
     "fontPointSize": 0.0,
-    "maxTextRows": 4
+    "maxTextRows": 3
   },
   "labelTextEditor": {
     "fontFamily": "",
@@ -244,6 +259,9 @@ cmake --build --preset windows-vs-release --target deploy_windows
   "markerTextBubble": {
     "fontFamily": "",
     "fontPointSize": 0.0,
+    "opacity": 1.0
+  },
+  "canvasLabelTextEditor": {
     "opacity": 1.0
   },
   "input": {
@@ -261,19 +279,19 @@ cmake --build --preset windows-vs-release --target deploy_windows
   },
   "groupStyles": [
     {
-      "groupColor": "#ff3835",
+      "groupColor": "#ef4444",
       "markerDiameter": 20.0,
       "fontPointSize": 10.0,
       "markerStyle": "circle"
     },
     {
-      "groupColor": "#2d59d2",
+      "groupColor": "#2563eb",
       "markerDiameter": 20.0,
       "fontPointSize": 10.0,
       "markerStyle": "square"
     },
     {
-      "groupColor": "#5f8000",
+      "groupColor": "#10b981",
       "markerDiameter": 20.0,
       "fontPointSize": 10.0,
       "markerStyle": "circle"
@@ -287,6 +305,12 @@ cmake --build --preset windows-vs-release --target deploy_windows
 - `appearance.style`：启动时强制使用的 Qt 控件风格名称，例如 `Fusion`。为空时不强制设置，使用系统默认风格。可选值由当前 Qt 环境的 `QStyleFactory::keys()` 决定，偏好设置窗口会自动列出可用 style。
 - `appearance.theme`：应用内置 Breeze QSS 样式表主题。为空时不使用样式表；当前支持 `breezeDark`、`breezeLight`。该字段与 `appearance.style` 可同时使用，程序会先设置 Qt style，再叠加 Breeze QSS。
 - `appearance.language`：界面语言。为空时跟随系统语言；可选值由程序扫描当前可用的 `labelqt_*.qm` 翻译资源得到。修改后需要重启应用程序生效。
+- `automation.showRunLog`：运行自动化脚本时是否显示 stdout/stderr 日志窗口。
+- `automation.python.command`：自动化脚本使用的 Python 命令或可执行文件路径。为空时尝试使用内置候选或系统 Python。
+- `automation.python.arguments`：传给 Python 解释器的额外参数。
+- `automation.python.autoInstallRequirements`：运行脚本前是否尝试安装该脚本目录下的 `requirements.txt`。
+- `automation.python.pipIndexUrl`：安装依赖时传给 pip 的镜像源 URL。为空时使用 pip 默认源。
+- `automation.shortcuts`：用户为自动化脚本分配的快捷键，键为脚本稳定 id，值为 Qt portable key sequence。
 - `labelMarker.diameter`：默认 marker 直径，单位为屏幕像素，支持浮点数。
 - `labelMarker.fontPointSize`：默认 marker 内部序号字号，使用 Qt 字号单位，支持浮点数。
 - `labelTable.maxTextRows`：右侧标签列表文本列自动换行后的最大显示行数。
@@ -297,6 +321,7 @@ cmake --build --preset windows-vs-release --target deploy_windows
 - `markerTextBubble.fontFamily`：图像 marker 文本气泡字体。为空时使用系统默认字体。
 - `markerTextBubble.fontPointSize`：图像 marker 文本气泡字号。为 `0` 时使用系统默认字号。
 - `markerTextBubble.opacity`：图像 marker 文本气泡不透明度，范围 `0.0` 到 `1.0`，默认 `1.0`。
+- `canvasLabelTextEditor.opacity`：双击 marker 打开的临时文本编辑框不透明度，范围 `0.0` 到 `1.0`，默认 `1.0`。
 - `input.moveLabelModifier`：拖动图像 marker 时需要按住的修饰键，默认 `ctrl`。
 - `input.previousLabelModifier`：反向切换标签时需要按住的修饰键，默认 `ctrl`。
 - `input.nextLabelShortcut`：在主窗口内切换到下一个可见标签的快捷键，默认 `Tab`。按住 `input.previousLabelModifier` 再触发该快捷键会切换到上一个可见标签。
@@ -492,7 +517,7 @@ python script.py --input input.json --output output.json
   "selectedLabels": [
     {
       "labelIndex": 0,
-      "visibleIndex": 0,
+      "visibleIndex": 1,
       "group": "框内",
       "x": 0.5,
       "y": 0.5,
@@ -591,8 +616,8 @@ python script.py --input input.json --output output.json
 仓库内置示例脚本包括：
 
 - `scripts/official/test`：测试用脚本目录，会在自动化菜单中显示为 `Test` 子菜单，包含字数统计、分组互换和等待 5 秒等脚本。
-- `scripts/official/ocr_preview`：对当前选区、当前页或指定页码区间运行 OCR。`Configure OCR` 会通过参数窗口写入本机 `config.json`，用于保存 OCR 引擎、语言、设备、本地 manga-ocr 模型目录、默认标签分组、排序方向以及非预览入口完成后是否弹出结果报告等设置。预览入口会展示后处理后的文本块；生成标签入口会复用同一套后处理结果并输出 `addLabel` 操作。选区 OCR 会合并为一个 label，整页和跨页 OCR 会为每个文本块生成一个 label。
-- `scripts/official/ai_translate`：通过 DeepSeek API 翻译当前选中的 label；如果没有选中 label，则翻译当前页所有 label。`Configure AI Translation` 会将 API key 保存到系统 keychain，并写入本机 `config.json` 保存 API base URL、模型、目标语言、翻译风格、自定义 prompt 以及应用翻译后是否弹出结果报告等非敏感设置。预览入口只展示译文或译文加分析；应用入口会输出 `setLabelText` 操作并由主程序注册撤销/重做；跨页入口会让用户输入 1-based 页码区间，并把整个区间的 label 一次性提交给模型作为上下文，再应用返回的译文。
+- `scripts/official/ocr_preview`：对当前选区、当前页或指定页码区间运行 OCR。`Configure OCR` 会通过参数窗口写入用户配置目录下的本机配置，用于保存 OCR 引擎、语言、设备、本地 manga-ocr 模型目录、默认标签分组、排序方向以及非预览入口完成后是否弹出结果报告等设置。预览入口会展示后处理后的文本块；生成标签入口会复用同一套后处理结果并输出 `addLabel` 操作。选区 OCR 会合并为一个 label，整页和跨页 OCR 会为每个文本块生成一个 label。
+- `scripts/official/ai_translate`：通过 DeepSeek API 翻译当前选中的 label；如果没有选中 label，则翻译当前页所有 label。`Configure AI Translation` 会将 API key 保存到系统 keychain，并在用户配置目录下保存 API base URL、模型、目标语言、翻译风格、自定义 prompt 以及应用翻译后是否弹出结果报告等非敏感设置。预览入口只展示译文或译文加分析；应用入口会输出 `setLabelText` 操作并由主程序注册撤销/重做；跨页入口会让用户输入 1-based 页码区间，并把整个区间的 label 一次性提交给模型作为上下文，再应用返回的译文。
 
 用户本机脚本建议放在 `scripts/custom`，该目录下除 `.gitkeep` 外默认不会提交到仓库。
 

@@ -12,7 +12,7 @@ scripts/
   custom/        用户脚本
 ```
 
-每个脚本组一个目录。目录里至少包含 `script.json` 和入口 Python 文件，也可以包含 `requirements.txt`、资源文件、脚本本地配置文件等。
+每个脚本组一个目录。目录里至少包含 `script.json` 和入口 Python 文件，也可以包含 `requirements.txt` 和资源文件等。发行版中的脚本目录可能是只读的；需要持久化本机配置时，优先使用 SDK 提供的用户配置目录辅助函数。
 
 ```text
 scripts/official/my_tool/
@@ -53,7 +53,19 @@ for label in ctx.selected_labels:
 ctx.write_output(args.output, "Delete Labels", "Done.", operations)
 ```
 
-这个库封装最常用的无依赖操作，例如读取输入、写结果、读取当前页、读取选中标签、读取参数、通过 `Page` / `Label` 对象访问工程数据、按 1-based 页码区间读取页面或 label、构造常见 operations 等。它刻意保持很小，方便用户复制和理解。
+这个库封装最常用的无依赖操作，例如读取输入、写结果、读取当前页、读取选中标签、读取参数、通过 `Page` / `Label` 对象访问工程数据、按一基页码区间读取页面或标签、构造常见操作、读写脚本本机配置等。它刻意保持很小，方便用户复制和理解。
+
+脚本需要保存非敏感配置时，建议使用：
+
+```python
+from labelqt_automation import load_script_config, save_script_config
+
+config = load_script_config(__file__)
+config["example"] = "value"
+save_script_config(__file__, config)
+```
+
+SDK 会把配置写入当前用户的 LabelQt 配置目录，例如 Linux 的 `~/.config/LabelQt/automation/...`、Windows 的 `%APPDATA%/LabelQt/automation/...`。为兼容早期版本，`load_script_config()` 仍会在用户配置不存在时读取脚本目录下的旧 `config.json`。
 
 ## 脚本调用方式
 
@@ -67,11 +79,15 @@ python run.py --input /tmp/input.json --output /tmp/output.json
 
 ## input.json
 
-`input.json` 是一次运行开始时的工程快照，默认只导出未删除 label。主要字段如下：
+`input.json` 是一次运行开始时的工程快照，默认只导出未删除标签。主要字段如下：
 
 ```json
 {
   "apiVersion": 1,
+  "scope": "project",
+  "options": {
+    "includeDeletedLabels": false
+  },
   "parameters": {},
   "selection": {
     "hasSelection": true,
@@ -89,14 +105,16 @@ python run.py --input /tmp/input.json --output /tmp/output.json
     "currentPage": {
       "hasPage": true,
       "index": 0,
+      "number": 1,
       "name": "001.png",
       "imagePath": "/path/to/001.png"
     },
     "selectedLabels": []
   },
   "project": {
-    "filePath": "/path/to/project.txt",
-    "directory": "/path/to",
+    "path": "/path/to/project.txt",
+    "sourceName": "project.txt",
+    "currentPage": "001.png",
     "groups": ["框内", "框外"],
     "imagePaths": ["/path/to/001.png"],
     "pages": [
@@ -120,9 +138,11 @@ python run.py --input /tmp/input.json --output /tmp/output.json
 }
 ```
 
-`labelIndex` 是工程内部 label 下标，供 `operations` 精确引用；`visibleIndex` 是 UI 展示序号，只用于展示。脚本不要把 `visibleIndex` 当成修改目标。
+`labelIndex` 是工程内部标签下标，供 `operations` 精确引用；`visibleIndex` 是 UI 展示序号，只用于展示。脚本不要把 `visibleIndex` 当成修改目标。
 
-`parameters` 来自 `script.json` 声明的运行前参数窗口。`secret` 参数不会出现在 `input.json`；密钥由主程序保存到系统 keychain，并按脚本声明注入到子进程环境变量。
+`parameters` 来自 `script.json` 声明的运行前参数窗口。`secret` 参数不会出现在 `input.json`；密钥由主程序保存到系统密钥环，并按脚本声明注入到子进程环境变量。
+
+`project.path` 是当前 LabelPlus 工程文件路径。`project.currentPage` 是当前页图片名的便捷字段；更完整的当前 UI 状态应读取 `context.currentPage`。如果脚本需要工程目录，建议从 `project.path` 自行取父目录，而不是依赖额外字段。
 
 ## output.json
 
@@ -143,9 +163,9 @@ python run.py --input /tmp/input.json --output /tmp/output.json
 
 如果顶层 `"quiet": true`，脚本成功后不会弹出结果窗口，只会更新状态栏。失败仍然会提示用户。
 
-## operations
+## 操作列表
 
-脚本需要修改工程时，输出 `operations`。主程序会统一校验、应用并纳入 undo/redo。
+脚本需要修改工程时，输出 `operations`。主程序会统一校验、应用并纳入撤销/重做。
 
 当前支持的操作：
 
@@ -209,7 +229,7 @@ python run.py --input /tmp/input.json --output /tmp/output.json
 - `boolean` / `bool`：复选框。
 - `file`：文件路径。
 - `directory`：目录路径。
-- `secret`：密钥输入框，保存到系统 keychain。
+- `secret`：密钥输入框，保存到系统密钥环。
 
 密钥参数示例：
 
@@ -225,7 +245,7 @@ python run.py --input /tmp/input.json --output /tmp/output.json
 }
 ```
 
-真正需要读取密钥的运行脚本还应声明 `secrets`，主程序会在运行前读取 keychain 并注入环境变量。脚本只读取环境变量，不要把 API key 写入 `config.json`、日志或结果 JSON。
+真正需要读取密钥的运行脚本还应声明 `secrets`，主程序会在运行前读取系统密钥环并注入环境变量。脚本只读取环境变量，不要把 API key 写入 `config.json`、日志或结果 JSON。
 
 ## 示例职责
 
@@ -234,16 +254,16 @@ python run.py --input /tmp/input.json --output /tmp/output.json
 - 用 `AutomationContext.from_file()` 读 `input.json`，用 `ctx.write_output()` 写 `output.json`。
 - 用 `ctx.parameters` 接收用户参数。
 - 用 `ctx.ops` 构造 `operations` 修改工程，而不是直接改 `.txt`。
-- 对没有当前页、没有选中 label、参数为空等情况给出温和结果。
+- 对没有当前页、没有选中标签、参数为空等情况给出温和结果。
 - 让有副作用的脚本输出可撤销操作。
 
-`scripts/official/ocr_preview` 展示如何读取当前选区、当前页图像路径、OCR 结果并输出 `addLabel`。`scripts/official/ai_translate` 展示如何使用 keychain 注入的 API key、如何做 preview、apply 和跨页 apply；跨页 apply 会把整个页码区间作为上下文一次性提交给模型，并用返回的 `page + labelIndex` 定位修改目标。
+`scripts/official/ocr_preview` 展示如何读取当前选区、当前页图像路径、OCR 结果并输出 `addLabel`。`scripts/official/ai_translate` 展示如何使用系统密钥环注入的 API key，以及如何实现预览、应用翻译和跨页应用翻译；跨页应用会把整个页码区间作为上下文一次性提交给模型，并用返回的 `page + labelIndex` 定位修改目标。
 
 ## 建议
 
 - 脚本应当把工程快照视为只读。
 - 长任务要定期输出进度日志，方便用户判断是否卡住。
 - 不要输出无限日志；主程序会截断过大的日志内容。
-- 不要假设 label 分组一定存在；如果要写入某个 group，应让用户在参数窗口选择或在文档里明确要求。
-- 不要把密钥、私有路径、模型目录提交到仓库。脚本本地配置建议写入脚本目录下被 `.gitignore` 忽略的 `config.json`。
-- 如果脚本损坏、入口文件不存在或 manifest 格式错误，主程序会跳过该脚本并在状态栏显示警告；脚本作者仍应尽量让错误信息清晰可读。
+- 不要假设标签分组一定存在；如果要写入某个分组，应让用户在参数窗口选择或在文档里明确要求。
+- 不要把密钥、私有路径、模型目录提交到仓库。脚本本地配置建议通过 `save_script_config()` 写入用户配置目录，不要依赖发行包脚本目录可写。
+- 如果脚本损坏、入口文件不存在或脚本清单格式错误，主程序会跳过该脚本并在状态栏显示警告；脚本作者仍应尽量让错误信息清晰可读。

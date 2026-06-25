@@ -7,7 +7,7 @@
       "id": "configure",
       "name": "Configure AI Translation",
       "entry": "configure_ai_translation.py",
-      "description": "Save local DeepSeek translation preferences for this script directory.",
+      "description": "Save local DeepSeek translation preferences to the user config directory.",
       "parameters": [
         {
           "key": "deepseekApiKey",

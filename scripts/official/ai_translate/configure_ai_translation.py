@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelqt_automation import AutomationContext, as_bool
-
-CONFIG_PATH = Path(__file__).with_name("config.json")
+from labelqt_automation import AutomationContext, as_bool, save_script_config
 
 
 def main() -> None:
@@ -30,16 +27,14 @@ def main() -> None:
         "showResult": as_bool(parameters.get("showResult", True)),
     }
 
-    with open(CONFIG_PATH, "w", encoding="utf-8") as config_file:
-        json.dump(config, config_file, ensure_ascii=False, indent=2)
-        config_file.write("\n")
+    config_path = save_script_config(__file__, config)
 
     ctx.write_output(
         args.output,
         "AI Translation Configuration",
         "\n".join(
             [
-                f"Saved configuration to {CONFIG_PATH}",
+                f"Saved configuration to {config_path}",
                 "API key: saved in the system keychain by LabelQt",
                 f"Base URL: {config['baseUrl']}",
                 f"Model: {config['model']}",

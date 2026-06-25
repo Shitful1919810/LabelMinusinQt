@@ -8,11 +8,55 @@ without hiding the data model from script authors.
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any
 
 
 JsonObject = dict[str, Any]
+
+
+def user_config_root(app_name: str = "LabelQt") -> Path:
+    """Return a per-user config directory suitable for automation script data."""
+    if sys.platform == "win32":
+        base = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+        return base / app_name
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / app_name
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / app_name
+
+
+def script_config_path(script_file: str | Path, file_name: str = "config.json") -> Path:
+    script_dir = Path(script_file).resolve().parent
+    script_scope = script_dir.parent.name or "scripts"
+    return user_config_root() / "automation" / script_scope / script_dir.name / file_name
+
+
+def legacy_script_config_path(script_file: str | Path, file_name: str = "config.json") -> Path:
+    return Path(script_file).resolve().with_name(file_name)
+
+
+def load_script_config(script_file: str | Path, file_name: str = "config.json") -> JsonObject:
+    for path in (script_config_path(script_file, file_name), legacy_script_config_path(script_file, file_name)):
+        if not path.exists():
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as config_file:
+                config = json.load(config_file)
+            return config if isinstance(config, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+
+def save_script_config(script_file: str | Path, config: JsonObject, file_name: str = "config.json") -> Path:
+    path = script_config_path(script_file, file_name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as config_file:
+        json.dump(config, config_file, ensure_ascii=False, indent=2)
+        config_file.write("\n")
+    return path
 
 
 class OperationBuilder:
@@ -52,7 +96,8 @@ class Label:
 
     @property
     def visible_index(self) -> int:
-        return int_value(self.data.get("visibleIndex"), self.index)
+        fallback = self.index + 1 if self.index >= 0 else 0
+        return int_value(self.data.get("visibleIndex"), fallback)
 
     @property
     def group(self) -> str:

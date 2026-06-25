@@ -227,6 +227,10 @@ Last error: %2</source>
         <source>Failed to install automation requirements with exit code %1.</source>
         <translation>自动化依赖安装失败，退出代码为 %1。</translation>
     </message>
+    <message>
+        <source>JSON root must be an object.</source>
+        <translation>JSON 根必须是对象。</translation>
+    </message>
 </context>
 <context>
     <name>GroupFilterComboBox</name>

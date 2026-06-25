@@ -7,7 +7,7 @@
       "id": "configure",
       "name": "Configure OCR",
       "entry": "configure_ocr.py",
-      "description": "Save local OCR preferences for this script directory.",
+      "description": "Save local OCR preferences to the user config directory.",
       "parameters": [
         {
           "key": "engine",

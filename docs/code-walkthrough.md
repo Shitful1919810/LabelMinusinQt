@@ -1,37 +1,47 @@
-# C++ Code Walkthrough
+# C++ 代码导览
 
-这份文档面向第一次阅读 LabelQt C++/Qt 代码的人。它不替代 `docs/architecture.md`，而是更偏“从哪里开始看、功能之间怎么串起来”。
+这份文档面向第一次阅读 LabelQt C++/Qt 代码的人。它不替代 `docs/architecture.md`，而是回答“从哪里开始看”“一个功能经过哪些类”“修改时落点在哪里”。
 
 ## 入口与构建目标
 
-程序入口在 `src/main.cpp`：
+程序入口是 `src/main.cpp`，启动流程很短：
 
-- 创建 `QApplication`。
-- 设置应用名、组织名和版本。
-- 调用 `installTranslator()` 从 Qt 资源或可执行文件旁边的 `i18n` 目录加载翻译。
-- 用 `QCommandLineParser` 解析可选的工程文件路径参数。
-- 创建并显示 `MainWindow`。
-- 如果命令行传入了 `.txt` 工程路径，则调用 `MainWindow::openProjectFile()` 自动打开。
+1. 创建 `QApplication`。
+2. 读取 `AppPreferences`。
+3. 应用 Qt 控件风格和内置 Breeze QSS 主题。
+4. 设置应用名、组织名和版本。
+5. 通过 `TranslationManager` 安装界面翻译。
+6. 用 `QCommandLineParser` 解析可选工程路径。
+7. 创建并显示 `MainWindow`。
+8. 如果命令行给了工程文件，就打开该文件；否则尝试恢复最近一次工程。
 
-可执行目标在 `src/CMakeLists.txt` 中定义。源码被分为三组：
+可执行目标在 `src/CMakeLists.txt` 中定义。源码按三组加入目标：
 
-- `LABELQT_CORE_SOURCES`：平台无关的数据、解析、偏好和撤销。
-- `LABELQT_SERVICE_SOURCES`：应用服务层，目前包含工程控制、会话状态、压缩包和 OCR 进程占位实现。
-- `LABELQT_UI_SOURCES`：Qt Widgets 界面。
+- `LABELQT_CORE_SOURCES`：数据、格式、偏好、翻译、撤销。
+- `LABELQT_SERVICE_SOURCES`：工程、自动化、图片缓存、会话、密钥、压缩包等服务。
+- `LABELQT_UI_SOURCES`：Qt Widgets 界面和 UI 控制器。
 
-构建后会把仓库根目录的 `preference.json` 复制到可执行文件目录，便于运行时读取默认偏好。
+CMake 会把 `preference.json`、`scripts/official` 和空的 `scripts/custom` 同步到可执行文件目录。翻译 `.qm` 通过 Qt 资源编进程序，不依赖运行目录下的 `i18n` 文件夹。
 
-## 目录分层
+## 推荐阅读顺序
 
-```text
-src/core      数据模型、LabelPlus 文本解析保存、偏好设置、撤销栈
-src/ui        Qt Widgets 界面、模型/委托、画布、主窗口、偏好窗口
-src/services  工程工作流、会话状态、OCR、压缩包、进程等服务层
-tests         Qt Test 单元测试
-translations  Qt Linguist .ts 翻译源文件
-```
+如果只想先熟悉主线，建议按这个顺序读：
 
-核心原则是：`src/core` 不依赖 Qt Widgets，不应该知道按钮、表格、窗口；`src/services` 承接不属于具体控件的应用服务；`src/ui` 可以协调这些对象，但不要把文件格式解析、备份或本机会话存储逻辑散落进 UI。
+1. `src/main.cpp`
+2. `src/core/Project.h`、`src/core/Label.h`
+3. `src/core/LabelPlusDocument.cpp`
+4. `src/core/AppPreferences.h`
+5. `src/ui/MainWindow.h`
+6. `src/ui/MainWindow.cpp` 的构造函数、`createActions()`、`createCentralWidget()` 和项目打开/保存相关函数
+7. `src/services/ProjectController.cpp`
+8. `src/services/LabelEditController.cpp`
+9. `src/ui/ImageCanvas.cpp`
+10. `src/ui/ImagePageViewController.cpp`
+11. `src/ui/LabelTableModel.cpp`
+12. `src/ui/AutomationController.cpp`
+13. `tests/LabelTests.cpp`
+
+读 `MainWindow.cpp` 时不要从头到尾硬啃。更有效的方式是围绕一个功能追信号和槽，例如“点击标签标记多选”“新增标签”“运行自动化脚本”“调整页面顺序”。
 
 ## 核心数据模型
 
@@ -39,203 +49,198 @@ translations  Qt Linguist .ts 翻译源文件
 
 文件：`src/core/Label.h`、`src/core/Label.cpp`
 
-`Label` 表示单个标签：
+`Label` 表示一个标签：
 
 - `text`：标签文本。
-- `group`：所属类别。
-- `position`：归一化坐标，范围约为 `[0, 1]`，相对于图片宽高。
-- `deleted`：软删除状态。
+- `group`：所属分组。
+- `position`：相对于图片宽高的归一化坐标。
+- `deleted`：软删除标记。
 
-坐标使用归一化值是为了让图片缩放、窗口缩放和实际保存格式解耦。
+UI 上显示的序号是可见标签序号，也就是跳过已删除标签后的 `visibleIndex`。内部操作仍使用真实下标 `labelIndex`，这样删除后撤销/重做和自动化脚本操作可以稳定定位原对象。
 
 ### `Project` 与 `ImageEntry`
 
 文件：`src/core/Project.h`、`src/core/Project.cpp`
 
-`Project` 是当前打开工程的内存表示：
+`Project` 是当前工程上下文：
 
 - `images()`：页面列表。
-- `groups()`：类别列表。
-- `filePath()`：当前 LabelPlus `.txt` 工程路径。
-- `sourceName()`：工程来源名称。
+- `groups()`：分组列表。
+- `commentLines()`：LabelPlus comment 区，包括合并来源元数据。
+- `filePath()`：当前 `.txt` 工程路径。
+- `sourceName()`：工程来源名称，主要用于合并预览。
 
-`ImageEntry` 表示一页图片：
+`ImageEntry` 表示一页：
 
 - `name`：图片文件名。
-- `path`：图片绝对路径。
+- `path`：图片路径。
 - `labels`：该页标签。
 
-当前打开工程由 `ProjectController` 持有。UI 侧通常通过 `MainWindow::project()` 访问它，再修改
-`project().images()[page].labels` 或 `project().groups()`。
+当前打开工程由 `ProjectController` 持有，UI 通过 `MainWindow::project()` 访问当前工程，但具体修改应尽量交给控制器或服务类。
 
 ### `LabelPlusDocument`
 
 文件：`src/core/LabelPlusDocument.h`、`src/core/LabelPlusDocument.cpp`
 
-负责经典 LabelPlus `.txt` 工程格式：
+负责 LabelPlus `.txt` 格式读写：
 
-- `loadFromFile()`：读取并解析文本工程，得到 `Project`。
-- `saveToFile()`：把 `Project` 序列化回 LabelPlus 文本格式。
+- `loadFromFile()`：解析文本工程，生成 `Project`。
+- `saveToFile()`：将 `Project` 写回 LabelPlus 文本格式。
 
-如果以后要兼容更多 LabelPlus 格式细节，优先从这里改，而不是在 `MainWindow` 里做字符串拼接。
+如果要兼容更多 LabelPlus 细节，优先改这里。不要在 UI 中直接拼接 `.txt` 文件内容。
 
 ### `AppPreferences`
 
 文件：`src/core/AppPreferences.h`、`src/core/AppPreferences.cpp`
 
-负责读取 `preference.json` 并提供类型化访问：
+负责 `preference.json` 的默认值、读取、校验、警告和序列化。它覆盖：
 
-- marker 默认大小、字体大小。
-- 分组样式 `groupStyles`。
-- 标签列表字体和最大行数。
-- 右下角文本编辑框字体。
-- marker 拖动修饰键。
-- 自动备份路径和间隔。
+- 外观主题和语言。
+- 自动化 Python、日志和快捷键设置。
+- 标签标记、分组样式、气泡和临时编辑框样式。
+- 标签表格与文本编辑器字体。
+- 主窗口快捷键与修饰键。
+- 自动备份路径与间隔。
 
-解析错误不会直接弹窗，而是返回 `AppPreferencesLoadResult`，其中包含 `warnings`。主窗口把这些警告显示在状态栏常驻 warning label 中。
-
-新增偏好项时通常需要同步修改：
-
-- `AppPreferences.h/.cpp`
-- `preference.json`
-- `PreferenceDialog`
-- `README.md`
-- `docs/architecture.md`
-- `tests/LabelTests.cpp`
-
-如果新增了 UI 文本，还要同步 `translations/` 下的四份 `labelqt_*.ts` 翻译文件。
+偏好缺失、损坏或类型错误时会回退到代码内置默认值，并把问题返回给 UI 显示在状态栏。
 
 ### `UndoStack`
 
 文件：`src/core/UndoStack.h`、`src/core/UndoStack.cpp`
 
-这是一个围绕 Qt `QUndoStack` / `QUndoCommand` 的轻量包装层。外部调用仍通过项目自己的 `UndoStack`，这样业务代码不需要直接依赖 Qt 的命令子类细节。每个命令包含：
+这是项目对 Qt `QUndoStack` / `QUndoCommand` 的包装。命令通常带有：
 
-- `text`：命令名称。
-- `undo`：撤销函数。
-- `redo`：重做函数。
+- 命令文本。
+- 撤销消息。
+- 重做消息。
+- 撤销回调。
+- 重做回调。
 
-当前代码里，编辑动作通常已经先修改了工程数据，再把命令压入栈。因此内部的回调命令会跳过 `QUndoStack::push()` 触发的第一次 `redo()`，后续用户手动 Redo 时才真正调用 redo 回调。
+标签、分组、页面顺序和自动化操作都应通过它进入撤销/重做系统。不要新增一套局部撤销逻辑。
 
-当前只实现撤销，没有 redo。标签编辑由 `LabelEditController` 负责把对应命令压栈。
-
-## 服务层
+## 工程工作流
 
 ### `ProjectController`
 
 文件：`src/services/ProjectController.h`、`src/services/ProjectController.cpp`
 
-`ProjectController` 是当前工程工作流的入口，负责：
+负责当前工程生命周期：
 
-- 持有打开中的 `Project`。
-- 通过 `LabelPlusDocument` 打开、保存、另存工程。
-- 从图片目录创建新的 LabelPlus 文本工程。
-- 维护 dirty 状态。
-- 在存在未保存修改时执行自动备份。
+- 打开 `.txt` 工程。
+- 保存、另存。
+- 从图片目录新建工程。
+- 维护未保存修改状态。
+- 自动备份。
 
-这样 `MainWindow` 不需要直接管理“工程是否已修改”“备份文件写到哪里”“保存失败时如何报告错误”等非控件细节。主窗口仍负责弹窗、状态栏提示和菜单动作，因为这些属于 UI 反馈。
+它不弹窗口。文件选择、确认保存、错误提示由 UI 层负责。
 
-### `LabelEditController`
+### `ProjectWorkflowController`
 
-文件：`src/services/LabelEditController.h`、`src/services/LabelEditController.cpp`
+文件：`src/services/ProjectWorkflowController.h`、`src/services/ProjectWorkflowController.cpp`
 
-`LabelEditController` 负责标签数据编辑和 undo 注册：
+承接较大的项目级工作流：
 
-- 新增标签。
-- 删除标签。
-- 修改文本、类别和坐标。
-- 批量切换类别。
-- 拖拽重排标签顺序。
-- undo 回放时恢复旧文本、旧类别、旧坐标、旧顺序或旧删除状态。
+- 创建合并计划。
+- 生成合并预览工程。
+- 保存合并后工程。
+- 应用页面顺序调整并注册撤销命令。
 
-它不依赖 Qt Widgets，也不直接操作表格、画布或文本框。需要更新 UI 时，它通过 `MainWindow` 注册的回调通知“某页某个标签应被选中”或“某页选区应被清空”。这样标签编辑规则集中在服务层，窗口层只保留刷新和交互反馈。
+`MainWindow` 在这里的职责是弹出 `ProjectMergeDialog` / `PageOrderDialog`，然后把用户选择交给控制器。
 
-### `SessionStateStore`
+### `ProjectMergeService`
 
-文件：`src/services/SessionStateStore.h`、`src/services/SessionStateStore.cpp`
+文件：`src/services/ProjectMergeService.h`、`src/services/ProjectMergeService.cpp`
 
-`SessionStateStore` 负责使用 `QSettings` 保存本机状态：
+负责多工程按页合并：
 
-- 主窗口几何信息。
-- 左右 splitter 状态。
-- 最近打开的工程路径列表。
-- 每个工程上次停留的图片页。
-- 缩放比例、视图中心和选中标签。
+- 读取多个 LabelPlus `.txt`。
+- 按图片名收集候选页。
+- 对无冲突页直接合并。
+- 对冲突页生成候选，让 `ProjectMergeDialog` 决定采用哪一份。
+- 保存前可按最终页序生成合并结果。
+- 写入 `LabelQtMergeSources v2` 来源注释。
 
-这些状态是“本机使用习惯”，不写入 `preference.json`，也不写入 LabelPlus 工程文本。工程下次打开时，`MainWindow` 会读取这些状态并做边界检查，例如图片页被外部删除时会退回到仍然存在的页。
+合并来源注释的解析和重写由 `PageSourceInfoService` 配合完成。
 
-## 主窗口：`MainWindow`
+### `ProjectImageValidator`
 
-文件：`src/ui/MainWindow.h`、`src/ui/MainWindow.cpp`
+文件：`src/services/ProjectImageValidator.h`、`src/services/ProjectImageValidator.cpp`
 
-`MainWindow` 是当前 UI 编排中心，也是最值得先读的文件。它负责：
+打开工程后扫描图片路径是否存在。它只返回缺失项，UI 决定如何非阻塞提示用户。
 
-- 创建菜单、工具栏区域和左右布局。
-- 响应打开、保存、新建工程等菜单动作，并把工程读写交给 `ProjectController`。
-- 连接 `ImageCanvas`、`LabelTableModel`、右下角文本编辑框和类别控件。
-- 管理当前页 `m_currentImageIndex` 和当前标签 `m_currentLabelIndex`。
-- 调用 `ProjectController` 做工程读写、dirty 状态和自动备份。
-- 调用 `SessionStateStore` 恢复和保存窗口布局、每个工程的查看位置。
-- 把 `AppPreferences` 应用到画布、表格、文本框和自动备份计时器。
-- 把标签编辑请求交给 `LabelEditController`，再根据结果刷新表格、画布和选区。
+## 标签编辑主线
 
-### 常见入口函数
+标签编辑原则：UI 发出意图，`LabelEditController` 修改数据和注册撤销命令，UI 再刷新视图。
 
-- `createActions()`：创建菜单 action。
-- `createMenus()`：组装菜单栏。
-- `createCentralWidget()`：创建主界面左右区域。
-- `newProject()`：从图片文件夹创建新工程。
-- `openProjectFile()`：打开 LabelPlus 文本工程。
-- `saveProject()` / `saveProjectAs()`：保存工程。
-- `refreshProjectUi()`：工程级 UI 刷新。
-- `refreshImageUi()`：当前图片、标签表格、画布刷新。
-- `refreshGroupUi()`：类别相关 UI 刷新。
-- `applyPreferences()`：应用偏好设置窗口或启动读取到的配置。
-- `restoreProjectSessionState()` / `saveProjectSessionState()`：恢复和保存每个工程的查看位置。
+### 新增标签
 
-### 编辑数据的基本路径
+1. 用户在 `ImageCanvas` 的标签模式下点击图像。
+2. `ImageCanvas` 发出 `labelCreateRequested(QPointF)`。
+3. `MainWindow::addLabel()` 检查当前分组是否可见和工程是否可编辑。
+4. `LabelEditController::addLabel()` 新增标签并注册撤销/重做。
+5. `MainWindow` 刷新表格、画布和当前选择。
 
-以“在图片上点击新增标签”为例：
+### 移动标签标记
 
-1. `ImageCanvas` 判断点击位置并发出 `labelCreateRequested(QPointF)`。
-2. `MainWindow::addLabel()` 收到信号。
-3. `MainWindow::addLabel()` 调用 `LabelEditController::addLabel()`。
-4. `LabelEditController` 修改当前 `ImageEntry::labels`，注册撤销命令，并标记工程已修改。
-5. `MainWindow` 根据返回结果刷新表格、画布和当前选中标签。
+1. 用户按住偏好设置中的 `input.moveLabelModifier` 拖动标签标记。
+2. `ImageCanvas` 发出 `labelMoveRequested(index, position)`。
+3. `MainWindow::moveLabel()` 调用 `LabelEditController`。
+4. 当前页只刷新标签标记和表格状态，不重载图片。
 
-以“右侧表格原地修改文本/类别”为例：
+### 表格原地编辑
 
-1. `LabelTableModel::setData()` 发现文本或类别变化。
-2. 发出 `labelEdited(sourceIndex, column, oldValue, newValue)`。
-3. `MainWindow::updateLabelFromTable()` 注册对应 undo，并刷新画布与选区。
-4. 实际数据修改发生在 `LabelTableModel::setData()`；后续如果表格编辑路径继续重构，应考虑让它也统一走 `LabelEditController`。
+1. `LabelTableModel::setData()` 不直接改 `Label`。
+2. 它发出 `labelEditRequested(sourceIndex, column, newValue)`。
+3. `MainWindow::updateLabelFromTable()` 根据列类型调用 `LabelEditController`。
+4. 撤销/重做、未保存修改状态和画布刷新统一走控制器路径。
 
-如果你要新增会修改工程内容的功能，优先确认它是否走了 `markDirty()` 和 `UndoStack`。
+### 删除、多选和批量切换类别
 
-## 图像预览：`ImageCanvas`
+右侧表格和左侧标签标记的多选状态由 `LabelSelectionController` 同步。删除键、右键菜单、标签标记点击多选最终都应汇总成当前页的源下标，再交给 `LabelEditController`。
+
+## 图像显示主线
+
+### `ImageCanvas`
 
 文件：`src/ui/ImageCanvas.h`、`src/ui/ImageCanvas.cpp`
 
-`ImageCanvas` 继承 `QGraphicsView`，用于左侧图片预览和 marker 交互。
+负责可视交互：
 
-它负责：
+- 显示图片。
+- 绘制标签标记、气泡和选区。
+- 左键/中键拖动画面。
+- 标签模式和选区模式。
+- 悬停文本提示。
+- 只读预览模式。
 
-- 加载并显示当前图片。
-- 按缩放比例显示图片。
-- 绘制标签 marker。
-- 根据分组过滤隐藏 marker。
-- 鼠标点击请求新增标签。
-- 按偏好中的修饰键拖动 marker 坐标。
-- 鼠标悬停 marker 时显示标签文本提示。
+它持有当前页标签的绘制快照，不直接修改 `Project`。
 
-注意：`ImageCanvas` 不直接修改 `Project`。它持有当前页标签的绘制快照，通过信号告诉 `MainWindow` 用户想做什么：
+### `ImagePageCache`
 
-- `labelCreateRequested`
-- `labelMoveRequested`
-- `labelSelected`
-- `zoomPercentChanged`
+文件：`src/services/ImagePageCache.h`、`src/services/ImagePageCache.cpp`
 
-这种设计让画布只处理交互和绘制，真实工程数据仍由 `ProjectController` 持有，并由主窗口协调更新。当前页标签变化时，主窗口通过 `refreshCanvasLabels()` 更新画布快照；整页切换时才重新载入图片。
+负责图片加载：
+
+- 按图片路径和目标预览尺寸缓存 `QImage`。
+- 异步加载未命中图片。
+- 维护 LRU。
+- 预加载相邻页。
+- 通过 request id 让 UI 丢弃过期结果。
+
+### `ImagePageViewController`
+
+文件：`src/ui/ImagePageViewController.h`、`src/ui/ImagePageViewController.cpp`
+
+负责把 `Project` 当前页、`ImagePageCache` 和 `ImageCanvas` 串起来：
+
+1. 当前页变化时请求显示。
+2. 缓存命中则立即 `setImage()`。
+3. 缓存未命中则 `setImageLoading()`，等待异步结果。
+4. 异步完成后检查 request id、图片路径和当前页是否仍匹配。
+5. 安装图片后执行延迟的缩放/视图中心恢复。
+6. 预加载前后页。
+
+如果换页性能、缩放恢复或大图加载出问题，优先从这里和 `ImagePageCache` 看。
 
 ## 右侧标签列表
 
@@ -243,140 +248,155 @@ translations  Qt Linguist .ts 翻译源文件
 
 文件：`src/ui/LabelTableModel.h`、`src/ui/LabelTableModel.cpp`
 
-这是右侧 label 列表的 `QAbstractTableModel`。它不是拷贝一份标签，而是持有当前图片 `QVector<Label>*` 指针。
+这是 `QAbstractTableModel`，负责：
 
-主要职责：
+- 从当前页标签指针构建可见行。
+- 过滤已删除标签和未选中的分组。
+- 将内部 `labelIndex` 映射到表格行。
+- UI 显示连续 `visibleIndex`。
+- 提供文本和类别列的显示/编辑数据。
+- 发出编辑和拖拽重排请求。
 
-- 把当前页标签映射成表格行。
-- 维护 `m_visibleRows`，实现分组过滤。
-- 提供三列数据：序号、文本、类别。
-- 给类别列返回分组颜色。
-- 支持拖拽排序，并通过 `labelsReorderRequested` 通知主窗口。
-
-`sourceIndexForRow()` 和 `rowForSourceIndex()` 很重要：因为表格可能被分组过滤，显示行号和真实标签下标并不总是相同。
+`sourceIndexForRow()` 和 `rowForSourceIndex()` 是关键函数。凡是表格筛选后还要定位内部标签，都应通过它们。
 
 ### `LabelEditDelegates`
 
 文件：`src/ui/LabelEditDelegates.h`、`src/ui/LabelEditDelegates.cpp`
 
-提供表格原地编辑控件：
+负责表格编辑控件：
 
-- `LabelTextDelegate`：文本列使用 `QPlainTextEdit`。
-- `LabelGroupDelegate`：类别列使用 `QComboBox`。
+- 文本列使用 `QPlainTextEdit`。
+- 类别列使用 `QComboBox`。
+- 文本编辑器在打开时把光标放到末尾。
+- 编辑期间的行高和提交由委托与控制器配合处理。
 
-如果以后要改善表格编辑体验，多半从这里和 `LabelTableModel::setData()` 一起看。
+## 页面顺序与合并窗口
 
-## 分组筛选：`GroupFilterComboBox`
+### `PageOrderDialog` / `PageOrderListModel`
 
-文件：`src/ui/GroupFilterComboBox.h`、`src/ui/GroupFilterComboBox.cpp`
+用于调整页面顺序：
 
-这是右上角的多选类别筛选框。它看起来像下拉框，但内部用菜单和 checkbox 实现：
+- 右侧列表显示当前顺序。
+- 支持拖拽、上移、下移、删除。
+- 左侧用只读 `ImageCanvas` 预览当前页和标签。
+- 对最终顺序的校验和应用由 `ProjectPageOrderService` / `ProjectWorkflowController` 完成。
 
-- 支持全选、清空。
-- 每个 group 前有复选框。
-- 单选时显示 group 名称，多选时显示数量。
-- 根据 `groupStyles` 给条目着色。
+`PageOrderListModel` 使用 `QAbstractItemModelTester` 覆盖模型合约，改动拖拽逻辑时要同步测试。
 
-当筛选变化时，它发出 `selectedGroupsChanged()`。`MainWindow` 随后同时更新：
+### `ProjectMergeDialog`
 
-- `LabelTableModel` 的过滤。
-- `ImageCanvas` 的可见 marker 分组。
+用于解决合并工程冲突页：
 
-## 偏好设置窗口：`PreferenceDialog`
+- 每个候选工程显示一个只读预览。
+- 多个预览同步缩放和视图中心。
+- 用户选择每个冲突页采用哪个候选。
+- 冲突解决后可继续进入页面顺序调整界面。
 
-文件：`src/ui/PreferenceDialog.h`、`src/ui/PreferenceDialog.cpp`
+## 自动化脚本
 
-偏好窗口直接编辑 `preference.json` 对应的结构化内容，并提供 JSON 预览。
+### C++ 侧
 
-当前包含：
+主要文件：
 
-- marker 默认大小。
-- 标签列表最大行数。
-- 标签列表字体。
-- 大文本编辑框字体。
-- marker 拖动修饰键。
-- 自动备份路径和间隔。
-- 分组样式表，包括颜色、marker 大小、字体大小和形状。
+- `src/ui/AutomationController.cpp`
+- `src/services/AutomationService.cpp`
+- `src/services/AutomationManifestParser.cpp`
+- `src/services/AutomationOperationApplier.cpp`
+- `src/services/AutomationPythonResolver.cpp`
+- `src/services/SecretStore.cpp`
 
-字体选择使用 `QFontDialog`，但最终仍写回：
+运行流程：
 
-- `labelTable.fontFamily`
-- `labelTable.fontPointSize`
-- `labelTextEditor.fontFamily`
-- `labelTextEditor.fontPointSize`
+1. `AutomationController` 发现脚本并构建菜单。
+2. 用户点击脚本动作。
+3. 如果脚本清单声明了 `parameters`，弹出 `AutomationParameterDialog`。
+4. 密钥参数写入系统密钥环，运行脚本前再读出并注入环境变量。
+5. `AutomationService` 导出 `input.json`，启动外部 Python。
+6. `AutomationRunDialog` 可选显示 stdout/stderr，并允许取消。
+7. 脚本写出 `output.json`。
+8. `AutomationManifestParser` 解析输出。
+9. `AutomationOperationApplier` 校验并规划 `operations`。
+10. `MainWindow` 把合法操作作为一个撤销命令应用到工程。
 
-窗口点击“应用”时不一定保存文件，但会把当前 UI 生成的 JSON 交给 `AppPreferences::loadFromJson()`，再通过 `preferencesApplied()` 发给主窗口。
+脚本运行期间，项目编辑入口被禁用，但只读浏览操作仍允许。
 
-## 自动备份
+### Python 侧
 
-自动备份由 `MainWindow` 和 `ProjectController` 分工完成：
+官方脚本在 `scripts/official`：
 
-- `configureBackupTimer()` 根据 `backupIntervalSeconds` 配置定时器。
-- `MainWindow::markDirty()` 将修改状态交给 `ProjectController`。
-- `ProjectController::markDirty()` 会记录工程已修改且存在待备份内容。
-- `MainWindow::performAutoBackup()` 负责定时触发和展示结果。
-- `ProjectController::performAutoBackup()` 在工程已打开、存在未保存修改且有待备份标记时保存一份副本。
+- `sdk/labelqt_automation.py`：脚本开发辅助库。
+- `test`：自动化框架示例和测试脚本。
+- `ocr_preview`：OCR 配置、预览、生成标签和页码区间 OCR。
+- `ai_translate`：DeepSeek 配置、预览、应用翻译和跨页翻译。
 
-备份路径由 `backupPath` 决定：
+Python 脚本不应该直接写 `.txt` 工程文件。要修改工程时输出 `operations`。
 
-- 相对路径：相对于当前工程 `.txt` 所在目录。
-- 绝对路径：直接使用。
+## 偏好设置窗口
 
-备份文件名包含原工程文件名和时间戳。
+文件：
+
+- `src/ui/PreferenceDialog.cpp`
+- `src/ui/PreferenceDialogWidgets.cpp`
+- `src/ui/GroupStyleEditorWidget.cpp`
+- `src/ui/AutomationShortcutEditorWidget.cpp`
+
+偏好设置窗口当前只有保存语义：
+
+- 打开时显示当前运行时 `AppPreferences`。
+- 点击“保存”写入 `preference.json` 并立即应用。
+- 点击 `Reload` 才从磁盘重新读取。
+
+复杂表格子页已经拆成独立 widget。新增偏好页时，不要把大量表格构造和 JSON 转换逻辑直接写进 `PreferenceDialog`。
 
 ## 国际化
 
-翻译资源在 `translations/` 下：
+翻译源文件：
 
-- `labelqt_zh_CN.ts`
-- `labelqt_zh_TW.ts`
-- `labelqt_en_US.ts`
-- `labelqt_ja_JP.ts`
+- `translations/labelqt_zh_CN.ts`
+- `translations/labelqt_zh_TW.ts`
+- `translations/labelqt_ja_JP.ts`
+- `translations/labelqt_en_US.ts`
 
 规则：
 
-- 新增用户可见 UI 文本时使用 `tr()`。
-- 同步更新两个 `.ts` 文件。
-- 运行 `scripts/check_translations.sh` 检查遗漏。
-- 构建时 CMake 会生成 `.qm` 并打进资源路径 `/i18n`。
-
-`main.cpp` 会在创建 `MainWindow` 前安装翻译器，所以 UI 构造期间的 `tr()` 能拿到当前语言。
+- 新增用户可见 UI 文本必须 `tr()`。
+- 同步四份 `.ts`。
+- 运行 `scripts/check_translations.sh`。
+- 构建时 `.qm` 会进入资源路径 `/i18n`。
 
 ## 测试
 
-当前测试入口在 `tests/LabelTests.cpp`，覆盖：
+当前测试入口是 `tests/LabelTests.cpp`。它覆盖的范围比早期多很多：
 
-- `Label` 坐标裁剪。
-- LabelPlus 文本工程读写 round-trip。
-- `AppPreferences` 对浮点 marker、输入修饰键、备份、字体、分组样式的解析。
-- 损坏偏好文件的默认回退。
+- Label 坐标裁剪。
+- LabelPlus 读写。
+- 偏好解析、默认值和损坏 JSON 回退。
+- 自动化快捷键解析。
+- 自动化操作的应用和回滚。
+- 标签导航。
+- `LabelTableModel` 和 `PageOrderListModel` 的模型合约。
+- 会话多选恢复。
+- 缺失图片扫描。
+- `ImageCanvas` Ctrl 点击/拖动交互。
+- 合并工程、来源注释和页面顺序服务。
 
-新增 core 行为时优先补这里。UI 行为目前主要靠手动验证，后续如果引入更复杂的交互，可以考虑加 Qt GUI 测试。
-
-## 推荐阅读顺序
-
-如果你想快速熟悉项目，可以按这个顺序读：
-
-1. `src/main.cpp`
-2. `src/core/Project.h`、`src/core/Label.h`
-3. `src/core/LabelPlusDocument.cpp`
-4. `src/ui/MainWindow.h`
-5. `src/ui/MainWindow.cpp` 的构造、`createCentralWidget()`、`openProjectFile()`、`refreshImageUi()`
-6. `src/ui/ImageCanvas.cpp`
-7. `src/ui/LabelTableModel.cpp`
-8. `src/core/AppPreferences.cpp`
-9. `src/ui/PreferenceDialog.cpp`
-10. `tests/LabelTests.cpp`
-
-读 `MainWindow.cpp` 时不用从头到尾硬啃。更有效的方法是围绕一个功能追信号和槽，例如“新增标签”“修改类别”“拖动 marker”“保存工程”。
+GUI 显示问题不一定都能单元测试，但容易回归的模型逻辑和鼠标/键盘状态机应尽量写轻量 Qt Test。
 
 ## 修改功能时的落点
 
-- 新增文件格式能力：优先看 `LabelPlusDocument`。
-- 新增项目数据字段：先改 `Label` / `Project`，再改读写和 UI 展示。
-- 新增可配置行为：改 `AppPreferences`、`preference.json`、`PreferenceDialog`、README、测试。
-- 新增画布交互：改 `ImageCanvas` 发信号，再由 `MainWindow` 改数据。
-- 新增标签表格行为：改 `LabelTableModel`、必要时改 `LabelEditDelegates`。
-- 新增标签编辑操作：优先走 `LabelEditController`，并确保注册带 undo/redo 的 `UndoStack` 命令。
-- 新增其他会修改工程的操作：必须 `markDirty()`，并注册带 undo/redo 的 `UndoStack` 命令。
-- 新增 UI 文本：必须 `tr()`，并同步中英文翻译。
+- 文件格式能力：`LabelPlusDocument`。
+- 项目数据字段：`Project` / `Label`，再同步读写、自动化 JSON 和测试。
+- 标签编辑：`LabelEditController`，并注册撤销/重做。
+- 页面顺序：`ProjectPageOrderService` / `ProjectWorkflowController` / `PageOrderListModel`。
+- 合并：`ProjectMergeService` / `ProjectMergeDialog`。
+- 图片加载与换页性能：`ImagePageCache` / `ImagePageViewController`。
+- 画布交互：`ImageCanvas` 发信号，服务或主窗口协调数据修改。
+- 表格显示和编辑：`LabelTableModel` / `LabelEditDelegates`。
+- 选择同步：`LabelSelectionController`。
+- 编辑器提交和焦点恢复：`EditorStateController`。
+- 主窗口快捷键：`MainWindowShortcutController`。
+- 自动化脚本发现/运行：`AutomationController` / `AutomationService`。
+- 自动化脚本 JSON 词汇：`AutomationManifestParser` / `docs/automation-scripting.md`。
+- 自动化操作：`AutomationOperationApplier`，并补 SDK 示例。
+- 偏好设置：`AppPreferences`、`PreferenceDialog` 和对应子控件。
+- 新 UI 文本：`tr()` + 四份翻译。

@@ -38,6 +38,22 @@ QJsonObject labelToJson(const labelqt::core::Label& label, int labelIndex, int v
     };
 }
 
+int visibleIndexForLabel(const labelqt::core::ImageEntry& image, int targetLabelIndex)
+{
+    if (targetLabelIndex < 0 || targetLabelIndex >= image.labels.size() ||
+        image.labels.at(targetLabelIndex).isDeleted()) {
+        return 0;
+    }
+
+    int visibleIndex = 0;
+    for (int labelIndex = 0; labelIndex <= targetLabelIndex; ++labelIndex) {
+        if (!image.labels.at(labelIndex).isDeleted()) {
+            ++visibleIndex;
+        }
+    }
+    return visibleIndex;
+}
+
 QJsonObject projectToJson(const labelqt::core::Project& project, int currentImageIndex)
 {
     QJsonArray groups;
@@ -51,7 +67,7 @@ QJsonObject projectToJson(const labelqt::core::Project& project, int currentImag
         const labelqt::core::ImageEntry& image = project.images().at(imageIndex);
         imagePaths.append(image.path);
         QJsonArray labels;
-        int visibleIndex = 0;
+        int visibleIndex = 1;
         for (int labelIndex = 0; labelIndex < image.labels.size(); ++labelIndex) {
             const labelqt::core::Label& label = image.labels.at(labelIndex);
             if (label.isDeleted()) {
@@ -140,7 +156,7 @@ QJsonObject contextToJson(const labelqt::core::Project& project, AutomationConte
             }
             selectedLabelIndexes.append(labelIndex);
             selectedLabels.append(
-                labelToJson(image.labels.at(labelIndex), labelIndex, static_cast<int>(selectedLabels.size())));
+                labelToJson(image.labels.at(labelIndex), labelIndex, visibleIndexForLabel(image, labelIndex)));
         }
     }
 
@@ -181,7 +197,13 @@ bool writeJsonFile(const QString& path, const QJsonObject& object, QString* erro
         }
         return false;
     }
-    file.write(QJsonDocument(object).toJson(QJsonDocument::Indented));
+    const QByteArray data = QJsonDocument(object).toJson(QJsonDocument::Indented);
+    if (file.write(data) != data.size()) {
+        if (error != nullptr) {
+            *error = file.errorString();
+        }
+        return false;
+    }
     return true;
 }
 
@@ -197,9 +219,15 @@ bool readJsonFile(const QString& path, QJsonObject* object, QString* error)
 
     QJsonParseError parseError;
     const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+    if (parseError.error != QJsonParseError::NoError) {
         if (error != nullptr) {
             *error = parseError.errorString();
+        }
+        return false;
+    }
+    if (!document.isObject()) {
+        if (error != nullptr) {
+            *error = QCoreApplication::translate("AutomationService", "JSON root must be an object.");
         }
         return false;
     }

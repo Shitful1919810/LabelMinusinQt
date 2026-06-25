@@ -10,10 +10,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelqt_automation import AutomationContext, Label, Page
-
-
-CONFIG_PATH = Path(__file__).with_name("config.json")
+from labelqt_automation import AutomationContext, Label, Page, load_script_config
 
 
 DEFAULT_CONFIG = {
@@ -33,16 +30,10 @@ def log(message: str) -> None:
 
 def load_config() -> dict[str, str]:
     config = dict(DEFAULT_CONFIG)
-    if CONFIG_PATH.exists():
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as config_file:
-                loaded = json.load(config_file)
-        except Exception:
-            loaded = {}
-        if isinstance(loaded, dict):
-            for key, value in loaded.items():
-                if value is not None:
-                    config[key] = str(value)
+    loaded = load_script_config(__file__)
+    for key, value in loaded.items():
+        if value is not None:
+            config[key] = str(value)
     return config
 
 
@@ -285,7 +276,7 @@ def preview_text(labels: list[Label], translations: dict[int, dict[str, str]], i
     for label in labels:
         translated = translations.get(label.index, {}).get("translation", "")
         analysis = translations.get(label.index, {}).get("analysis", "")
-        lines.append(f"#{label.visible_index + 1}")
+        lines.append(f"#{label.visible_index}")
         lines.append(f"Original: {label.text}")
         lines.append(f"Translation: {translated or '[missing]'}")
         if include_analysis and analysis:

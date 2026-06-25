@@ -37,6 +37,8 @@ See `docs/architecture.md` for more detail.
 - Binary releases must include Qt license notices, Qt module/version information and third-party dependency notices.
 - When adding a third-party dependency, document its license and keep it compatible with the intended project license.
 - Bundled BreezeStyleSheets resources must keep their local license files and `THIRD_PARTY_NOTICES.md` entry in sync.
+- When adding bundled assets, official automation scripts, Python requirements, external API integrations or optional
+  native libraries, update `README.md`, `docs/porting-dependencies.md` and `THIRD_PARTY_NOTICES.md` in the same change.
 
 ## UI And Workflow Separation
 

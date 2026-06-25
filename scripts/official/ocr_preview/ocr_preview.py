@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import json
 import os
 import sys
 import tempfile
@@ -8,25 +7,15 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "sdk"))
-from labelqt_automation import AutomationContext
+from labelqt_automation import AutomationContext, load_script_config
 
 os.environ.setdefault("FLAGS_allocator_strategy", "auto_growth")
 os.environ.setdefault("FLAGS_use_mkldnn", "0")
 os.environ.setdefault("FLAGS_enable_mkldnn", "0")
 os.environ.setdefault("FLAGS_enable_pir_api", "0")
 
-CONFIG_PATH = Path(__file__).with_name("config.json")
-
-
 def load_config() -> dict[str, Any]:
-    if not CONFIG_PATH.exists():
-        return {}
-    try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as config_file:
-            config = json.load(config_file)
-        return config if isinstance(config, dict) else {}
-    except Exception:
-        return {}
+    return load_script_config(__file__)
 
 
 OCR_CONFIG = load_config()

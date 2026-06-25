@@ -227,6 +227,10 @@ Last error: %2</translation>
         <source>Failed to install automation requirements with exit code %1.</source>
         <translation>Failed to install automation requirements with exit code %1.</translation>
     </message>
+    <message>
+        <source>JSON root must be an object.</source>
+        <translation>JSON root must be an object.</translation>
+    </message>
 </context>
 <context>
     <name>GroupFilterComboBox</name>
